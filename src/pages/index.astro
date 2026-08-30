@@ -1,0 +1,22 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+
+const title = "Reporte Diario de Producción y Mantenimiento";
+const description = "Base inicial de la aplicación para digitalizar los reportes de producción y mantenimiento.";
+---
+
+<BaseLayout title={title} description={description}>
+  <main class="grid min-h-screen place-items-center px-6 py-16">
+    <section class="w-full max-w-3xl rounded-3xl border border-slate-800 bg-slate-900/80 p-8 shadow-2xl shadow-black/20 sm:p-12">
+      <p class="mb-4 text-sm font-semibold uppercase tracking-[0.2em] text-emerald-400">
+        Aplicación en preparación
+      </p>
+      <h1 class="text-balance text-4xl font-bold tracking-tight text-white sm:text-5xl">
+        {title}
+      </h1>
+      <p class="mt-6 max-w-2xl text-lg leading-8 text-slate-300">
+        Base inicial lista para construir una gestión clara y segura de la operación diaria.
+      </p>
+    </section>
+  </main>
+</BaseLayout>

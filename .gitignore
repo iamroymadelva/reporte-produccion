@@ -1,0 +1,25 @@
+# Dependencies
+node_modules/
+
+# Build output and framework files
+dist/
+.astro/
+.vercel/
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Editors and operating systems
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
