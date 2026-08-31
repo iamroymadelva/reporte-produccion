@@ -1,7 +1,8 @@
 ---
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import { createSupabaseServerClient } from "../../lib/supabase/server";
-import { formatDate } from "../../lib/format";
+import { formatDate, getBogotaDateKey } from "../../lib/format";
+import { applyReportFilters, parseReportFilters, periodHref, reportFilterParams } from "../../lib/report-filters";
 import { statusLabels } from "../../lib/types";
 
 const auth = Astro.locals.auth!;
@@ -13,20 +14,29 @@ const { data: reportRows, error: reportError } = await supabase
 
 const reports = (reportRows ?? []) as any[];
 const drafts = reports.filter((report) => report.status === "DRAFT" && report.created_by === auth.user.id);
-const requestedStatus = Astro.url.searchParams.get("status");
-const validStatuses = new Set(["DRAFT", "SUBMITTED", "CANCELLED"]);
-const activeStopFilter = Astro.url.searchParams.get("stop") === "active";
-const statusFilter = !activeStopFilter && requestedStatus && validStatuses.has(requestedStatus) ? requestedStatus : null;
-const activeFilterLabel = activeStopFilter
+const filters = parseReportFilters(Astro.url.searchParams);
+const activeFilterLabel = filters.activeStop
   ? "Parada activa"
-  : statusFilter
-    ? statusLabels[statusFilter as keyof typeof statusLabels]
+  : filters.status
+    ? statusLabels[filters.status]
     : null;
-const visibleReports = activeStopFilter
-  ? reports.filter((report) => report.report_stop_events?.some((stop: any) => !stop.ended_at))
-  : statusFilter
-    ? reports.filter((report) => report.status === statusFilter)
-    : reports;
+const hasDisplayFilters = Boolean(filters.period || filters.status || filters.activeStop);
+let visibleReports = filters.error ? [] : reports;
+let visibleReportError: string | null = null;
+
+if (!filters.error && hasDisplayFilters) {
+  const stopsSelection = filters.activeStop
+    ? "report_stop_events:report_stop_events!inner(id, ended_at)"
+    : "report_stop_events(id, ended_at)";
+  let visibleQuery = supabase
+    .from("production_reports")
+    .select(`id, folio, report_date, production_order, status, created_by, created_at, machine:machines(id, code, name), ${stopsSelection}`)
+    .order("created_at", { ascending: false });
+  visibleQuery = applyReportFilters(visibleQuery, filters);
+  const visibleResult = await visibleQuery;
+  visibleReports = (visibleResult.data ?? []) as any[];
+  visibleReportError = visibleResult.error ? "No fue posible aplicar los filtros de reportes." : null;
+}
 let assignedMachines: any[] = [];
 
 if (auth.profile.role === "OPERATOR") {
@@ -38,9 +48,15 @@ if (auth.profile.role === "OPERATOR") {
   assignedMachines = (data ?? []).filter((assignment: any) => assignment.machine?.active);
 }
 
-const error = Astro.url.searchParams.get("error") ?? reportError?.message;
+const error = Astro.url.searchParams.get("error") ?? filters.error ?? visibleReportError ?? reportError?.message;
 const ok = Astro.url.searchParams.get("ok");
-const today = new Date().toISOString().slice(0, 10);
+const today = getBogotaDateKey();
+const currentMonth = today.slice(0, 7);
+const exportParams = reportFilterParams(filters);
+const exportHref = `/api/reports/export${exportParams.size ? `?${exportParams.toString()}` : ""}`;
+const withoutPeriodParams = reportFilterParams(filters, { includePeriod: false });
+const clearPeriodHref = `/reportes${withoutPeriodParams.size ? `?${withoutPeriodParams.toString()}` : ""}`;
+const filterSummary = [filters.periodLabel, activeFilterLabel].filter(Boolean).join(" · ");
 ---
 
 <BaseLayout title="Reportes de producción" description="Gestión de reportes de producción" profile={auth.profile}>
@@ -106,13 +122,55 @@ const today = new Date().toISOString().slice(0, 10);
       </section>
     )}
 
+    <section class="panel space-y-4" aria-labelledby="period-filter-title">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 id="period-filter-title" class="text-lg font-bold">Período</h2>
+          <p class="mt-1 text-sm text-slate-500">Filtra la tabla por la fecha operativa del reporte.</p>
+        </div>
+        <div class="flex flex-wrap gap-2" aria-label="Seleccionar tipo de período">
+          <a class={`button-secondary ${filters.period === "day" ? "border-emerald-600 text-emerald-800" : ""}`} href={periodHref("day", filters)}>Día</a>
+          <a class={`button-secondary ${filters.period === "week" ? "border-emerald-600 text-emerald-800" : ""}`} href={periodHref("week", filters)}>Semana</a>
+          <a class={`button-secondary ${filters.period === "month" ? "border-emerald-600 text-emerald-800" : ""}`} href={periodHref("month", filters)}>Mes</a>
+        </div>
+      </div>
+
+      {filters.period && (
+        <form class="flex flex-wrap items-end gap-3" method="GET" action="/reportes">
+          <input type="hidden" name="period" value={filters.period} />
+          {filters.activeStop && <input type="hidden" name="stop" value="active" />}
+          {!filters.activeStop && filters.status && <input type="hidden" name="status" value={filters.status} />}
+          {filters.period === "month" ? (
+            <label class="min-w-56 flex-1 sm:flex-none">
+              <span class="field-label">Mes</span>
+              <input class="field-control" type="month" name="month" value={filters.month ?? currentMonth} required />
+            </label>
+          ) : (
+            <label class="min-w-56 flex-1 sm:flex-none">
+              <span class="field-label">{filters.period === "week" ? "Fecha dentro de la semana" : "Fecha"}</span>
+              <input class="field-control" type="date" name="date" value={filters.date ?? today} required />
+            </label>
+          )}
+          <button class="button-primary" type="submit">Aplicar</button>
+          <a class="button-secondary" href={clearPeriodHref}>Limpiar período</a>
+        </form>
+      )}
+    </section>
+
     <section class="panel overflow-hidden p-0">
       <div class="flex flex-wrap items-center justify-between gap-3 border-b p-5">
         <div>
           <h2 class="text-xl font-bold">{auth.profile.role === "OPERATOR" ? "Mis reportes" : "Reportes disponibles"}</h2>
-          {activeFilterLabel && <p class="mt-1 text-sm text-slate-500">Filtro activo: {activeFilterLabel}</p>}
+          <p class="mt-1 text-sm text-slate-500">
+            Mostrando {visibleReports.length} {visibleReports.length === 1 ? "reporte" : "reportes"}{filterSummary ? ` · ${filterSummary}` : ""}
+          </p>
         </div>
-        {activeFilterLabel && <a class="font-bold text-emerald-700 hover:underline" href="/reportes">Limpiar filtro</a>}
+        <div class="flex flex-wrap items-center gap-3">
+          {(auth.profile.role === "ADMINISTRATOR" || auth.profile.role === "VIEWER") && !filters.error && (
+            <a class="button-primary" href={exportHref}>Exportar Excel</a>
+          )}
+          {(activeFilterLabel || filters.period) && <a class="font-bold text-emerald-700 hover:underline" href="/reportes">Limpiar filtros</a>}
+        </div>
       </div>
       <div class="overflow-x-auto">
         <table class="w-full min-w-[720px] text-left text-sm">
