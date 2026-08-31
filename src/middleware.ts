@@ -3,9 +3,11 @@ import { getAuthContext } from "./lib/auth";
 
 const publicPaths = new Set([
   "/iniciar-sesion",
+  "/recuperar-contrasena",
   "/auth/confirmar",
   "/api/auth/login",
   "/api/auth/logout",
+  "/api/auth/recovery",
 ]);
 
 export const onRequest = defineMiddleware(async (context, next) => {

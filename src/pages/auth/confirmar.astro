@@ -1,21 +1,21 @@
 ---
-import type { EmailOtpType } from "@supabase/supabase-js";
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import { createSupabaseServerClient } from "../../lib/supabase/server";
 
 const tokenHash = Astro.url.searchParams.get("token_hash");
-const type = Astro.url.searchParams.get("type") as EmailOtpType | null;
-let message = "El enlace de invitación no es válido o ya expiró.";
+const requestedType = Astro.url.searchParams.get("type");
+const type = requestedType === "invite" || requestedType === "recovery" ? requestedType : null;
+let message = "El enlace no es válido, está incompleto o ya expiró.";
 
 if (tokenHash && type) {
   const supabase = createSupabaseServerClient(Astro.request, Astro.cookies);
   const { error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type });
-  if (!error) return Astro.redirect("/reportes");
-  message = error.message;
+  if (!error) return Astro.redirect("/configurar-contrasena");
+  message = "No fue posible verificar el enlace. Solicita uno nuevo e inténtalo nuevamente.";
 }
 ---
 
-<BaseLayout title="Confirmar acceso" description="Confirmación de invitación">
+<BaseLayout title="Confirmar acceso" description="Confirmación de acceso seguro">
   <main class="grid min-h-screen place-items-center px-5">
     <section class="panel max-w-lg text-center">
       <h1 class="text-2xl font-bold">No fue posible confirmar el acceso</h1>
