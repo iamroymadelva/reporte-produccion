@@ -1,0 +1,142 @@
+---
+import AdminActionIcon from "./AdminActionIcon.astro";
+
+interface Props {
+  id: string;
+  title: string;
+  action: string;
+  submitLabel: "Crear" | "Guardar";
+  mode: "create" | "edit";
+  recordId?: string;
+}
+
+const { id, title, action, submitLabel, mode, recordId } = Astro.props;
+---
+
+{mode === "create" ? (
+  <button class="button-primary" type="button" data-admin-modal-open={id}>Nuevo</button>
+) : (
+  <button class="inline-flex size-11 items-center justify-center rounded-xl text-emerald-700 transition hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2" type="button" title="Editar" aria-label="Editar" data-admin-modal-open={id}>
+    <AdminActionIcon kind="edit" />
+  </button>
+)}
+
+<dialog id={id} class="admin-record-modal" data-admin-record-modal aria-labelledby={`${id}-title`}>
+  <form class="admin-record-modal__surface" method="POST" action={action}>
+    {recordId && <input type="hidden" name="id" value={recordId} />}
+    <header class="admin-record-modal__header">
+      <h2 id={`${id}-title`}>{title}</h2>
+      <button class="admin-record-modal__close" type="button" title="Cerrar" aria-label="Cerrar" data-admin-modal-close>
+        <svg class="pointer-events-none size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" /></svg>
+      </button>
+    </header>
+    <div class="admin-record-modal__body"><slot /></div>
+    <footer class="admin-record-modal__footer">
+      <button class="button-secondary" type="button" data-admin-modal-close>Cancelar</button>
+      <button class="button-primary" type="submit">{submitLabel}</button>
+    </footer>
+  </form>
+</dialog>
+
+<style>
+  .admin-record-modal {
+    box-sizing: border-box;
+    position: fixed;
+    inset: auto;
+    top: 50%;
+    left: 50%;
+    width: min(34rem, calc(100vw - 2rem));
+    max-width: none;
+    max-height: calc(100dvh - 2rem);
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    border: 0;
+    border-radius: 1rem;
+    background: white;
+    transform: translate(-50%, -50%);
+    box-shadow: 0 24px 64px rgb(15 23 42 / 0.3);
+  }
+
+  .admin-record-modal::backdrop { background: rgb(15 23 42 / 0.6); }
+
+  .admin-record-modal__surface {
+    display: grid;
+    width: 100%;
+    min-width: 0;
+    max-height: calc(100dvh - 2rem);
+    margin: 0;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+  }
+
+  .admin-record-modal__header,
+  .admin-record-modal__footer {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem 1.25rem;
+  }
+
+  .admin-record-modal__header {
+    justify-content: space-between;
+    border-bottom: 1px solid rgb(226 232 240);
+  }
+
+  .admin-record-modal__header h2 { font-size: 1.25rem; font-weight: 700; color: rgb(15 23 42); }
+
+  .admin-record-modal__body {
+    min-width: 0;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 1.25rem;
+  }
+
+  .admin-record-modal__footer {
+    justify-content: flex-end;
+    border-top: 1px solid rgb(226 232 240);
+    background: rgb(248 250 252);
+  }
+
+  .admin-record-modal__close {
+    display: inline-flex;
+    width: 2.75rem;
+    height: 2.75rem;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.75rem;
+    color: rgb(71 85 105);
+  }
+
+  .admin-record-modal__close:hover { background: rgb(241 245 249); color: rgb(15 23 42); }
+
+  @media (max-width: 639px) {
+    .admin-record-modal__footer > button { flex: 1; padding-inline: 0.75rem; }
+  }
+</style>
+
+<script>
+  document.querySelectorAll<HTMLDialogElement>("[data-admin-record-modal]").forEach((dialog) => {
+    if (dialog.dataset.adminModalReady === "true") return;
+    dialog.dataset.adminModalReady = "true";
+    const opener = document.querySelector<HTMLElement>(`[data-admin-modal-open="${CSS.escape(dialog.id)}"]`);
+
+    opener?.addEventListener("click", () => {
+      document.querySelectorAll<HTMLDialogElement>("[data-admin-record-modal][open]").forEach((openDialog) => {
+        if (openDialog !== dialog) openDialog.close();
+      });
+      if (!dialog.open) dialog.showModal();
+      dialog.querySelector<HTMLElement>("input:not([type='hidden']), select, textarea")?.focus();
+    });
+
+    dialog.querySelectorAll<HTMLElement>("[data-admin-modal-close]").forEach((closer) => {
+      closer.addEventListener("click", () => dialog.close());
+    });
+
+    dialog.addEventListener("click", (event) => {
+      if (event.target === dialog) dialog.close();
+    });
+
+    dialog.addEventListener("close", () => opener?.focus());
+  });
+</script>
