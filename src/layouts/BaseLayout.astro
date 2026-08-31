@@ -9,7 +9,6 @@ interface Props {
 }
 
 const { title, description, profile = null } = Astro.props;
-const homeHref = profile?.role === "ADMINISTRATOR" ? "/dashboard" : "/reportes";
 ---
 
 <!doctype html>
@@ -25,11 +24,9 @@ const homeHref = profile?.role === "ADMINISTRATOR" ? "/dashboard" : "/reportes";
     {profile && (
       <header class="border-b border-slate-200 bg-white">
         <div class="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6">
-          <a href={homeHref} class="font-bold text-emerald-800">Reporte de Producción</a>
+          <a href="/dashboard" class="font-bold text-emerald-800">Reporte de Producción</a>
           <nav class="flex flex-wrap items-center gap-2 text-sm" aria-label="Navegación principal">
-            {profile.role === "ADMINISTRATOR" && (
-              <a class="rounded-lg px-3 py-2 font-medium hover:bg-slate-100" href="/dashboard">Dashboard</a>
-            )}
+            <a class="rounded-lg px-3 py-2 font-medium hover:bg-slate-100" href="/dashboard">Dashboard</a>
             <a class="rounded-lg px-3 py-2 font-medium hover:bg-slate-100" href="/reportes">Reportes</a>
             {profile.role === "ADMINISTRATOR" && (
               <a class="rounded-lg px-3 py-2 font-medium hover:bg-slate-100" href="/administracion">Administración</a>

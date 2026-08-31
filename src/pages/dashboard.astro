@@ -5,8 +5,21 @@ import { createSupabaseServerClient } from "../lib/supabase/server";
 import { statusLabels, type ReportStatus } from "../lib/types";
 
 const auth = Astro.locals.auth!;
-
-if (auth.profile.role !== "ADMINISTRATOR") return Astro.redirect("/reportes");
+const isOperator = auth.profile.role === "OPERATOR";
+const isViewer = auth.profile.role === "VIEWER";
+const kpiLabels = isOperator
+  ? {
+      DRAFT: "Mis reportes en curso",
+      SUBMITTED: "Mis reportes enviados",
+      CANCELLED: "Mis reportes cancelados",
+      ACTIVE_STOP: "Mis reportes en parada",
+    }
+  : {
+      DRAFT: "Reportes en curso",
+      SUBMITTED: "Reportes enviados",
+      CANCELLED: "Reportes cancelados",
+      ACTIVE_STOP: "Reportes en parada",
+    };
 
 const today = getBogotaDateKey();
 const supabase = createSupabaseServerClient(Astro.request, Astro.cookies);
@@ -46,48 +59,54 @@ const hasError = Boolean(reportsResult.error);
     )}
 
     <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-label="Indicadores de hoy">
-      <article class="panel kpi-card kpi-card-draft">
-        <a class="kpi-link" href="/reportes?status=DRAFT" title="Ver reportes en curso">
-          <span>Reportes en curso</span>
-          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M5 12h14M13 6l6 6-6 6"></path>
-          </svg>
-        </a>
-        <p class="mt-2 text-3xl font-bold text-slate-900">{reportCounts?.DRAFT ?? "—"}</p>
-      </article>
+      {!isViewer && (
+        <article class="panel kpi-card kpi-card-draft">
+          <a class="kpi-link" href="/reportes?status=DRAFT" title="Ver reportes en curso">
+            <span>{kpiLabels.DRAFT}</span>
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M5 12h14M13 6l6 6-6 6"></path>
+            </svg>
+          </a>
+          <p class="mt-2 text-3xl font-bold text-slate-900">{reportCounts?.DRAFT ?? "—"}</p>
+        </article>
+      )}
       <article class="panel kpi-card kpi-card-submitted">
         <a class="kpi-link" href="/reportes?status=SUBMITTED" title="Ver reportes enviados">
-          <span>Reportes enviados</span>
+          <span>{isViewer ? "Reportes enviados hoy" : kpiLabels.SUBMITTED}</span>
           <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M5 12h14M13 6l6 6-6 6"></path>
           </svg>
         </a>
         <p class="mt-2 text-3xl font-bold text-slate-900">{reportCounts?.SUBMITTED ?? "—"}</p>
       </article>
-      <article class="panel kpi-card kpi-card-cancelled">
-        <a class="kpi-link" href="/reportes?status=CANCELLED" title="Ver reportes cancelados">
-          <span>Reportes cancelados</span>
-          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M5 12h14M13 6l6 6-6 6"></path>
-          </svg>
-        </a>
-        <p class="mt-2 text-3xl font-bold text-slate-900">{reportCounts?.CANCELLED ?? "—"}</p>
-      </article>
-      <article class="panel kpi-card kpi-card-stop">
-        <a class="kpi-link" href="/reportes?stop=active" title="Ver reportes en parada">
-          <span>Reportes en parada</span>
-          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M5 12h14M13 6l6 6-6 6"></path>
-          </svg>
-        </a>
-        <p class="mt-2 text-3xl font-bold text-slate-900">{reportCounts?.ACTIVE_STOP ?? "—"}</p>
-      </article>
+      {!isViewer && (
+        <article class="panel kpi-card kpi-card-cancelled">
+          <a class="kpi-link" href="/reportes?status=CANCELLED" title="Ver reportes cancelados">
+            <span>{kpiLabels.CANCELLED}</span>
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M5 12h14M13 6l6 6-6 6"></path>
+            </svg>
+          </a>
+          <p class="mt-2 text-3xl font-bold text-slate-900">{reportCounts?.CANCELLED ?? "—"}</p>
+        </article>
+      )}
+      {!isViewer && (
+        <article class="panel kpi-card kpi-card-stop">
+          <a class="kpi-link" href="/reportes?stop=active" title="Ver reportes en parada">
+            <span>{kpiLabels.ACTIVE_STOP}</span>
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M5 12h14M13 6l6 6-6 6"></path>
+            </svg>
+          </a>
+          <p class="mt-2 text-3xl font-bold text-slate-900">{reportCounts?.ACTIVE_STOP ?? "—"}</p>
+        </article>
+      )}
     </section>
 
     <section class="panel overflow-hidden p-0">
       <div class="flex flex-wrap items-center justify-between gap-3 border-b p-5">
         <div>
-          <h2 class="text-xl font-bold">Reportes recientes</h2>
+          <h2 class="text-xl font-bold">{isOperator ? "Mis reportes recientes" : "Reportes recientes"}</h2>
           <p class="mt-1 text-sm text-slate-500">Últimos reportes con fecha operativa de hoy.</p>
         </div>
         <a class="font-bold text-emerald-700 hover:underline" href="/reportes">Ver todos</a>
