@@ -1,5 +1,6 @@
 ---
 import AdminSearch from "./AdminSearch.astro";
+import AdminFlashMessage from "./AdminFlashMessage.astro";
 import AdminRecordModal from "./AdminRecordModal.astro";
 import AdminStatusToggle from "./AdminStatusToggle.astro";
 import DestructiveAction from "./DestructiveAction.astro";
@@ -35,8 +36,7 @@ const action = `/api/admin/catalogs/${catalog}`;
         </AdminRecordModal>
       </div>
     </header>
-    {error && <p class="rounded-xl bg-red-50 p-4 text-red-800">{error}</p>}
-    {ok && <p class="rounded-xl bg-emerald-50 p-4 text-emerald-800">{ok}</p>}
+    <AdminFlashMessage error={error} ok={ok} />
 
     <label class="block max-w-lg"><span class="field-label">Buscar</span><input class="field-control" type="search" placeholder={`Buscar en ${title.toLocaleLowerCase("es-CO")}`} data-search-input /></label>
 

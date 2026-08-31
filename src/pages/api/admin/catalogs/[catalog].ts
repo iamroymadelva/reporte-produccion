@@ -1,4 +1,5 @@
 import type { APIRoute } from "astro";
+import { adminCatalogErrorMessage } from "../../../../lib/admin-catalog-errors";
 import { createSupabaseServerClient } from "../../../../lib/supabase/server";
 import { redirectWithMessage } from "../../../../lib/http";
 
@@ -21,7 +22,7 @@ export const POST: APIRoute = async ({ request, cookies, redirect, params }) => 
     if (error) {
       const message = error.code === "23503"
         ? "No se puede eliminar porque existen reportes históricos que lo referencian. Desactívalo en su lugar."
-        : error.message;
+        : `No fue posible eliminar el ${catalog.label.toLocaleLowerCase("es-CO")}.`;
       return redirect(redirectWithMessage(catalog.path, "error", message), 303);
     }
     return redirect(redirectWithMessage(catalog.path, "ok", `${catalog.label} eliminado.`), 303);
@@ -40,6 +41,9 @@ export const POST: APIRoute = async ({ request, cookies, redirect, params }) => 
     ? await supabase.from(catalog.table).update(values).eq("id", id)
     : await supabase.from(catalog.table).insert(values);
 
-  if (result.error) return redirect(redirectWithMessage(catalog.path, "error", result.error.message), 303);
+  if (result.error) {
+    const fallback = `No fue posible guardar el ${catalog.label.toLocaleLowerCase("es-CO")}.`;
+    return redirect(redirectWithMessage(catalog.path, "error", adminCatalogErrorMessage(result.error, fallback)), 303);
+  }
   return redirect(redirectWithMessage(catalog.path, "ok", `${catalog.label} guardado.`), 303);
 };

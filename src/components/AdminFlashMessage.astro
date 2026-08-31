@@ -1,0 +1,42 @@
+---
+interface Props {
+  error?: string | null;
+  ok?: string | null;
+}
+
+const { error, ok } = Astro.props;
+---
+
+{error && (
+  <div class="flex items-start justify-between gap-3 rounded-xl bg-red-50 p-4 text-red-800" role="alert" data-admin-flash data-timeout="6000">
+    <span>{error}</span>
+    <button class="inline-flex size-8 shrink-0 items-center justify-center rounded-lg hover:bg-red-100" type="button" aria-label="Cerrar mensaje" data-admin-flash-close>
+      <svg class="pointer-events-none size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" d="m6 6 12 12M18 6 6 18" /></svg>
+    </button>
+  </div>
+)}
+{ok && (
+  <div class="flex items-start justify-between gap-3 rounded-xl bg-emerald-50 p-4 text-emerald-800" role="status" data-admin-flash data-timeout="4000">
+    <span>{ok}</span>
+    <button class="inline-flex size-8 shrink-0 items-center justify-center rounded-lg hover:bg-emerald-100" type="button" aria-label="Cerrar mensaje" data-admin-flash-close>
+      <svg class="pointer-events-none size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" d="m6 6 12 12M18 6 6 18" /></svg>
+    </button>
+  </div>
+)}
+
+<script>
+  document.querySelectorAll<HTMLElement>("[data-admin-flash]").forEach((flash) => {
+    const dismiss = () => {
+      if (flash.isConnected) flash.remove();
+    };
+    flash.querySelector<HTMLElement>("[data-admin-flash-close]")?.addEventListener("click", dismiss);
+    const timeout = Number(flash.dataset.timeout);
+    if (Number.isFinite(timeout) && timeout > 0) window.setTimeout(dismiss, timeout);
+  });
+
+  const url = new URL(window.location.href);
+  const hadFlashParams = url.searchParams.has("ok") || url.searchParams.has("error");
+  url.searchParams.delete("ok");
+  url.searchParams.delete("error");
+  if (hadFlashParams) history.replaceState(history.state, "", `${url.pathname}${url.search}${url.hash}`);
+</script>

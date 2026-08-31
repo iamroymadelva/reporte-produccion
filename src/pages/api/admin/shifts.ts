@@ -1,4 +1,5 @@
 import type { APIRoute } from "astro";
+import { adminCatalogErrorMessage } from "../../../lib/admin-catalog-errors";
 import { createSupabaseServerClient } from "../../../lib/supabase/server";
 import { redirectWithMessage } from "../../../lib/http";
 
@@ -11,7 +12,7 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   if (form.get("intent") === "delete") {
     const { error } = await supabase.from("shifts").delete().eq("id", id);
     if (error) {
-      const message = error.code === "23503" ? "No se puede eliminar porque existen reportes históricos que lo referencian. Desactívalo en su lugar." : error.message;
+      const message = error.code === "23503" ? "No se puede eliminar porque existen reportes históricos que lo referencian. Desactívalo en su lugar." : "No fue posible eliminar el turno.";
       return redirect(redirectWithMessage(path, "error", message), 303);
     }
     return redirect(redirectWithMessage(path, "ok", "Turno eliminado."), 303);
@@ -30,6 +31,6 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
     ? await supabase.from("shifts").update(values).eq("id", id)
     : await supabase.from("shifts").insert(values);
 
-  if (result.error) return redirect(redirectWithMessage(path, "error", result.error.message), 303);
+  if (result.error) return redirect(redirectWithMessage(path, "error", adminCatalogErrorMessage(result.error, "No fue posible guardar el turno.")), 303);
   return redirect(redirectWithMessage(path, "ok", "Turno guardado."), 303);
 };
