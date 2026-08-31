@@ -1,0 +1,26 @@
+---
+interface Props {
+  id: string;
+  action: string;
+  label?: string;
+}
+
+const { id, action, label = "Reactivar" } = Astro.props;
+---
+
+<form class="inline" method="POST" action={action}>
+  <input type="hidden" name="id" value={id} />
+  <input type="hidden" name="intent" value="reactivate" />
+  <button
+    class="inline-flex min-h-11 items-center gap-2 rounded-xl px-3 py-2 font-semibold text-emerald-700 transition hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
+    type="submit"
+    title={label}
+    aria-label={label}
+  >
+    <svg class="size-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v6h6M20 20v-6h-6" />
+      <path stroke-linecap="round" d="M5.5 15a7 7 0 0 0 11.9 2.4L20 14M4 10l2.6-3.4A7 7 0 0 1 18.5 9" />
+    </svg>
+    <span>{label}</span>
+  </button>
+</form>

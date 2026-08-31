@@ -17,6 +17,13 @@ export const POST: APIRoute = async ({ request, cookies, redirect, params }) => 
   const form = await request.formData();
   const id = String(form.get("id") ?? "");
   const supabase = createSupabaseServerClient(request, cookies);
+  if (form.get("intent") === "reactivate") {
+    if (!id) return redirect(redirectWithMessage(catalog.path, "error", `${catalog.label} inválido.`), 303);
+    const { data, error } = await supabase.from(catalog.table).update({ active: true }).eq("id", id).eq("active", false).select("id").maybeSingle();
+    if (error) return redirect(redirectWithMessage(catalog.path, "error", `No fue posible reactivar el ${catalog.label.toLocaleLowerCase("es-CO")}.`), 303);
+    if (!data) return redirect(redirectWithMessage(catalog.path, "error", `${catalog.label} no existe o ya está activo.`), 303);
+    return redirect(redirectWithMessage(catalog.path, "ok", `${catalog.label} reactivado.`), 303);
+  }
   if (form.get("intent") === "delete") {
     const { error } = await supabase.from(catalog.table).delete().eq("id", id);
     if (error) {

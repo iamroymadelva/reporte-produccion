@@ -9,6 +9,13 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   const form = await request.formData();
   const id = String(form.get("id") ?? "");
   const supabase = createSupabaseServerClient(request, cookies);
+  if (form.get("intent") === "reactivate") {
+    if (!id) return redirect(redirectWithMessage(path, "error", "Turno inválido."), 303);
+    const { data, error } = await supabase.from("shifts").update({ active: true }).eq("id", id).eq("active", false).select("id").maybeSingle();
+    if (error) return redirect(redirectWithMessage(path, "error", "No fue posible reactivar el turno."), 303);
+    if (!data) return redirect(redirectWithMessage(path, "error", "El turno no existe o ya está activo."), 303);
+    return redirect(redirectWithMessage(path, "ok", "Turno reactivado."), 303);
+  }
   if (form.get("intent") === "delete") {
     const { error } = await supabase.from("shifts").delete().eq("id", id);
     if (error) {

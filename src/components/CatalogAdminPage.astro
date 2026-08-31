@@ -2,6 +2,7 @@
 import AdminSearch from "./AdminSearch.astro";
 import AdminFlashMessage from "./AdminFlashMessage.astro";
 import AdminRecordModal from "./AdminRecordModal.astro";
+import AdminReactivateAction from "./AdminReactivateAction.astro";
 import AdminStatusToggle from "./AdminStatusToggle.astro";
 import DestructiveAction from "./DestructiveAction.astro";
 import BaseLayout from "../layouts/BaseLayout.astro";
@@ -57,6 +58,7 @@ const action = `/api/admin/catalogs/${catalog}`;
                       <label class="flex min-h-12 items-center gap-2"><input class="size-5" type="checkbox" name="active" checked={item.active} /><span class="font-semibold">Activo</span></label>
                     </div>
                   </AdminRecordModal>
+                  {!item.active && <AdminReactivateAction id={item.id} action={action} />}
                   <DestructiveAction id={item.id} action={action} recordName={`${item.code} · ${item.name}`} />
                 </div></td>
               </tr>

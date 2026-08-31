@@ -7,6 +7,13 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   const form = await request.formData();
   const id = String(form.get("id") ?? "");
   const supabase = createSupabaseServerClient(request, cookies);
+  if (form.get("intent") === "reactivate") {
+    if (!id) return redirect(redirectWithMessage("/administracion/maquinas", "error", "Máquina inválida."), 303);
+    const { data, error } = await supabase.from("machines").update({ active: true }).eq("id", id).eq("active", false).select("id").maybeSingle();
+    if (error) return redirect(redirectWithMessage("/administracion/maquinas", "error", "No fue posible reactivar la máquina."), 303);
+    if (!data) return redirect(redirectWithMessage("/administracion/maquinas", "error", "La máquina no existe o ya está activa."), 303);
+    return redirect(redirectWithMessage("/administracion/maquinas", "ok", "Máquina reactivada."), 303);
+  }
   if (form.get("intent") === "delete") {
     const { count, error: referenceError } = await supabase.from("production_reports").select("id", { count: "exact", head: true }).eq("machine_id", id);
     if (referenceError) return redirect(redirectWithMessage("/administracion/maquinas", "error", "No fue posible verificar las referencias históricas de la máquina."), 303);

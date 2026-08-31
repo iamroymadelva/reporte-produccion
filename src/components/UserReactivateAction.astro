@@ -1,0 +1,126 @@
+---
+import type { AppRole } from "../lib/types";
+
+interface MachineOption {
+  id: string;
+  code: string;
+  name: string;
+}
+
+interface Props {
+  userId: string;
+  userName: string;
+  role: AppRole;
+  machines: MachineOption[];
+}
+
+const { userId, userName, role, machines } = Astro.props;
+const dialogId = `reactivate-user-${userId.replace(/[^a-zA-Z0-9_-]/g, "-")}`;
+---
+
+<button
+  class="inline-flex min-h-11 items-center gap-2 rounded-xl px-3 py-2 font-semibold text-emerald-700 transition hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
+  type="button"
+  title="Reactivar usuario"
+  aria-label="Reactivar usuario"
+  data-user-reactivate-open={dialogId}
+>
+  <svg class="pointer-events-none size-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+    <path stroke-linecap="round" stroke-linejoin="round" d="M15 19a6 6 0 0 0-12 0M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM19 8v6M16 11h6" />
+  </svg>
+  <span>Reactivar usuario</span>
+</button>
+
+<dialog id={dialogId} class="user-reactivate-modal" data-user-reactivate-modal aria-labelledby={`${dialogId}-title`}>
+  <form class="user-reactivate-modal__surface" method="POST" action={`/api/admin/users/${userId}`}>
+    <input type="hidden" name="intent" value="reactivate" />
+    <header class="user-reactivate-modal__header">
+      <h2 id={`${dialogId}-title`}>Reactivar usuario</h2>
+      <button class="user-reactivate-modal__close" type="button" title="Cerrar" aria-label="Cerrar" data-user-reactivate-close>
+        <svg class="pointer-events-none size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" d="m6 6 12 12M18 6 6 18" /></svg>
+      </button>
+    </header>
+    <div class="user-reactivate-modal__body">
+      <p class="text-slate-700">Se restaurará el acceso de <strong>{userName}</strong> conservando su identidad, correo e historial.</p>
+      {role === "OPERATOR" && (
+        <fieldset class="mt-5">
+          <legend class="field-label">Máquinas asignadas</legend>
+          <p class="mb-3 text-sm text-slate-600">Selecciona explícitamente las máquinas que tendrá asignadas. Las asignaciones anteriores no se restaurarán automáticamente.</p>
+          <div class="grid gap-2 sm:grid-cols-2">
+            {machines.map((machine) => (
+              <label class="flex min-h-12 items-center gap-3 rounded-xl border p-3">
+                <input class="size-5" type="checkbox" name="machine_ids" value={machine.id} />
+                <span>{machine.code} · {machine.name}</span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      )}
+      {role !== "OPERATOR" && <p class="mt-4 text-sm text-slate-600">No se activarán asignaciones de máquinas para este rol.</p>}
+    </div>
+    <footer class="user-reactivate-modal__footer">
+      <button class="button-secondary" type="button" data-user-reactivate-close>Cancelar</button>
+      <button class="button-primary" type="submit">Reactivar usuario</button>
+    </footer>
+  </form>
+</dialog>
+
+<style>
+  .user-reactivate-modal {
+    box-sizing: border-box;
+    position: fixed;
+    inset: auto;
+    top: 50%;
+    left: 50%;
+    width: min(62.5rem, calc(100vw - 2rem));
+    max-width: none;
+    max-height: calc(100dvh - 2rem);
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    border: 0;
+    border-radius: 1rem;
+    background: white;
+    transform: translate(-50%, -50%);
+    box-shadow: 0 24px 64px rgb(15 23 42 / 0.3);
+  }
+
+  .user-reactivate-modal::backdrop { background: rgb(15 23 42 / 0.6); }
+
+  .user-reactivate-modal__surface {
+    display: grid;
+    width: 100%;
+    max-height: calc(100dvh - 2rem);
+    grid-template-rows: auto minmax(0, 1fr) auto;
+  }
+
+  .user-reactivate-modal__header,
+  .user-reactivate-modal__footer { display: flex; align-items: center; gap: 0.75rem; padding: 1rem 1.25rem; }
+  .user-reactivate-modal__header { justify-content: space-between; border-bottom: 1px solid rgb(226 232 240); }
+  .user-reactivate-modal__header h2 { font-size: 1.25rem; font-weight: 700; color: rgb(15 23 42); }
+  .user-reactivate-modal__body { min-height: 0; overflow-y: auto; padding: 1.25rem; }
+  .user-reactivate-modal__footer { justify-content: flex-end; border-top: 1px solid rgb(226 232 240); background: rgb(248 250 252); }
+  .user-reactivate-modal__close { display: inline-flex; width: 2.75rem; height: 2.75rem; align-items: center; justify-content: center; border-radius: 0.75rem; color: rgb(71 85 105); }
+  .user-reactivate-modal__close:hover { background: rgb(241 245 249); color: rgb(15 23 42); }
+
+  @media (max-width: 639px) {
+    .user-reactivate-modal { width: calc(100vw - 1rem); max-height: calc(100dvh - 1rem); }
+    .user-reactivate-modal__surface { max-height: calc(100dvh - 1rem); }
+    .user-reactivate-modal__footer > button { flex: 1; padding-inline: 0.75rem; }
+  }
+</style>
+
+<script>
+  document.querySelectorAll<HTMLDialogElement>("[data-user-reactivate-modal]").forEach((dialog) => {
+    if (dialog.dataset.ready === "true") return;
+    dialog.dataset.ready = "true";
+    const opener = document.querySelector<HTMLElement>(`[data-user-reactivate-open="${CSS.escape(dialog.id)}"]`);
+    opener?.addEventListener("click", () => {
+      if (!dialog.open) dialog.showModal();
+      dialog.querySelector<HTMLInputElement>("input[type='checkbox']")?.focus();
+    });
+    dialog.querySelectorAll<HTMLElement>("[data-user-reactivate-close]").forEach((button) => button.addEventListener("click", () => dialog.close()));
+    dialog.addEventListener("click", (event) => { if (event.target === dialog) dialog.close(); });
+    dialog.addEventListener("close", () => opener?.focus());
+  });
+</script>

@@ -6,19 +6,21 @@ interface Props {
 }
 
 const { id, action, active } = Astro.props;
-const actionLabel = active ? "Desactivar" : "Activar";
 ---
 
-<form class="inline" method="POST" action={action}>
-  <input type="hidden" name="id" value={id} />
-  {!active && <input type="hidden" name="active" value="on" />}
-  <slot />
-  <button
-    class={`inline-flex min-h-9 items-center rounded-full px-3 py-1 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-offset-2 ${active ? "bg-emerald-100 text-emerald-800 hover:bg-emerald-200 focus:ring-emerald-500" : "bg-slate-200 text-slate-700 hover:bg-slate-300 focus:ring-slate-500"}`}
-    type="submit"
-    title={actionLabel}
-    aria-label={actionLabel}
-  >
-    {active ? "Activo" : "Inactivo"}
-  </button>
-</form>
+{active ? (
+  <form class="inline" method="POST" action={action}>
+    <input type="hidden" name="id" value={id} />
+    <slot />
+    <button
+      class="inline-flex min-h-9 items-center rounded-full bg-emerald-100 px-3 py-1 text-sm font-semibold text-emerald-800 transition hover:bg-emerald-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
+      type="submit"
+      title="Desactivar"
+      aria-label="Desactivar"
+    >
+      Activo
+    </button>
+  </form>
+) : (
+  <span class="inline-flex min-h-9 items-center rounded-full bg-slate-200 px-3 py-1 text-sm font-semibold text-slate-700">Inactivo</span>
+)}

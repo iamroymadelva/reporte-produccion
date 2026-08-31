@@ -3,13 +3,13 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
 import { createSupabaseServerClient } from "../../lib/supabase/server";
 import { formatDate, getBogotaDateKey } from "../../lib/format";
 import { applyReportFilters, parseReportFilters, periodHref, reportFilterParams } from "../../lib/report-filters";
-import { statusLabels } from "../../lib/types";
+import { roleLabels, statusLabels, type AppRole } from "../../lib/types";
 
 const auth = Astro.locals.auth!;
 const supabase = createSupabaseServerClient(Astro.request, Astro.cookies);
 const { data: reportRows, error: reportError } = await supabase
   .from("production_reports")
-  .select("id, folio, report_date, production_order, status, created_by, created_at, machine:machines(id, code, name), report_stop_events(id, ended_at)")
+  .select("id, folio, report_date, production_order, status, created_by, created_at, machine:machines(id, code, name), operator:profiles!production_reports_created_by_fkey(full_name, role), report_stop_events(id, ended_at)")
   .order("created_at", { ascending: false });
 
 const reports = (reportRows ?? []) as any[];
@@ -30,7 +30,7 @@ if (!filters.error && hasDisplayFilters) {
     : "report_stop_events(id, ended_at)";
   let visibleQuery = supabase
     .from("production_reports")
-    .select(`id, folio, report_date, production_order, status, created_by, created_at, machine:machines(id, code, name), ${stopsSelection}`)
+    .select(`id, folio, report_date, production_order, status, created_by, created_at, machine:machines(id, code, name), operator:profiles!production_reports_created_by_fkey(full_name, role), ${stopsSelection}`)
     .order("created_at", { ascending: false });
   visibleQuery = applyReportFilters(visibleQuery, filters);
   const visibleResult = await visibleQuery;
@@ -173,9 +173,9 @@ const filterSummary = [filters.periodLabel, activeFilterLabel].filter(Boolean).j
         </div>
       </div>
       <div class="overflow-x-auto">
-        <table class="w-full min-w-[720px] text-left text-sm">
+        <table class="w-full min-w-[960px] text-left text-sm">
           <thead class="bg-slate-50 text-slate-600">
-            <tr><th class="p-4">Folio</th><th class="p-4">Fecha</th><th class="p-4">Máquina</th><th class="p-4">O.P.</th><th class="p-4">Estado</th><th class="p-4">Parada</th><th class="p-4"></th></tr>
+            <tr><th class="p-4">Folio</th><th class="p-4">Fecha</th><th class="p-4">Máquina</th><th class="p-4">O.P.</th><th class="p-4">Operario</th><th class="p-4">Rol</th><th class="p-4">Estado</th><th class="p-4">Parada</th><th class="p-4"></th></tr>
           </thead>
           <tbody>
             {visibleReports.map((report) => {
@@ -186,13 +186,15 @@ const filterSummary = [filters.periodLabel, activeFilterLabel].filter(Boolean).j
                   <td class="p-4">{formatDate(report.report_date)}</td>
                   <td class="p-4 font-semibold">{report.machine?.code} · {report.machine?.name}</td>
                   <td class="p-4">{report.production_order || "—"}</td>
+                  <td class="p-4">{report.operator?.full_name || "—"}</td>
+                  <td class="whitespace-nowrap p-4">{report.operator?.role ? roleLabels[report.operator.role as AppRole] ?? "—" : "—"}</td>
                   <td class="p-4"><span class={`rounded-full px-3 py-1 font-semibold ${report.status === "DRAFT" ? "bg-amber-100 text-amber-800" : report.status === "CANCELLED" ? "bg-red-100 text-red-800" : "bg-emerald-100 text-emerald-800"}`}>{statusLabels[report.status as keyof typeof statusLabels]}</span></td>
                   <td class="p-4">{hasOpenStop ? <span class="font-bold text-red-700">Abierta</span> : "—"}</td>
                   <td class="p-4 text-right"><a class="font-bold text-emerald-700 hover:underline" href={`/reportes/${report.id}`}>Abrir</a></td>
                 </tr>
               );
             })}
-            {visibleReports.length === 0 && <tr><td class="p-8 text-center text-slate-500" colspan="7">No hay reportes disponibles.</td></tr>}
+            {visibleReports.length === 0 && <tr><td class="p-8 text-center text-slate-500" colspan="9">No hay reportes disponibles.</td></tr>}
           </tbody>
         </table>
       </div>
