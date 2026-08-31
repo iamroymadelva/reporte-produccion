@@ -1,17 +1,18 @@
 ---
+import AdminCategoryIcon from "../../components/AdminCategoryIcon.astro";
 import BaseLayout from "../../layouts/BaseLayout.astro";
 const auth = Astro.locals.auth!;
 const sections = [
-  { href: "/administracion/usuarios", title: "Usuarios y asignaciones", description: "Invitar usuarios, asignar roles, activar cuentas y relacionar Operarios con máquinas." },
-  { href: "/administracion/maquinas", title: "Máquinas", description: "Crear, editar y desactivar máquinas disponibles para producción." },
-  { href: "/administracion/productos", title: "Productos frecuentes", description: "Administrar las sugerencias reutilizables de Producto." },
-  { href: "/administracion/clientes", title: "Clientes frecuentes", description: "Administrar las sugerencias reutilizables de Cliente." },
-  { href: "/administracion/lineas", title: "Áreas / Líneas", description: "Crear, ordenar y activar o desactivar áreas y líneas." },
-  { href: "/administracion/dosificadores", title: "Tipos de dosificador", description: "Crear, ordenar y activar o desactivar tipos de dosificador." },
-  { href: "/administracion/turnos", title: "Turnos", description: "Configurar nombres y rangos horarios, incluidos cruces de medianoche." },
-  { href: "/administracion/paradas", title: "Categorías de parada", description: "Mantener los códigos usados en los eventos de parada." },
-  { href: "/reportes", title: "Reportes", description: "Ver todos los reportes y corregir los enviados con trazabilidad." },
-];
+  { href: "/administracion/usuarios", title: "Usuarios y asignaciones", description: "Invitar usuarios, asignar roles, activar cuentas y relacionar Operarios con máquinas.", icon: "users" },
+  { href: "/administracion/maquinas", title: "Máquinas", description: "Crear, editar y desactivar máquinas disponibles para producción.", icon: "machines" },
+  { href: "/administracion/productos", title: "Productos frecuentes", description: "Administrar las sugerencias reutilizables de Producto.", icon: "products" },
+  { href: "/administracion/clientes", title: "Clientes frecuentes", description: "Administrar las sugerencias reutilizables de Cliente.", icon: "clients" },
+  { href: "/administracion/lineas", title: "Áreas / Líneas", description: "Crear, ordenar y activar o desactivar áreas y líneas.", icon: "lines" },
+  { href: "/administracion/dosificadores", title: "Tipos de dosificador", description: "Crear, ordenar y activar o desactivar tipos de dosificador.", icon: "dosifiers" },
+  { href: "/administracion/turnos", title: "Turnos", description: "Configurar nombres y rangos horarios, incluidos cruces de medianoche.", icon: "shifts" },
+  { href: "/administracion/paradas", title: "Categorías de parada", description: "Mantener los códigos usados en los eventos de parada.", icon: "stops" },
+  { href: "/reportes", title: "Reportes", description: "Ver todos los reportes y corregir los enviados con trazabilidad.", icon: "reports" },
+] as const;
 ---
 
 <BaseLayout title="Administración" description="Administración del sistema" profile={auth.profile}>
@@ -21,7 +22,10 @@ const sections = [
     <div class="mt-7 grid gap-5 md:grid-cols-2">
       {sections.map((section) => (
         <a class="panel block hover:border-emerald-500" href={section.href}>
-          <h2 class="text-xl font-bold">{section.title}</h2>
+          <div class="flex items-center gap-3">
+            <AdminCategoryIcon type={section.icon} />
+            <h2 class="text-xl font-bold">{section.title}</h2>
+          </div>
           <p class="mt-2 text-slate-600">{section.description}</p>
         </a>
       ))}

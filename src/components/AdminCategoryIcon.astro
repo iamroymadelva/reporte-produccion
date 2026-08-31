@@ -1,0 +1,21 @@
+---
+interface Props {
+  type: "users" | "machines" | "products" | "clients" | "lines" | "dosifiers" | "shifts" | "stops" | "reports";
+}
+
+const { type } = Astro.props;
+---
+
+<span class="inline-flex size-11 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100" aria-hidden="true">
+  <svg class="size-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+    {type === "users" && <path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21C6.33 21 4.18 20.38 2.334 19.298a6.375 6.375 0 0 1 11.88-3.243M12 6.75a4.125 4.125 0 1 1-8.25 0 4.125 4.125 0 0 1 8.25 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z" />}
+    {type === "machines" && <path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.592c.55 0 1.02.398 1.11.94l.213 1.28c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.246c.275.476.16 1.076-.266 1.423l-1.004.82c-.293.24-.438.613-.43.992a7.7 7.7 0 0 1 0 .255c-.008.378.137.75.43.99l1.005.82c.425.348.54.948.266 1.424l-1.297 2.246a1.125 1.125 0 0 1-1.369.49l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.5 6.5 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.542-.56.94-1.11.94h-2.592c-.55 0-1.02-.398-1.11-.94l-.213-1.28c-.063-.374-.313-.686-.645-.87a6.7 6.7 0 0 1-.22-.127c-.325-.196-.72-.257-1.075-.124l-1.217.456a1.125 1.125 0 0 1-1.37-.49l-1.296-2.246a1.125 1.125 0 0 1 .266-1.423l1.004-.82c.293-.24.438-.613.43-.992a7.7 7.7 0 0 1 0-.255c.008-.378-.137-.75-.43-.99l-1.005-.82a1.125 1.125 0 0 1-.266-1.424l1.297-2.246a1.125 1.125 0 0 1 1.369-.49l1.217.456c.355.133.75.072 1.076-.124.072-.044.146-.086.22-.128.331-.183.581-.495.644-.869l.213-1.28Z M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />}
+    {type === "products" && <path stroke-linecap="round" stroke-linejoin="round" d="m21 7.5-9-5.25L3 7.5m18 0-9 5.25M21 7.5v9l-9 5.25m0-9L3 7.5m9 5.25v9M3 7.5v9l9 5.25" />}
+    {type === "clients" && <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 21h16.5M5.25 21V6.75A1.5 1.5 0 0 1 6.75 5.25h4.5a1.5 1.5 0 0 1 1.5 1.5V21m0-10.5h4.5a1.5 1.5 0 0 1 1.5 1.5v9M7.5 8.25h3m-3 3h3m-3 3h3m-3 3h3m5.25-3h.008v.008h-.008V14.25Zm0 3h.008v.008h-.008V17.25Z" />}
+    {type === "lines" && <path stroke-linecap="round" stroke-linejoin="round" d="M6 3.75h12v4.5H6v-4.5Zm-2.25 12h6v4.5h-6v-4.5Zm10.5 0h6v4.5h-6v-4.5ZM12 8.25v3.375m0 0H6.75v4.125M12 11.625h5.25v4.125" />}
+    {type === "dosifiers" && <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 4.5h15l-6 7.125V18l-3 1.5v-7.875L4.5 4.5Z" />}
+    {type === "shifts" && <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />}
+    {type === "stops" && <path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Zm-2.25-12v6m4.5-6v6" />}
+    {type === "reports" && <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3h7.5L18 6.75V21H6.75V3Zm7.5 0v3.75H18M9.75 16.5v-3m2.25 3V9.75m2.25 6.75v-4.5" />}
+  </svg>
+</span>
