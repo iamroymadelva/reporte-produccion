@@ -1,0 +1,8 @@
+---
+import CatalogAdminPage from "../../components/CatalogAdminPage.astro";
+import { createSupabaseServerClient } from "../../lib/supabase/server";
+const auth = Astro.locals.auth!;
+const supabase = createSupabaseServerClient(Astro.request, Astro.cookies);
+const { data } = await supabase.from("lines").select("id, code, name, active").order("name").order("code");
+---
+<CatalogAdminPage profile={auth.profile} title="Áreas / Líneas" description="Áreas y líneas disponibles en los reportes." catalog="lines" items={(data ?? []) as any[]} error={Astro.url.searchParams.get("error")} ok={Astro.url.searchParams.get("ok")} />

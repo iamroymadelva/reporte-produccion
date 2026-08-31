@@ -1,12 +1,14 @@
 ---
 import "../styles/global.css";
+import { roleLabels, type Profile } from "../lib/types";
 
 interface Props {
   title: string;
   description: string;
+  profile?: Profile | null;
 }
 
-const { title, description } = Astro.props;
+const { title, description, profile = null } = Astro.props;
 ---
 
 <!doctype html>
@@ -19,6 +21,23 @@ const { title, description } = Astro.props;
     <title>{title}</title>
   </head>
   <body>
+    {profile && (
+      <header class="border-b border-slate-200 bg-white">
+        <div class="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6">
+          <a href="/reportes" class="font-bold text-emerald-800">Reporte de Producción</a>
+          <nav class="flex flex-wrap items-center gap-2 text-sm" aria-label="Navegación principal">
+            <a class="rounded-lg px-3 py-2 font-medium hover:bg-slate-100" href="/reportes">Reportes</a>
+            {profile.role === "ADMINISTRATOR" && (
+              <a class="rounded-lg px-3 py-2 font-medium hover:bg-slate-100" href="/administracion">Administración</a>
+            )}
+            <span class="hidden text-slate-500 sm:inline">{profile.full_name} · {roleLabels[profile.role]}</span>
+            <form method="POST" action="/api/auth/logout">
+              <button class="rounded-lg px-3 py-2 font-semibold text-red-700 hover:bg-red-50" type="submit">Salir</button>
+            </form>
+          </nav>
+        </div>
+      </header>
+    )}
     <slot />
   </body>
 </html>

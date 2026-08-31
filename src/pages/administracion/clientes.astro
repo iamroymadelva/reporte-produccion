@@ -1,0 +1,8 @@
+---
+import CatalogAdminPage from "../../components/CatalogAdminPage.astro";
+import { createSupabaseServerClient } from "../../lib/supabase/server";
+const auth = Astro.locals.auth!;
+const supabase = createSupabaseServerClient(Astro.request, Astro.cookies);
+const { data } = await supabase.from("clients").select("id, code, name, active").order("name").order("code");
+---
+<CatalogAdminPage profile={auth.profile} title="Clientes frecuentes" description="Valores sugeridos al escribir un Cliente en el reporte." catalog="clients" items={(data ?? []) as any[]} error={Astro.url.searchParams.get("error")} ok={Astro.url.searchParams.get("ok")} />

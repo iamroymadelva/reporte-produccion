@@ -1,0 +1,30 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+const auth = Astro.locals.auth!;
+const sections = [
+  { href: "/administracion/usuarios", title: "Usuarios y asignaciones", description: "Invitar usuarios, asignar roles, activar cuentas y relacionar Operarios con máquinas." },
+  { href: "/administracion/maquinas", title: "Máquinas", description: "Crear, editar y desactivar máquinas disponibles para producción." },
+  { href: "/administracion/productos", title: "Productos frecuentes", description: "Administrar las sugerencias reutilizables de Producto." },
+  { href: "/administracion/clientes", title: "Clientes frecuentes", description: "Administrar las sugerencias reutilizables de Cliente." },
+  { href: "/administracion/lineas", title: "Áreas / Líneas", description: "Crear, ordenar y activar o desactivar áreas y líneas." },
+  { href: "/administracion/dosificadores", title: "Tipos de dosificador", description: "Crear, ordenar y activar o desactivar tipos de dosificador." },
+  { href: "/administracion/turnos", title: "Turnos", description: "Configurar nombres y rangos horarios, incluidos cruces de medianoche." },
+  { href: "/administracion/paradas", title: "Categorías de parada", description: "Mantener los códigos usados en los eventos de parada." },
+  { href: "/reportes", title: "Reportes", description: "Ver todos los reportes y corregir los enviados con trazabilidad." },
+];
+---
+
+<BaseLayout title="Administración" description="Administración del sistema" profile={auth.profile}>
+  <main class="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+    <p class="text-sm font-bold uppercase tracking-wider text-emerald-700">Configuración</p>
+    <h1 class="mt-1 text-3xl font-bold">Administración</h1>
+    <div class="mt-7 grid gap-5 md:grid-cols-2">
+      {sections.map((section) => (
+        <a class="panel block hover:border-emerald-500" href={section.href}>
+          <h2 class="text-xl font-bold">{section.title}</h2>
+          <p class="mt-2 text-slate-600">{section.description}</p>
+        </a>
+      ))}
+    </div>
+  </main>
+</BaseLayout>

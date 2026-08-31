@@ -1,0 +1,26 @@
+---
+import AdminSearch from "../../components/AdminSearch.astro";
+import DestructiveAction from "../../components/DestructiveAction.astro";
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { createSupabaseServerClient } from "../../lib/supabase/server";
+const auth = Astro.locals.auth!;
+const supabase = createSupabaseServerClient(Astro.request, Astro.cookies);
+const { data } = await supabase.from("machines").select("id, code, name, description, active").order("code").order("name");
+const machines = (data ?? []) as any[];
+const error = Astro.url.searchParams.get("error");
+const ok = Astro.url.searchParams.get("ok");
+---
+
+<BaseLayout title="Máquinas" description="Administración de máquinas" profile={auth.profile}>
+  <main class="mx-auto max-w-6xl space-y-6 px-4 py-8 sm:px-6" data-search-scope>
+    <header><a class="text-sm font-semibold text-emerald-700" href="/administracion">← Administración</a><div class="mt-2 flex flex-wrap items-end justify-between gap-4"><h1 class="text-3xl font-bold">Máquinas</h1><details><summary class="button-primary cursor-pointer list-none">Nuevo</summary><form class="panel mt-3 grid min-w-[min(90vw,760px)] gap-4 md:grid-cols-[150px_1fr_1fr_auto] md:items-end" method="POST" action="/api/admin/machines"><label><span class="field-label">Código</span><input class="field-control" name="code" required /></label><label><span class="field-label">Nombre</span><input class="field-control" name="name" required /></label><label><span class="field-label">Descripción</span><input class="field-control" name="description" /></label><button class="button-primary" type="submit">Crear</button></form></details></div></header>
+    {error && <p class="rounded-xl bg-red-50 p-4 text-red-800">{error}</p>}
+    {ok && <p class="rounded-xl bg-emerald-50 p-4 text-emerald-800">{ok}</p>}
+    <label class="block max-w-lg"><span class="field-label">Buscar</span><input class="field-control" type="search" placeholder="Buscar máquinas" data-search-input /></label>
+    <section class="panel overflow-hidden p-0"><div class="overflow-x-auto"><table class="w-full min-w-[760px] text-left text-sm"><thead class="bg-slate-50 text-slate-600"><tr><th class="p-4">Código</th><th class="p-4">Nombre</th><th class="p-4">Descripción</th><th class="p-4">Estado</th><th class="p-4 text-right">Acción</th></tr></thead><tbody>
+      {machines.map((machine) => <tr class="border-t align-top" data-search-row data-search-text={`${machine.code} ${machine.name} ${machine.description ?? ""}`}><td class="p-4 font-semibold">{machine.code}</td><td class="p-4">{machine.name}</td><td class="p-4 text-slate-600">{machine.description || "—"}</td><td class="p-4"><span class={`rounded-full px-3 py-1 font-semibold ${machine.active ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-600"}`}>{machine.active ? "Activa" : "Inactiva"}</span></td><td class="p-4 text-right"><div class="flex flex-wrap items-center justify-end gap-2"><details class="inline-block text-left"><summary class="inline-flex min-h-9 cursor-pointer list-none items-center rounded-lg px-2 py-1 text-sm font-bold text-emerald-700 hover:bg-emerald-50 [&::-webkit-details-marker]:hidden">Editar</summary><form class="mt-3 grid min-w-[min(82vw,680px)] gap-3 rounded-xl border bg-white p-4 sm:grid-cols-2" method="POST" action="/api/admin/machines"><input type="hidden" name="id" value={machine.id} /><label><span class="field-label">Código</span><input class="field-control" name="code" value={machine.code} required /></label><label><span class="field-label">Nombre</span><input class="field-control" name="name" value={machine.name} required /></label><label class="sm:col-span-2"><span class="field-label">Descripción</span><input class="field-control" name="description" value={machine.description ?? ""} /></label><label class="flex min-h-12 items-center gap-2"><input class="size-5" type="checkbox" name="active" checked={machine.active} /><span class="font-semibold">Activa</span></label><button class="button-secondary" type="submit">Guardar</button></form></details><DestructiveAction id={machine.id} action="/api/admin/machines" recordName={`${machine.code} · ${machine.name}`} /></div></td></tr>)}
+      {machines.length === 0 && <tr><td class="p-8 text-center text-slate-500" colspan="5">No hay máquinas configuradas.</td></tr>}
+    </tbody></table></div></section>
+    <AdminSearch />
+  </main>
+</BaseLayout>

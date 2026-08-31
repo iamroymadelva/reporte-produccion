@@ -1,0 +1,54 @@
+---
+interface Props {
+  id: string;
+  action: string;
+  recordName: string;
+  title?: string;
+  description?: string;
+  buttonLabel?: string;
+  confirmLabel?: string;
+  intent?: string;
+}
+
+const {
+  id,
+  action,
+  recordName,
+  title = "Eliminar registro",
+  description = "Esta acción es irreversible. Si el registro tiene uso histórico, la eliminación será bloqueada y podrás desactivarlo en su lugar.",
+  buttonLabel = "Eliminar",
+  confirmLabel = "Eliminar",
+  intent = "delete",
+} = Astro.props;
+const dialogId = `delete-${id.replace(/[^a-zA-Z0-9_-]/g, "-")}`;
+---
+
+<button class="inline-flex min-h-9 items-center rounded-lg px-2 py-1 text-sm font-bold text-red-700 hover:bg-red-50" type="button" data-modal-open={dialogId}>{buttonLabel}</button>
+<dialog id={dialogId} class="m-auto max-h-[calc(100dvh-2rem)] w-[min(92vw,32rem)] overflow-y-auto rounded-2xl bg-white p-0 shadow-2xl backdrop:bg-slate-950/55">
+  <section class="p-6" aria-labelledby={`${dialogId}-title`}>
+    <h2 id={`${dialogId}-title`} class="text-2xl font-bold text-slate-950">{title}</h2>
+    <p class="mt-4 text-slate-700">Registro: <strong>{recordName}</strong></p>
+    <p class="mt-3 leading-7 text-slate-600">{description}</p>
+    <form class="mt-7 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end" method="POST" action={action}>
+      <input type="hidden" name="id" value={id} />
+      <input type="hidden" name="intent" value={intent} />
+      <button class="button-secondary min-h-12" type="button" data-modal-close>Cancelar</button>
+      <button class="button-danger min-h-12" type="submit">{confirmLabel}</button>
+    </form>
+  </section>
+</dialog>
+
+<script>
+  document.addEventListener("click", (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) return;
+    const opener = target.closest<HTMLElement>("[data-modal-open]");
+    if (opener) {
+      const dialog = document.getElementById(opener.dataset.modalOpen ?? "");
+      if (dialog instanceof HTMLDialogElement && !dialog.open) dialog.showModal();
+    }
+    const closer = target.closest<HTMLElement>("[data-modal-close]");
+    if (closer) closer.closest("dialog")?.close();
+    if (target instanceof HTMLDialogElement) target.close();
+  });
+</script>

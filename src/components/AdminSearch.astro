@@ -1,0 +1,13 @@
+<script>
+  document.querySelectorAll<HTMLElement>("[data-search-scope]").forEach((scope) => {
+    const input = scope.querySelector<HTMLInputElement>("[data-search-input]");
+    if (!input) return;
+    const rows = [...scope.querySelectorAll<HTMLElement>("[data-search-row]")];
+    input.addEventListener("input", () => {
+      const query = input.value.trim().toLocaleLowerCase("es-CO");
+      rows.forEach((row) => {
+        row.hidden = Boolean(query) && !String(row.dataset.searchText ?? row.textContent ?? "").toLocaleLowerCase("es-CO").includes(query);
+      });
+    });
+  });
+</script>

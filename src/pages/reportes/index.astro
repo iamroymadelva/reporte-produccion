@@ -1,0 +1,125 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { createSupabaseServerClient } from "../../lib/supabase/server";
+import { formatDate } from "../../lib/format";
+import { statusLabels } from "../../lib/types";
+
+const auth = Astro.locals.auth!;
+const supabase = createSupabaseServerClient(Astro.request, Astro.cookies);
+const { data: reportRows, error: reportError } = await supabase
+  .from("production_reports")
+  .select("id, folio, report_date, production_order, status, created_by, created_at, machine:machines(id, code, name), report_stop_events(id, ended_at)")
+  .order("created_at", { ascending: false });
+
+const reports = (reportRows ?? []) as any[];
+const drafts = reports.filter((report) => report.status === "DRAFT" && report.created_by === auth.user.id);
+let assignedMachines: any[] = [];
+
+if (auth.profile.role === "OPERATOR") {
+  const { data } = await supabase
+    .from("operator_machine_assignments")
+    .select("machine_id, active, machine:machines(id, code, name, active)")
+    .eq("operator_id", auth.user.id)
+    .eq("active", true);
+  assignedMachines = (data ?? []).filter((assignment: any) => assignment.machine?.active);
+}
+
+const error = Astro.url.searchParams.get("error") ?? reportError?.message;
+const ok = Astro.url.searchParams.get("ok");
+const today = new Date().toISOString().slice(0, 10);
+---
+
+<BaseLayout title="Reportes de producción" description="Gestión de reportes de producción" profile={auth.profile}>
+  <main class="mx-auto max-w-7xl space-y-6 px-4 py-6 sm:px-6 lg:py-8">
+    <header class="flex flex-wrap items-end justify-between gap-4">
+      <div>
+        <p class="text-sm font-bold uppercase tracking-wider text-emerald-700">Operación diaria</p>
+        <h1 class="mt-1 text-3xl font-bold tracking-tight">Reportes de producción</h1>
+        <p class="mt-2 text-slate-600">
+          {auth.profile.role === "OPERATOR" ? `${drafts.length} de 5 reportes abiertos.` : "Consulta de reportes autorizados."}
+        </p>
+      </div>
+      {auth.profile.role === "ADMINISTRATOR" && <a class="button-secondary" href="/administracion">Administrar</a>}
+    </header>
+
+    {error && <p class="rounded-xl bg-red-50 p-4 font-medium text-red-800">{error}</p>}
+    {ok && <p class="rounded-xl bg-emerald-50 p-4 font-medium text-emerald-800">{ok}</p>}
+
+    {auth.profile.role === "OPERATOR" && drafts.length > 0 && (
+      <section aria-label="Cambio rápido de máquina">
+        <h2 class="mb-3 text-sm font-bold uppercase tracking-wider text-slate-500">Máquinas abiertas</h2>
+        <div class="flex gap-3 overflow-x-auto pb-2">
+          {drafts.map((report) => {
+            const hasOpenStop = report.report_stop_events?.some((stop: any) => !stop.ended_at);
+            return (
+              <a class="min-w-48 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm hover:border-emerald-500" href={`/reportes/${report.id}`}>
+                <span class="font-bold text-slate-900">{report.machine?.code} · {report.machine?.name}</span>
+                <span class={`mt-2 block text-xs font-bold ${hasOpenStop ? "text-red-700" : "text-emerald-700"}`}>
+                  {hasOpenStop ? "● Parada abierta" : "● En operación"}
+                </span>
+              </a>
+            );
+          })}
+        </div>
+      </section>
+    )}
+
+    {auth.profile.role === "OPERATOR" && (
+      <section class="panel">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 class="text-xl font-bold">Abrir reporte de máquina</h2>
+            <p class="mt-1 text-sm text-slate-500">Solo aparecen máquinas activas que tienes asignadas.</p>
+          </div>
+          <span class="rounded-full bg-slate-100 px-3 py-2 text-sm font-semibold">{drafts.length}/5 abiertos</span>
+        </div>
+        <form class="mt-5 grid gap-4 md:grid-cols-[1fr_220px_auto] md:items-end" method="POST" action="/api/reports">
+          <label>
+            <span class="field-label">Máquina</span>
+            <select class="field-control" name="machine_id" required disabled={drafts.length >= 5}>
+              <option value="">Selecciona una máquina</option>
+              {assignedMachines.map((assignment) => (
+                <option value={assignment.machine.id}>{assignment.machine.code} · {assignment.machine.name}</option>
+              ))}
+            </select>
+          </label>
+          <label>
+            <span class="field-label">Fecha</span>
+            <input class="field-control" type="date" name="report_date" value={today} disabled={drafts.length >= 5} />
+          </label>
+          <button class="button-primary" type="submit" disabled={drafts.length >= 5}>Nuevo reporte</button>
+        </form>
+      </section>
+    )}
+
+    <section class="panel overflow-hidden p-0">
+      <div class="border-b p-5">
+        <h2 class="text-xl font-bold">{auth.profile.role === "OPERATOR" ? "Mis reportes" : "Reportes disponibles"}</h2>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full min-w-[720px] text-left text-sm">
+          <thead class="bg-slate-50 text-slate-600">
+            <tr><th class="p-4">Folio</th><th class="p-4">Fecha</th><th class="p-4">Máquina</th><th class="p-4">O.P.</th><th class="p-4">Estado</th><th class="p-4">Parada</th><th class="p-4"></th></tr>
+          </thead>
+          <tbody>
+            {reports.map((report) => {
+              const hasOpenStop = report.report_stop_events?.some((stop: any) => !stop.ended_at);
+              return (
+                <tr class="border-t">
+                  <td class="p-4 font-bold text-slate-900">{report.folio}</td>
+                  <td class="p-4">{formatDate(report.report_date)}</td>
+                  <td class="p-4 font-semibold">{report.machine?.code} · {report.machine?.name}</td>
+                  <td class="p-4">{report.production_order || "—"}</td>
+                  <td class="p-4"><span class={`rounded-full px-3 py-1 font-semibold ${report.status === "DRAFT" ? "bg-amber-100 text-amber-800" : report.status === "CANCELLED" ? "bg-red-100 text-red-800" : "bg-emerald-100 text-emerald-800"}`}>{statusLabels[report.status as keyof typeof statusLabels]}</span></td>
+                  <td class="p-4">{hasOpenStop ? <span class="font-bold text-red-700">Abierta</span> : "—"}</td>
+                  <td class="p-4 text-right"><a class="font-bold text-emerald-700 hover:underline" href={`/reportes/${report.id}`}>Abrir</a></td>
+                </tr>
+              );
+            })}
+            {reports.length === 0 && <tr><td class="p-8 text-center text-slate-500" colspan="7">No hay reportes disponibles.</td></tr>}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+</BaseLayout>

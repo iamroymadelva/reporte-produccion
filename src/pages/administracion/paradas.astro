@@ -1,0 +1,27 @@
+---
+import AdminSearch from "../../components/AdminSearch.astro";
+import DestructiveAction from "../../components/DestructiveAction.astro";
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { createSupabaseServerClient } from "../../lib/supabase/server";
+const auth = Astro.locals.auth!;
+const supabase = createSupabaseServerClient(Astro.request, Astro.cookies);
+const { data } = await supabase.from("stop_categories").select("id, code, name, description, active, numeric_code").order("numeric_code").order("code");
+const categories = (data ?? []) as any[];
+const error = Astro.url.searchParams.get("error");
+const ok = Astro.url.searchParams.get("ok");
+const preview = (value: string) => value.length > 90 ? `${value.slice(0, 90).trim()}…` : value;
+---
+
+<BaseLayout title="Categorías de parada" description="Administración de categorías de parada" profile={auth.profile}>
+  <main class="mx-auto max-w-7xl space-y-6 px-4 py-8 sm:px-6" data-search-scope>
+    <header><a class="text-sm font-semibold text-emerald-700" href="/administracion">← Administración</a><div class="mt-2 flex flex-wrap items-end justify-between gap-4"><h1 class="text-3xl font-bold">Categorías de parada</h1><details><summary class="button-primary cursor-pointer list-none">Nuevo</summary><form class="panel mt-3 grid min-w-[min(90vw,780px)] gap-4 md:grid-cols-[120px_1fr_1fr_auto] md:items-end" method="POST" action="/api/admin/stop-categories"><label><span class="field-label">Código</span><input class="field-control" inputmode="numeric" name="code" required /></label><label><span class="field-label">Categoría</span><input class="field-control" name="name" required /></label><label><span class="field-label">Descripción</span><input class="field-control" name="description" /></label><button class="button-primary" type="submit">Crear</button></form></details></div></header>
+    {error && <p class="rounded-xl bg-red-50 p-4 text-red-800">{error}</p>}
+    {ok && <p class="rounded-xl bg-emerald-50 p-4 text-emerald-800">{ok}</p>}
+    <label class="block max-w-lg"><span class="field-label">Buscar</span><input class="field-control" type="search" placeholder="Buscar categorías" data-search-input /></label>
+    <section class="panel overflow-hidden p-0"><div class="overflow-x-auto"><table class="w-full min-w-[880px] text-left text-sm"><thead class="bg-slate-50 text-slate-600"><tr><th class="p-4">Código</th><th class="p-4">Categoría</th><th class="p-4">Descripción</th><th class="p-4">Estado</th><th class="p-4 text-right">Acción</th></tr></thead><tbody>
+      {categories.map((category) => { const description = category.description ?? ""; return <tr class="border-t align-top" data-search-row data-search-text={`${category.code} ${category.name} ${description}`}><td class="p-4 font-bold">{category.code}</td><td class="p-4 font-semibold">{category.name}</td><td class="max-w-md p-4 text-slate-600">{description ? description.length > 90 ? <details><summary class="cursor-pointer text-emerald-700"><span class="text-slate-600">{preview(description)}</span> Ver más</summary><p class="mt-2 whitespace-pre-wrap text-slate-700">{description}</p></details> : description : "—"}</td><td class="p-4"><span class={`rounded-full px-3 py-1 font-semibold ${category.active ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-600"}`}>{category.active ? "Activa" : "Inactiva"}</span></td><td class="p-4 text-right"><div class="flex flex-wrap items-center justify-end gap-2"><details class="inline-block text-left"><summary class="inline-flex min-h-9 cursor-pointer list-none items-center rounded-lg px-2 py-1 text-sm font-bold text-emerald-700 hover:bg-emerald-50 [&::-webkit-details-marker]:hidden">Editar</summary><form class="mt-3 grid min-w-[min(82vw,680px)] gap-3 rounded-xl border bg-white p-4 sm:grid-cols-2" method="POST" action="/api/admin/stop-categories"><input type="hidden" name="id" value={category.id} /><label><span class="field-label">Código</span><input class="field-control" inputmode="numeric" name="code" value={category.code} required /></label><label><span class="field-label">Categoría</span><input class="field-control" name="name" value={category.name} required /></label><label class="sm:col-span-2"><span class="field-label">Descripción</span><textarea class="field-control min-h-24" name="description">{description}</textarea></label><label class="flex min-h-12 items-center gap-2"><input class="size-5" type="checkbox" name="active" checked={category.active} /><span class="font-semibold">Activa</span></label><button class="button-secondary" type="submit">Guardar</button></form></details><DestructiveAction id={category.id} action="/api/admin/stop-categories" recordName={`${category.code} · ${category.name}`} /></div></td></tr>; })}
+      {categories.length === 0 && <tr><td class="p-8 text-center text-slate-500" colspan="5">No hay categorías configuradas.</td></tr>}
+    </tbody></table></div></section>
+    <AdminSearch />
+  </main>
+</BaseLayout>

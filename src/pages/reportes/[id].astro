@@ -1,0 +1,176 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import ReportEditor from "../../components/ReportEditor";
+import StopManager from "../../components/StopManager";
+import StopEventsTable from "../../components/StopEventsTable";
+import { createSupabaseServerClient } from "../../lib/supabase/server";
+import { formatDateTime, formatDuration, formatNumber, formatPercent } from "../../lib/format";
+import { roleLabels, statusLabels } from "../../lib/types";
+
+const auth = Astro.locals.auth!;
+const id = Astro.params.id!;
+const supabase = createSupabaseServerClient(Astro.request, Astro.cookies);
+
+const [reportResult, metricsResult, stopsResult, linesResult, clientsResult, productsResult, dosifiersResult, shiftsResult, categoriesResult] = await Promise.all([
+  supabase.from("production_reports").select("*, machine:machines(id, code, name), line:lines(id, code, name), client:clients(id, code, name), product:products(id, code, name), dosifier_type:dosifier_types(id, code, name), shift_catalog:shifts(id, name, start_time, end_time), operator:profiles!production_reports_created_by_fkey(id, full_name, job_title, role), cancelled_by_profile:profiles!production_reports_cancelled_by_fkey(id, full_name)").eq("id", id).single(),
+  supabase.from("production_report_metrics").select("*").eq("id", id).single(),
+  supabase.from("report_stop_events").select("id, started_at, ended_at, duration_seconds, description, responsible_user_id, stop_category:stop_categories(id, code, name)").eq("report_id", id).order("started_at"),
+  supabase.from("lines").select("id, code, name").eq("active", true).order("name").order("code"),
+  supabase.from("clients").select("id, code, name").eq("active", true).order("name").order("code"),
+  supabase.from("products").select("id, code, name").eq("active", true).order("name").order("code"),
+  supabase.from("dosifier_types").select("id, code, name").eq("active", true).order("name").order("code"),
+  supabase.from("shifts").select("id, name, start_time, end_time").eq("active", true).order("start_time").order("end_time"),
+  supabase.from("stop_categories").select("id, code, name, numeric_code").eq("active", true).order("numeric_code").order("code"),
+]);
+
+if (reportResult.error || !reportResult.data) return Astro.redirect("/reportes?error=Reporte no encontrado");
+const report = reportResult.data as any;
+const metrics = (metricsResult.data ?? {}) as any;
+const stops = (stopsResult.data ?? []) as any[];
+const isOwnerDraft = auth.profile.role === "OPERATOR" && report.created_by === auth.user.id && report.status === "DRAFT";
+const adminCorrection = auth.profile.role === "ADMINISTRATOR";
+const editable = isOwnerDraft || adminCorrection;
+const statusClass = report.status === "DRAFT"
+  ? "bg-amber-100 text-amber-800"
+  : report.status === "CANCELLED"
+    ? "bg-red-100 text-red-800"
+    : "bg-emerald-100 text-emerald-800";
+const shiftLabel = (shift: any) => {
+  if (!shift) return report.shift || "—";
+  const range = `${String(shift.start_time).slice(0, 5)} - ${String(shift.end_time).slice(0, 5)}`;
+  return shift.name ? `${shift.name} · ${range}` : range;
+};
+
+let openDrafts: any[] = [];
+if (auth.profile.role === "OPERATOR") {
+  const { data } = await supabase
+    .from("production_reports")
+    .select("id, machine:machines(code, name), report_stop_events(id, ended_at)")
+    .eq("created_by", auth.user.id)
+    .eq("status", "DRAFT")
+    .order("created_at");
+  openDrafts = (data ?? []) as any[];
+}
+
+let audit: any[] = [];
+if (auth.profile.role === "ADMINISTRATOR") {
+  const { data } = await supabase
+    .from("report_audit_log")
+    .select("id, changed_at, field_name, old_value, new_value, user:profiles!report_audit_log_changed_by_fkey(full_name)")
+    .eq("report_id", id)
+    .order("changed_at", { ascending: false });
+  audit = (data ?? []) as any[];
+}
+---
+
+<BaseLayout title={report.folio} description="Detalle del reporte de producción" profile={auth.profile}>
+  <main class="mx-auto max-w-7xl space-y-6 px-4 py-6 sm:px-6 lg:py-8">
+    {openDrafts.length > 0 && (
+      <nav class="flex gap-2 overflow-x-auto rounded-2xl border bg-white p-2" aria-label="Reportes abiertos por máquina">
+        {openDrafts.map((draft) => {
+          const hasOpenStop = draft.report_stop_events?.some((stop: any) => !stop.ended_at);
+          return (
+            <a class={`min-w-44 rounded-xl px-4 py-3 ${draft.id === id ? "bg-emerald-700 text-white" : "bg-slate-50 text-slate-800"}`} href={`/reportes/${draft.id}`}>
+              <span class="block font-bold">{draft.machine?.code} · {draft.machine?.name}</span>
+              <span class={`mt-1 block text-xs font-semibold ${draft.id === id ? "text-emerald-50" : hasOpenStop ? "text-red-700" : "text-emerald-700"}`}>
+                {hasOpenStop ? "● Parada abierta" : "● En operación"}
+              </span>
+            </a>
+          );
+        })}
+      </nav>
+    )}
+
+    <header class="flex flex-wrap items-start justify-between gap-4">
+      <div>
+        <a class="text-sm font-semibold text-emerald-700 hover:underline" href="/reportes">← Volver a reportes</a>
+        <p class="mt-2 text-sm font-bold uppercase tracking-wider text-emerald-700">Folio del reporte</p>
+        <h1 class="text-3xl font-bold">{report.folio}</h1>
+        <p class="mt-2 text-lg font-semibold text-slate-800">{report.machine?.code} · {report.machine?.name}</p>
+        <p class="mt-1 text-slate-600">Operario: {report.creator_full_name}</p>
+      </div>
+      <span class={`rounded-full px-4 py-2 font-bold ${statusClass}`}>
+        {statusLabels[report.status as keyof typeof statusLabels]}
+      </span>
+    </header>
+
+    {(auth.profile.role === "ADMINISTRATOR" || auth.profile.role === "VIEWER") && (
+      <section class="panel grid gap-4 sm:grid-cols-3" aria-label="Responsable del reporte">
+        <div><p class="text-sm text-slate-500">Creador del reporte</p><p class="font-bold">{report.creator_full_name}</p></div>
+        <div><p class="text-sm text-slate-500">Cargo al crear el reporte</p><p class="font-bold">{report.creator_job_title || "—"}</p></div>
+        <div><p class="text-sm text-slate-500">Rol al crear el reporte</p><p class="font-bold">{roleLabels[report.creator_role as keyof typeof roleLabels]}</p></div>
+      </section>
+    )}
+
+    {report.status === "CANCELLED" && (
+      <section class="panel border-red-200 bg-red-50">
+        <h2 class="text-xl font-bold text-red-900">Reporte cancelado</h2>
+        <dl class="mt-4 grid gap-4 sm:grid-cols-3">
+          <div class="sm:col-span-3"><dt class="text-sm text-red-700">Motivo de cancelación</dt><dd class="font-semibold text-red-950">{report.cancellation_reason}</dd></div>
+          <div><dt class="text-sm text-red-700">Usuario que canceló</dt><dd class="font-semibold text-red-950">{report.cancelled_by_profile?.full_name || "—"}</dd></div>
+          <div><dt class="text-sm text-red-700">Fecha y hora de cancelación</dt><dd class="font-semibold text-red-950">{formatDateTime(report.cancelled_at)}</dd></div>
+        </dl>
+      </section>
+    )}
+
+    <section class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <article class="panel"><p class="text-sm text-slate-500">Unidades teóricas/hora</p><p class="mt-2 text-2xl font-bold">{formatNumber(metrics.theoretical_units_per_hour)}</p></article>
+      <article class="panel"><p class="text-sm text-slate-500">Tiempo total de parada</p><p class="mt-2 text-2xl font-bold">{formatDuration(metrics.total_downtime_seconds)}</p></article>
+      <article class="panel"><p class="text-sm text-slate-500">Rendimiento teórico</p><p class="mt-2 text-2xl font-bold">{formatPercent(metrics.theoretical_performance)}</p></article>
+      <article class="panel"><p class="text-sm text-slate-500">Rendimiento neto</p><p class="mt-2 text-2xl font-bold">{formatPercent(metrics.net_performance)}</p></article>
+    </section>
+
+    {editable ? (
+      <ReportEditor
+        client:load
+        report={report}
+        lines={(linesResult.data ?? []) as any[]}
+        clients={(clientsResult.data ?? []) as any[]}
+        products={(productsResult.data ?? []) as any[]}
+        dosifierTypes={(dosifiersResult.data ?? []) as any[]}
+        shifts={(shiftsResult.data ?? []) as any[]}
+        canSubmit={isOwnerDraft}
+        adminCorrection={adminCorrection && report.status !== "DRAFT"}
+      />
+    ) : (
+      <section class="panel">
+        <h2 class="text-xl font-bold">Datos del reporte</h2>
+        <dl class="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <div><dt class="text-sm text-slate-500">Fecha</dt><dd class="font-semibold">{report.report_date || "—"}</dd></div>
+          <div><dt class="text-sm text-slate-500">O.P.</dt><dd class="font-semibold">{report.production_order || "—"}</dd></div>
+          <div><dt class="text-sm text-slate-500">Área / Línea</dt><dd class="font-semibold">{report.line?.name || "—"}</dd></div>
+          <div><dt class="text-sm text-slate-500">Cliente</dt><dd class="font-semibold">{report.client_name || report.client?.name || "—"}</dd></div>
+          <div><dt class="text-sm text-slate-500">Lote</dt><dd class="font-semibold">{report.lot || "—"}</dd></div>
+          <div><dt class="text-sm text-slate-500">Turno</dt><dd class="font-semibold">{shiftLabel(report.shift_catalog)}</dd></div>
+          <div><dt class="text-sm text-slate-500">Producto</dt><dd class="font-semibold">{report.product_name || report.product?.name || "—"}</dd></div>
+          <div><dt class="text-sm text-slate-500">Peso (gr)</dt><dd class="font-semibold">{formatNumber(report.weight)}</dd></div>
+          <div><dt class="text-sm text-slate-500">Inicio</dt><dd class="font-semibold">{formatDateTime(report.started_at)}</dd></div>
+          <div><dt class="text-sm text-slate-500">Final</dt><dd class="font-semibold">{formatDateTime(report.ended_at)}</dd></div>
+          <div><dt class="text-sm text-slate-500">Horas programadas</dt><dd class="font-semibold">{formatNumber(report.programmed_hours)}</dd></div>
+          <div><dt class="text-sm text-slate-500">Unidades producidas</dt><dd class="font-semibold">{formatNumber(report.units_produced, 0)}</dd></div>
+          <div><dt class="text-sm text-slate-500">Desperdicio</dt><dd class="font-semibold">{formatNumber(report.waste)}</dd></div>
+          <div class="sm:col-span-2 lg:col-span-3"><dt class="text-sm text-slate-500">Observaciones</dt><dd class="font-semibold">{report.observations || "—"}</dd></div>
+        </dl>
+      </section>
+    )}
+
+    {isOwnerDraft ? (
+      <StopManager client:load reportId={id} stops={stops} categories={(categoriesResult.data ?? []) as any[]} />
+    ) : (
+      <section class="panel">
+        <h2 class="text-xl font-bold">Paradas registradas</h2>
+        <div class="mt-4"><StopEventsTable client:load stops={stops} /></div>
+      </section>
+    )}
+
+    {auth.profile.role === "ADMINISTRATOR" && (
+      <section class="panel">
+        <h2 class="text-xl font-bold">Auditoría de correcciones</h2>
+        <div class="mt-4 space-y-3">
+          {audit.map((item) => <article class="rounded-xl bg-slate-50 p-4 text-sm"><p class="font-semibold">{item.field_name} · {item.user?.full_name}</p><p class="mt-1 text-slate-500">{formatDateTime(item.changed_at)}</p></article>)}
+          {audit.length === 0 && <p class="text-sm text-slate-500">No hay correcciones registradas.</p>}
+        </div>
+      </section>
+    )}
+  </main>
+</BaseLayout>
