@@ -13,6 +13,17 @@ export function formatDateTime(value: string | null | undefined) {
   }).format(new Date(value));
 }
 
+export function getBogotaDateKey(value = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Bogota",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(value);
+  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((item) => item.type === type)?.value ?? "";
+  return `${part("year")}-${part("month")}-${part("day")}`;
+}
+
 export function formatNumber(value: number | string | null | undefined, digits = 2) {
   if (value === null || value === undefined || value === "") return "—";
   return new Intl.NumberFormat("es-CO", { maximumFractionDigits: digits }).format(Number(value));

@@ -1,7 +1,7 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
 
-if (Astro.locals.auth) return Astro.redirect("/reportes");
+if (Astro.locals.auth) return Astro.redirect("/");
 const error = Astro.url.searchParams.get("error");
 const ok = Astro.url.searchParams.get("ok");
 ---

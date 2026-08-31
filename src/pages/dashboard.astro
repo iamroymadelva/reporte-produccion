@@ -1,0 +1,188 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import { formatDateTime, getBogotaDateKey } from "../lib/format";
+import { createSupabaseServerClient } from "../lib/supabase/server";
+import { statusLabels, type ReportStatus } from "../lib/types";
+
+const auth = Astro.locals.auth!;
+
+if (auth.profile.role !== "ADMINISTRATOR") return Astro.redirect("/reportes");
+
+const today = getBogotaDateKey();
+const supabase = createSupabaseServerClient(Astro.request, Astro.cookies);
+const reportsResult = await supabase
+  .from("production_reports")
+  .select("id, folio, report_date, production_order, status, creator_full_name, created_at, machine:machines(id, code, name), report_stop_events(id, ended_at)")
+  .eq("report_date", today)
+  .order("created_at", { ascending: false });
+
+const reports = (reportsResult.data ?? []) as any[];
+const recentReports = reports.slice(0, 10);
+const reportCounts = reportsResult.error
+  ? null
+  : {
+      DRAFT: reports.filter((report) => report.status === "DRAFT").length,
+      SUBMITTED: reports.filter((report) => report.status === "SUBMITTED").length,
+      CANCELLED: reports.filter((report) => report.status === "CANCELLED").length,
+      ACTIVE_STOP: reports.filter((report) =>
+        report.report_stop_events?.some((stop: any) => !stop.ended_at)
+      ).length,
+    };
+const hasError = Boolean(reportsResult.error);
+---
+
+<BaseLayout title="Dashboard" description="Resumen operativo de producción" profile={auth.profile}>
+  <main class="mx-auto max-w-7xl space-y-6 px-4 py-6 sm:px-6 lg:py-8">
+    <header>
+      <p class="text-sm font-bold uppercase tracking-wider text-emerald-700">Resumen de hoy</p>
+      <h1 class="mt-1 text-3xl font-bold tracking-tight">Dashboard</h1>
+      <p class="mt-2 text-slate-600">Estado operativo de los reportes de producción del día.</p>
+    </header>
+
+    {hasError && (
+      <p class="rounded-xl bg-red-50 p-4 font-medium text-red-800">
+        No fue posible cargar todos los datos del dashboard. Intenta nuevamente.
+      </p>
+    )}
+
+    <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-label="Indicadores de hoy">
+      <article class="panel kpi-card kpi-card-draft">
+        <a class="kpi-link" href="/reportes?status=DRAFT" title="Ver reportes en curso">
+          <span>Reportes en curso</span>
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M5 12h14M13 6l6 6-6 6"></path>
+          </svg>
+        </a>
+        <p class="mt-2 text-3xl font-bold text-slate-900">{reportCounts?.DRAFT ?? "—"}</p>
+      </article>
+      <article class="panel kpi-card kpi-card-submitted">
+        <a class="kpi-link" href="/reportes?status=SUBMITTED" title="Ver reportes enviados">
+          <span>Reportes enviados</span>
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M5 12h14M13 6l6 6-6 6"></path>
+          </svg>
+        </a>
+        <p class="mt-2 text-3xl font-bold text-slate-900">{reportCounts?.SUBMITTED ?? "—"}</p>
+      </article>
+      <article class="panel kpi-card kpi-card-cancelled">
+        <a class="kpi-link" href="/reportes?status=CANCELLED" title="Ver reportes cancelados">
+          <span>Reportes cancelados</span>
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M5 12h14M13 6l6 6-6 6"></path>
+          </svg>
+        </a>
+        <p class="mt-2 text-3xl font-bold text-slate-900">{reportCounts?.CANCELLED ?? "—"}</p>
+      </article>
+      <article class="panel kpi-card kpi-card-stop">
+        <a class="kpi-link" href="/reportes?stop=active" title="Ver reportes en parada">
+          <span>Reportes en parada</span>
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M5 12h14M13 6l6 6-6 6"></path>
+          </svg>
+        </a>
+        <p class="mt-2 text-3xl font-bold text-slate-900">{reportCounts?.ACTIVE_STOP ?? "—"}</p>
+      </article>
+    </section>
+
+    <section class="panel overflow-hidden p-0">
+      <div class="flex flex-wrap items-center justify-between gap-3 border-b p-5">
+        <div>
+          <h2 class="text-xl font-bold">Reportes recientes</h2>
+          <p class="mt-1 text-sm text-slate-500">Últimos reportes con fecha operativa de hoy.</p>
+        </div>
+        <a class="font-bold text-emerald-700 hover:underline" href="/reportes">Ver todos</a>
+      </div>
+
+      {reportsResult.error ? (
+        <p class="p-8 text-center text-slate-500">No fue posible cargar los reportes recientes.</p>
+      ) : recentReports.length === 0 ? (
+        <p class="p-8 text-center text-slate-500">No hay reportes de producción para hoy.</p>
+      ) : (
+        <div class="overflow-x-auto">
+          <table class="w-full min-w-[640px] text-left text-sm md:min-w-[900px]">
+            <thead class="bg-slate-50 text-slate-600">
+              <tr>
+                <th class="p-4">Folio</th>
+                <th class="p-4">Fecha / hora</th>
+                <th class="p-4">Máquina</th>
+                <th class="hidden p-4 md:table-cell">O.P.</th>
+                <th class="hidden p-4 md:table-cell">Operario</th>
+                <th class="p-4">Estado</th>
+                <th class="p-4">Parada</th>
+              </tr>
+            </thead>
+            <tbody>
+              {recentReports.map((report) => {
+                const hasOpenStop = report.report_stop_events?.some((stop: any) => !stop.ended_at);
+                return (
+                  <tr class="border-t">
+                    <td class="p-4">
+                      <a class="font-bold text-emerald-700 hover:underline" href={`/reportes/${report.id}`}>{report.folio}</a>
+                    </td>
+                    <td class="p-4 text-slate-600">{formatDateTime(report.created_at)}</td>
+                    <td class="p-4 font-semibold">{report.machine ? `${report.machine.code} · ${report.machine.name}` : "—"}</td>
+                    <td class="hidden p-4 md:table-cell">{report.production_order || "—"}</td>
+                    <td class="hidden p-4 md:table-cell">{report.creator_full_name || "—"}</td>
+                    <td class="p-4">
+                      <span class={`rounded-full px-3 py-1 font-semibold ${report.status === "DRAFT" ? "bg-amber-100 text-amber-800" : report.status === "CANCELLED" ? "bg-red-100 text-red-800" : "bg-emerald-100 text-emerald-800"}`}>
+                        {statusLabels[report.status as ReportStatus]}
+                      </span>
+                    </td>
+                    <td class="p-4">
+                      {hasOpenStop ? <span class="rounded-full bg-orange-100 px-3 py-1 font-semibold text-orange-800">Activa</span> : "—"}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  </main>
+</BaseLayout>
+
+<style>
+  .kpi-card {
+    border-width: 1px;
+  }
+
+  .kpi-card-draft {
+    border-color: #fde68a;
+    background: #fffbeb;
+  }
+
+  .kpi-card-submitted {
+    border-color: #a7f3d0;
+    background: #ecfdf5;
+  }
+
+  .kpi-card-cancelled {
+    border-color: #fecaca;
+    background: #fef2f2;
+  }
+
+  .kpi-card-stop {
+    border-color: #fed7aa;
+    background: #fff7ed;
+  }
+
+  .kpi-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    color: #334155;
+    font-size: 0.875rem;
+    font-weight: 600;
+  }
+
+  .kpi-link:hover {
+    text-decoration: underline;
+  }
+
+  .kpi-link svg {
+    width: 1rem;
+    height: 1rem;
+    flex: none;
+  }
+</style>

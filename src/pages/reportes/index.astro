@@ -13,6 +13,20 @@ const { data: reportRows, error: reportError } = await supabase
 
 const reports = (reportRows ?? []) as any[];
 const drafts = reports.filter((report) => report.status === "DRAFT" && report.created_by === auth.user.id);
+const requestedStatus = Astro.url.searchParams.get("status");
+const validStatuses = new Set(["DRAFT", "SUBMITTED", "CANCELLED"]);
+const activeStopFilter = Astro.url.searchParams.get("stop") === "active";
+const statusFilter = !activeStopFilter && requestedStatus && validStatuses.has(requestedStatus) ? requestedStatus : null;
+const activeFilterLabel = activeStopFilter
+  ? "Parada activa"
+  : statusFilter
+    ? statusLabels[statusFilter as keyof typeof statusLabels]
+    : null;
+const visibleReports = activeStopFilter
+  ? reports.filter((report) => report.report_stop_events?.some((stop: any) => !stop.ended_at))
+  : statusFilter
+    ? reports.filter((report) => report.status === statusFilter)
+    : reports;
 let assignedMachines: any[] = [];
 
 if (auth.profile.role === "OPERATOR") {
@@ -39,7 +53,7 @@ const today = new Date().toISOString().slice(0, 10);
           {auth.profile.role === "OPERATOR" ? `${drafts.length} de 5 reportes abiertos.` : "Consulta de reportes autorizados."}
         </p>
       </div>
-      {auth.profile.role === "ADMINISTRATOR" && <a class="button-secondary" href="/administracion">Administrar</a>}
+      {auth.profile.role === "ADMINISTRATOR" && <a class="button-secondary" href="/administracion">Administración</a>}
     </header>
 
     {error && <p class="rounded-xl bg-red-50 p-4 font-medium text-red-800">{error}</p>}
@@ -93,8 +107,12 @@ const today = new Date().toISOString().slice(0, 10);
     )}
 
     <section class="panel overflow-hidden p-0">
-      <div class="border-b p-5">
-        <h2 class="text-xl font-bold">{auth.profile.role === "OPERATOR" ? "Mis reportes" : "Reportes disponibles"}</h2>
+      <div class="flex flex-wrap items-center justify-between gap-3 border-b p-5">
+        <div>
+          <h2 class="text-xl font-bold">{auth.profile.role === "OPERATOR" ? "Mis reportes" : "Reportes disponibles"}</h2>
+          {activeFilterLabel && <p class="mt-1 text-sm text-slate-500">Filtro activo: {activeFilterLabel}</p>}
+        </div>
+        {activeFilterLabel && <a class="font-bold text-emerald-700 hover:underline" href="/reportes">Limpiar filtro</a>}
       </div>
       <div class="overflow-x-auto">
         <table class="w-full min-w-[720px] text-left text-sm">
@@ -102,7 +120,7 @@ const today = new Date().toISOString().slice(0, 10);
             <tr><th class="p-4">Folio</th><th class="p-4">Fecha</th><th class="p-4">Máquina</th><th class="p-4">O.P.</th><th class="p-4">Estado</th><th class="p-4">Parada</th><th class="p-4"></th></tr>
           </thead>
           <tbody>
-            {reports.map((report) => {
+            {visibleReports.map((report) => {
               const hasOpenStop = report.report_stop_events?.some((stop: any) => !stop.ended_at);
               return (
                 <tr class="border-t">
@@ -116,7 +134,7 @@ const today = new Date().toISOString().slice(0, 10);
                 </tr>
               );
             })}
-            {reports.length === 0 && <tr><td class="p-8 text-center text-slate-500" colspan="7">No hay reportes disponibles.</td></tr>}
+            {visibleReports.length === 0 && <tr><td class="p-8 text-center text-slate-500" colspan="7">No hay reportes disponibles.</td></tr>}
           </tbody>
         </table>
       </div>

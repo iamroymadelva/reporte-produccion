@@ -18,5 +18,5 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
     return redirect(redirectWithMessage("/iniciar-sesion", "error", "Credenciales inválidas."), 303);
   }
 
-  return redirect("/reportes", 303);
+  return redirect("/", 303);
 };
