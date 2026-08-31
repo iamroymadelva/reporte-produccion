@@ -5,12 +5,13 @@ interface Props {
   id: string;
   title: string;
   action: string;
-  submitLabel: "Crear" | "Guardar";
+  submitLabel: "Crear" | "Guardar" | "Crear usuario" | "Guardar cambios";
   mode: "create" | "edit";
   recordId?: string;
+  size?: "default" | "large";
 }
 
-const { id, title, action, submitLabel, mode, recordId } = Astro.props;
+const { id, title, action, submitLabel, mode, recordId, size = "default" } = Astro.props;
 ---
 
 {mode === "create" ? (
@@ -21,7 +22,7 @@ const { id, title, action, submitLabel, mode, recordId } = Astro.props;
   </button>
 )}
 
-<dialog id={id} class="admin-record-modal" data-admin-record-modal aria-labelledby={`${id}-title`}>
+<dialog id={id} class:list={["admin-record-modal", size === "large" && "admin-record-modal--large"]} data-admin-record-modal aria-labelledby={`${id}-title`}>
   <form class="admin-record-modal__surface" method="POST" action={action}>
     {recordId && <input type="hidden" name="id" value={recordId} />}
     <header class="admin-record-modal__header">
@@ -60,6 +61,11 @@ const { id, title, action, submitLabel, mode, recordId } = Astro.props;
 
   .admin-record-modal::backdrop { background: rgb(15 23 42 / 0.6); }
 
+  .admin-record-modal--large {
+    width: min(95vw, 62.5rem);
+    max-height: 90dvh;
+  }
+
   .admin-record-modal__surface {
     display: grid;
     width: 100%;
@@ -68,6 +74,8 @@ const { id, title, action, submitLabel, mode, recordId } = Astro.props;
     margin: 0;
     grid-template-rows: auto minmax(0, 1fr) auto;
   }
+
+  .admin-record-modal--large .admin-record-modal__surface { max-height: 90dvh; }
 
   .admin-record-modal__header,
   .admin-record-modal__footer {
@@ -111,6 +119,12 @@ const { id, title, action, submitLabel, mode, recordId } = Astro.props;
   .admin-record-modal__close:hover { background: rgb(241 245 249); color: rgb(15 23 42); }
 
   @media (max-width: 639px) {
+    .admin-record-modal--large {
+      width: calc(100vw - 1rem);
+      max-height: calc(100dvh - 1rem);
+    }
+
+    .admin-record-modal--large .admin-record-modal__surface { max-height: calc(100dvh - 1rem); }
     .admin-record-modal__footer > button { flex: 1; padding-inline: 0.75rem; }
   }
 </style>
