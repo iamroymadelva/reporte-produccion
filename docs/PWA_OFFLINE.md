@@ -4,7 +4,9 @@
 
 La aplicación incluye un manifiesto instalable, iconos neutrales, una página estática de contingencia, detección de conectividad y un service worker conservador. Esta base mejora la instalación y comunica interrupciones, pero los datos de producción siguen siendo autoritativos únicamente en el servidor.
 
-No existe persistencia de reportes en IndexedDB, outbox, reintento automático, Background Sync ni resolución de conflictos. Crear, editar, guardar, iniciar o cerrar paradas, enviar, cancelar y administrar requieren conexión confirmada.
+Block 3A agrega únicamente infraestructura interna: contrato compartido de campos editables, concurrencia optimista opcional para guardados de borradores del Operador y una base IndexedDB nativa con stores `reportDrafts`, `outbox` y `leases`. Sus APIs soportan escrituras atómicas y confirmación protegida por `localRevision`.
+
+Esta infraestructura todavía no está conectada al editor. No existe edición offline habilitada, no se escriben borradores locales desde la interfaz, no hay sincronización automática, no hay UI global de pendientes y no se usa Background Sync. Crear, editar, guardar, iniciar o cerrar paradas, enviar, cancelar y administrar continúan requiriendo conexión confirmada.
 
 ## Límite de caché
 
@@ -55,7 +57,15 @@ Cerrar la pestaña o la PWA no cierra la sesión. El cierre de sesión requiere 
 
 En tabletas compartidas, cierre la sesión mientras haya conexión y no trate una pantalla autenticada que quedó abierta sin red como información actualizada.
 
-## Dirección futura
+## Fundación de datos local
 
-Un bloque posterior podrá introducir una outbox separada del controlador de conectividad. Antes de habilitarla deberá definir identidad propietaria, UUID de operación, tipo, entidad, payload, timestamps, orden, idempotencia, versión base, reintentos, errores y limpieza segura. Nada de ese almacenamiento o replay forma parte de la implementación actual.
+La base `reporte-produccion-offline`, versión 1, define datos aislados por `userId`:
+
+- `reportDrafts`: una copia local por usuario/reporte con valores editables aprobados, versión base y revisión local.
+- `outbox`: como máximo una operación `SAVE_REPORT` coalescida por usuario/reporte.
+- `leases`: coordinación local genérica para una integración multi-pestaña posterior.
+
+Una escritura pendiente actualiza snapshot y outbox en la misma transacción. Una confirmación del servidor solo puede borrar la revisión exacta enviada; si ya existe una revisión local mayor, se conserva y se actualiza su versión base. Las APIs no almacenan tokens, perfiles completos, catálogos ni filas completas de `production_reports`.
+
+Block 3B deberá conectar esta base al ciclo de edición y autoguardado. Un bloque posterior implementará el flusher, reintentos, estados visibles y recuperación. Hasta entonces IndexedDB permanece sin uso por la UI.
 

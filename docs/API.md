@@ -61,9 +61,10 @@ Form endpoints generally redirect with Spanish flash-message query parameters. I
 
 - **Purpose:** Save editable report fields.
 - **Authentication:** Authenticated user; effective write access is constrained by endpoint behavior and RLS.
-- **Input:** JSON with a whitelist of report date/order, catalog references or client/product text, timing, targets, production values, manual performance values, and observations. Empty optional values are normalized to `null` where applicable.
+- **Input:** JSON with a whitelist of report date/order, catalog references or client/product text, timing, targets, production values, manual performance values, and observations. Empty optional values are normalized to `null` where applicable. Operator clients may include the reserved `_base_updated_at` field; it is a concurrency precondition and is never written to the report.
 - **Rules:** Ownership, draft/finalized behavior, immutable identity fields, and supported administrator corrections are database-enforced.
-- **Success:** JSON with the saved result.
+- **Concurrency:** When an Operator supplies `_base_updated_at`, the update applies only to the owned `DRAFT` at that exact server version. A response-loss replay whose editable values already match returns `200` with `alreadyApplied: true`; a different current version returns `409 REPORT_CONFLICT`, and a finalized report returns `409 REPORT_NOT_DRAFT`. Existing clients without the field and Administrator corrections retain their prior behavior.
+- **Success:** JSON with the saved result and authoritative `updated_at`.
 - **Response:** JSON.
 
 ### `POST /api/reports/[id]/submit`
