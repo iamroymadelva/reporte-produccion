@@ -1,5 +1,6 @@
 ---
 import "../styles/global.css";
+import ConnectionStatus from "../components/ConnectionStatus.astro";
 import { roleLabels, type Profile } from "../lib/types";
 
 interface Props {
@@ -22,6 +23,14 @@ const isCurrent = (href: string) => href === "/dashboard"
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content={description} />
     <meta name="generator" content={Astro.generator} />
+    <meta name="theme-color" content="#065f46" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Producción" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon-180.png" />
     <title>{title}</title>
   </head>
   <body>
@@ -64,11 +73,18 @@ const isCurrent = (href: string) => href === "/dashboard"
         </div>
       </header>
     )}
+    <ConnectionStatus />
     <slot />
   </body>
 </html>
 
 <script>
+  import {
+    canSendMutation,
+    MUTATION_REQUIRES_CONNECTION,
+    showConnectivityNotice,
+  } from "../lib/connectivity";
+
   const toggle = document.querySelector<HTMLElement>("[data-mobile-menu-toggle]");
   const menu = document.querySelector<HTMLElement>("[data-mobile-menu]");
   toggle?.addEventListener("click", () => {
@@ -82,4 +98,38 @@ const isCurrent = (href: string) => href === "/dashboard"
     menu?.classList.add("hidden");
     toggle.focus();
   });
+
+  const guardedForms = new WeakSet<HTMLFormElement>();
+  const checkingForms = new WeakSet<HTMLFormElement>();
+
+  document.addEventListener("submit", (event) => {
+    const submitEvent = event as SubmitEvent;
+    const form = submitEvent.target;
+    if (!(form instanceof HTMLFormElement) || form.method.toUpperCase() !== "POST") return;
+    if (guardedForms.has(form)) {
+      guardedForms.delete(form);
+      return;
+    }
+
+    submitEvent.preventDefault();
+    submitEvent.stopImmediatePropagation();
+    if (checkingForms.has(form)) return;
+    checkingForms.add(form);
+
+    const submitter = submitEvent.submitter;
+    if (submitter instanceof HTMLElement) submitter.setAttribute("aria-busy", "true");
+
+    void canSendMutation().then((allowed) => {
+      checkingForms.delete(form);
+      if (submitter instanceof HTMLElement) submitter.removeAttribute("aria-busy");
+      if (!allowed) {
+        showConnectivityNotice(MUTATION_REQUIRES_CONNECTION);
+        return;
+      }
+
+      guardedForms.add(form);
+      if (submitter instanceof HTMLButtonElement || submitter instanceof HTMLInputElement) form.requestSubmit(submitter);
+      else form.requestSubmit();
+    });
+  }, true);
 </script>

@@ -68,6 +68,58 @@
   .admin-action-text {
     display: none;
   }
+
+  .connection-status {
+    @apply border-b px-4 py-3 text-sm sm:px-6;
+    padding-left: max(1rem, env(safe-area-inset-left));
+    padding-right: max(1rem, env(safe-area-inset-right));
+  }
+
+  .connection-status[hidden],
+  .connection-update[hidden],
+  .connection-notice[hidden] {
+    display: none;
+  }
+
+  .connection-status[data-tone="checking"] {
+    @apply border-amber-200 bg-amber-50 text-amber-950;
+  }
+
+  .connection-status[data-tone="offline"],
+  .connection-status[data-tone="unreachable"] {
+    @apply border-red-200 bg-red-50 text-red-950;
+  }
+
+  .connection-status[data-tone="restored"] {
+    @apply border-emerald-200 bg-emerald-50 text-emerald-950;
+  }
+
+  .connection-status__content {
+    @apply mx-auto flex max-w-7xl flex-col gap-1 sm:flex-row sm:items-baseline sm:gap-3;
+  }
+
+  .connection-status__content strong {
+    @apply shrink-0 font-bold;
+  }
+
+  .connection-update {
+    @apply border-b border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-950 sm:px-6;
+    padding-left: max(1rem, env(safe-area-inset-left));
+    padding-right: max(1rem, env(safe-area-inset-right));
+  }
+
+  .connection-update:not([hidden]) {
+    @apply flex flex-wrap items-center justify-center gap-3;
+  }
+
+  .connection-update button {
+    @apply inline-flex min-h-11 items-center rounded-lg bg-sky-800 px-4 py-2 font-bold text-white disabled:cursor-wait disabled:opacity-60;
+  }
+
+  .connection-notice {
+    @apply fixed right-4 z-50 max-w-[min(28rem,calc(100vw-2rem))] rounded-xl bg-red-800 px-4 py-3 text-sm font-semibold text-white shadow-xl;
+    bottom: max(1rem, env(safe-area-inset-bottom));
+  }
 }
 
 @media (max-width: 639px) {

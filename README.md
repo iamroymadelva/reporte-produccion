@@ -110,3 +110,4 @@ Do not commit environment values or production credentials.
 - [Manual de Administración](docs/ADMIN_GUIDE.md)
 - [Uso Permitido, Restricciones y Controles de Seguridad](docs/SECURITY_AND_ABUSE.md)
 - [Deployment Guide](docs/DEPLOYMENT.md)
+- [PWA y funcionamiento sin conexión](docs/PWA_OFFLINE.md)

@@ -96,3 +96,14 @@ new migration
 ```
 
 The repository does not contain evidence of a CI/CD workflow, backup policy, disaster-recovery procedure, or automated rollback. Establish and document those operational controls separately before relying on them in production.
+
+## PWA Release Checklist
+
+- Serve the production origin over HTTPS.
+- Verify `/manifest.webmanifest`, `/offline.html`, `/sw.js`, and all declared icon paths.
+- Keep `/sw.js` revalidating and do not add CDN rules that make it immutable.
+- When caching rules or precached files change, increment `CACHE_VERSION` in `public/sw.js` before deployment.
+- Test an upgrade from the previous worker: the new worker must wait, the UI must offer **Actualizar**, and activation must remove only older `reporte-produccion-static-*` caches.
+- Confirm dynamic authenticated HTML and API responses include `Cache-Control: private, no-store` while `/_astro/` remains immutable.
+- Inspect Cache Storage and confirm it contains no authenticated HTML, report data, catalog data, exports, or Auth responses.
+- Complete browser-tab and installed-PWA offline/reconnect checks described in [PWA y base de funcionamiento sin conexión](PWA_OFFLINE.md).

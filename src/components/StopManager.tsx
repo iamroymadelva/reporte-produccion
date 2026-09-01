@@ -1,5 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import StopEventsTable, { type StopEvent } from "./StopEventsTable";
+import {
+  getConnectivitySnapshot,
+  guardedMutationFetch,
+  subscribeConnectivity,
+  type ConnectivityState,
+} from "../lib/connectivity";
 
 type Category = { id: string; code: string; name: string };
 interface Props {
@@ -15,6 +21,13 @@ export default function StopManager({ reportId, stops, categories }: Props) {
   const [working, setWorking] = useState(false);
   const [error, setError] = useState("");
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [connectionState, setConnectionState] = useState<ConnectivityState>("online");
+  const connectionUnavailable = connectionState === "offline" || connectionState === "unreachable";
+
+  useEffect(() => {
+    setConnectionState(getConnectivitySnapshot().state);
+    return subscribeConnectivity((snapshot) => setConnectionState(snapshot.state));
+  }, []);
 
   useEffect(() => {
     if (!openStop) {
@@ -42,32 +55,34 @@ export default function StopManager({ reportId, stops, categories }: Props) {
     }
     setWorking(true);
     setError("");
-    const response = await fetch(`/api/reports/${reportId}/stops`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ stop_category_id: categoryId, description }),
-    });
-    const body = await response.json();
-    if (!response.ok) {
+    try {
+      const response = await guardedMutationFetch(`/api/reports/${reportId}/stops`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ stop_category_id: categoryId, description }),
+      });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error ?? "No fue posible iniciar la parada.");
+      window.location.reload();
+    } catch (requestError) {
       setWorking(false);
-      setError(body.error ?? "No fue posible iniciar la parada.");
-      return;
+      setError(requestError instanceof Error ? requestError.message : "No fue posible iniciar la parada.");
     }
-    window.location.reload();
   };
 
   const close = async () => {
     if (!openStop || working) return;
     setWorking(true);
     setError("");
-    const response = await fetch(`/api/reports/${reportId}/stops/${openStop.id}/close`, { method: "POST" });
-    const body = await response.json();
-    if (!response.ok) {
+    try {
+      const response = await guardedMutationFetch(`/api/reports/${reportId}/stops/${openStop.id}/close`, { method: "POST" });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error ?? "No fue posible cerrar la parada.");
+      window.location.reload();
+    } catch (requestError) {
       setWorking(false);
-      setError(body.error ?? "No fue posible cerrar la parada.");
-      return;
+      setError(requestError instanceof Error ? requestError.message : "No fue posible cerrar la parada.");
     }
-    window.location.reload();
   };
 
   return (
@@ -81,6 +96,7 @@ export default function StopManager({ reportId, stops, categories }: Props) {
       </div>
 
       {error && <p className="mt-4 rounded-xl bg-red-50 p-4 text-sm text-red-800">{error}</p>}
+      {connectionUnavailable && <p className="mt-4 rounded-xl bg-amber-50 p-4 text-sm text-amber-900">START y STOP requieren conexión. No se registrarán tiempos mientras no haya acceso al servidor.</p>}
 
       {openStop ? (
         <div className="mt-5 rounded-2xl border-2 border-red-200 bg-red-50 p-5">
@@ -89,7 +105,7 @@ export default function StopManager({ reportId, stops, categories }: Props) {
           <p className="mt-3 text-sm font-semibold uppercase tracking-wide text-red-700">Duración en curso</p>
           <p className="mt-1 font-mono text-3xl font-bold tabular-nums text-red-950">{elapsed}</p>
           {openStop.description && <p className="mt-2 text-sm text-red-800">{openStop.description}</p>}
-          <button className="button-danger mt-5 w-full sm:w-auto" type="button" disabled={working} aria-busy={working} onClick={() => void close()}>
+          <button className="button-danger mt-5 w-full sm:w-auto" type="button" disabled={working || connectionUnavailable} aria-busy={working} onClick={() => void close()}>
             {working ? "Cerrando…" : "STOP · Cerrar parada"}
           </button>
         </div>
@@ -97,16 +113,16 @@ export default function StopManager({ reportId, stops, categories }: Props) {
         <div className="mt-5 grid gap-4 md:grid-cols-[1fr_1fr_auto] md:items-end">
           <label>
             <span className="field-label">Categoría</span>
-            <select className="field-control" value={categoryId} onChange={(event) => setCategoryId(event.target.value)}>
+            <select className="field-control" value={categoryId} disabled={connectionUnavailable} onChange={(event) => setCategoryId(event.target.value)}>
               <option value="">Selecciona una categoría</option>
               {categories.map((category) => <option key={category.id} value={category.id}>{category.code} · {category.name}</option>)}
             </select>
           </label>
           <label>
             <span className="field-label">Descripción opcional</span>
-            <input className="field-control" value={description} onChange={(event) => setDescription(event.target.value)} />
+            <input className="field-control" value={description} disabled={connectionUnavailable} onChange={(event) => setDescription(event.target.value)} />
           </label>
-          <button className="button-primary w-full md:w-auto" type="button" disabled={working} aria-busy={working} onClick={() => void start()}>
+          <button className="button-primary w-full md:w-auto" type="button" disabled={working || connectionUnavailable} aria-busy={working} onClick={() => void start()}>
             {working ? "Iniciando…" : "START · Iniciar parada"}
           </button>
         </div>

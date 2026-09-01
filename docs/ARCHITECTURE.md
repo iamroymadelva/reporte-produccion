@@ -133,3 +133,9 @@ flowchart LR
 ```
 
 Exports use the authenticated SSR client, so Viewer visibility remains limited to submitted reports. The authoritative metrics view supplies production calculations. Open stops appear in detail but do not contribute provisional duration to totals or category columns.
+
+## PWA and Connectivity Foundation
+
+The browser registers a native root-scoped service worker. Network responses remain authoritative for all SSR documents, authentication, APIs, reports, catalogs, administration, and exports. The worker caches only the static offline fallback, declared icons, manifest, and content-hashed `/_astro/` assets; authenticated HTML is never stored in Cache Storage.
+
+Browser connectivity events are combined with a lightweight same-origin `HEAD /api/health` probe. A shared client controller powers the global connection banner and guards both React mutations and native POST forms. It does not persist operations or replay requests. See [PWA y base de funcionamiento sin conexión](PWA_OFFLINE.md).

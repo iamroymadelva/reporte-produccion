@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import PlatformModal from "./PlatformModal";
+import {
+  getConnectivitySnapshot,
+  guardedMutationFetch,
+  subscribeConnectivity,
+  type ConnectivityState,
+} from "../lib/connectivity";
 
 type Option = { id: string; code: string; name: string };
 type Shift = { id: string; name: string | null; start_time: string; end_time: string };
@@ -70,11 +76,18 @@ export default function ReportEditor({ report, lines, clients, products, dosifie
   const [modal, setModal] = useState<"submit" | "cancel" | null>(null);
   const [cancelReason, setCancelReason] = useState("");
   const [frequentQuestion, setFrequentQuestion] = useState<{ label: string; name: string } | null>(null);
+  const [connectionState, setConnectionState] = useState<ConnectivityState>("online");
   const revision = useRef(0);
   const submitting = useRef(false);
   const cancellationReasonRef = useRef<HTMLTextAreaElement>(null);
   const declinedFrequentValues = useRef(new Set<string>());
   const frequentAnswer = useRef<((answer: boolean) => void) | null>(null);
+  const connectionUnavailable = connectionState === "offline" || connectionState === "unreachable";
+
+  useEffect(() => {
+    setConnectionState(getConnectivitySnapshot().state);
+    return subscribeConnectivity((snapshot) => setConnectionState(snapshot.state));
+  }, []);
 
   const askToSaveFrequentValue = (label: string, name: string) => new Promise<boolean>((resolve) => {
     frequentAnswer.current = resolve;
@@ -110,7 +123,7 @@ export default function ReportEditor({ report, lines, clients, products, dosifie
     setState("saving");
     setMessage("");
     try {
-      const response = await fetch(`/api/reports/${report.id}`, {
+      const response = await guardedMutationFetch(`/api/reports/${report.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload(values)),
@@ -167,7 +180,7 @@ export default function ReportEditor({ report, lines, clients, products, dosifie
           declinedFrequentValues.current.add(token);
           continue;
         }
-        const response = await fetch("/api/catalogs/frequent", {
+        const response = await guardedMutationFetch("/api/catalogs/frequent", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ catalog: candidate.catalog, name }),
@@ -205,15 +218,16 @@ export default function ReportEditor({ report, lines, clients, products, dosifie
       return;
     }
     setState("saving");
-    const response = await fetch(`/api/reports/${report.id}/submit`, { method: "POST" });
-    const body = await response.json();
-    if (!response.ok) {
+    try {
+      const response = await guardedMutationFetch(`/api/reports/${report.id}/submit`, { method: "POST" });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error ?? "No fue posible enviar el reporte.");
+      window.location.reload();
+    } catch (error) {
       submitting.current = false;
       setState("error");
-      setMessage(body.error ?? "No fue posible enviar el reporte.");
-      return;
+      setMessage(error instanceof Error ? error.message : "No fue posible enviar el reporte.");
     }
-    window.location.reload();
   };
 
   const cancel = async () => {
@@ -226,25 +240,26 @@ export default function ReportEditor({ report, lines, clients, products, dosifie
 
     setModal(null);
     submitting.current = true;
-    const response = await fetch(`/api/reports/${report.id}/cancel`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ reason }),
-    });
-    const body = await response.json();
-    if (!response.ok) {
+    try {
+      const response = await guardedMutationFetch(`/api/reports/${report.id}/cancel`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason }),
+      });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error ?? "No fue posible cancelar el reporte.");
+      window.location.reload();
+    } catch (error) {
       submitting.current = false;
       setState("error");
-      setMessage(body.error ?? "No fue posible cancelar el reporte.");
-      return;
+      setMessage(error instanceof Error ? error.message : "No fue posible cancelar el reporte.");
     }
-    window.location.reload();
   };
 
   const select = (field: string, label: string, options: Option[]) => (
     <label>
       <span className="field-label">{label}</span>
-      <select className="field-control" value={form[field]} onChange={(event) => update(field, event.target.value)}>
+      <select className="field-control" value={form[field]} disabled={connectionUnavailable} onChange={(event) => update(field, event.target.value)}>
         <option value="">Sin seleccionar</option>
         {options.map((option) => <option key={option.id} value={option.id}>{option.code} · {option.name}</option>)}
       </select>
@@ -254,16 +269,16 @@ export default function ReportEditor({ report, lines, clients, products, dosifie
   const input = (field: string, label: string, type = "text", extra: Record<string, string | number> = {}) => (
     <label className="min-w-0">
       <span className="field-label">{label}</span>
-      <input className={`field-control ${type === "number" ? "text-lg tabular-nums" : ""}`} type={type} value={form[field]} onChange={(event) => update(field, event.target.value)} {...extra} />
+      <input className={`field-control ${type === "number" ? "text-lg tabular-nums" : ""}`} type={type} value={form[field]} disabled={connectionUnavailable} onChange={(event) => update(field, event.target.value)} {...extra} />
     </label>
   );
 
   return (
     <section className="panel">
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-        <div><h2 className="text-xl font-bold">{adminCorrection ? "Corrección administrativa" : "Datos del reporte"}</h2><p className="text-sm text-slate-500">Los cambios se guardan automáticamente.</p></div>
+        <div><h2 className="text-xl font-bold">{adminCorrection ? "Corrección administrativa" : "Datos del reporte"}</h2><p className="text-sm text-slate-500">{connectionUnavailable ? "La edición requiere conexión. Los cambios actuales no se guardarán automáticamente." : "Los cambios se guardan automáticamente."}</p></div>
         <p className={`rounded-full px-3 py-2 text-sm font-semibold ${state === "error" ? "bg-red-100 text-red-800" : "bg-slate-100 text-slate-600"}`} aria-live="polite">
-          {state === "saving" ? "Guardando…" : state === "saved" ? "Guardado" : state === "error" ? "Error al guardar" : dirty ? "Cambios pendientes" : "Sin cambios"}
+          {connectionUnavailable && dirty ? "Cambios sin guardar" : state === "saving" ? "Guardando…" : state === "saved" ? "Guardado" : state === "error" ? "Error al guardar" : dirty ? "Cambios pendientes" : "Sin cambios"}
         </p>
       </div>
       {message && <p className="mb-5 rounded-xl bg-red-50 p-4 text-sm text-red-800">{message}</p>}
@@ -271,10 +286,10 @@ export default function ReportEditor({ report, lines, clients, products, dosifie
         {input("report_date", "Fecha", "date")}
         {input("production_order", "Orden de producción (O.P.)")}
         {select("line_id", "Área / Línea", lines)}
-        <label><span className="field-label">Cliente</span><input className="field-control" list="client-suggestions" value={form.client_name} onChange={(event) => updateFrequentText("client_name", "client_id", event.target.value, clients)} /><datalist id="client-suggestions">{clients.map((client) => <option key={client.id} value={client.name}>{client.code}</option>)}</datalist></label>
+        <label><span className="field-label">Cliente</span><input className="field-control" list="client-suggestions" value={form.client_name} disabled={connectionUnavailable} onChange={(event) => updateFrequentText("client_name", "client_id", event.target.value, clients)} /><datalist id="client-suggestions">{clients.map((client) => <option key={client.id} value={client.name}>{client.code}</option>)}</datalist></label>
         {input("lot", "Lote")}
-        <label><span className="field-label">Turno</span><select className="field-control" value={form.shift_id} onChange={(event) => update("shift_id", event.target.value)}><option value="">Sin seleccionar</option>{shifts.map((shift) => <option key={shift.id} value={shift.id}>{shiftLabel(shift)}</option>)}</select></label>
-        <label><span className="field-label">Producto</span><input className="field-control" list="product-suggestions" value={form.product_name} onChange={(event) => updateFrequentText("product_name", "product_id", event.target.value, products)} /><datalist id="product-suggestions">{products.map((product) => <option key={product.id} value={product.name}>{product.code}</option>)}</datalist></label>
+        <label><span className="field-label">Turno</span><select className="field-control" value={form.shift_id} disabled={connectionUnavailable} onChange={(event) => update("shift_id", event.target.value)}><option value="">Sin seleccionar</option>{shifts.map((shift) => <option key={shift.id} value={shift.id}>{shiftLabel(shift)}</option>)}</select></label>
+        <label><span className="field-label">Producto</span><input className="field-control" list="product-suggestions" value={form.product_name} disabled={connectionUnavailable} onChange={(event) => updateFrequentText("product_name", "product_id", event.target.value, products)} /><datalist id="product-suggestions">{products.map((product) => <option key={product.id} value={product.name}>{product.code}</option>)}</datalist></label>
         {input("weight", "Peso (gr)", "number", { min: 0, step: "any", inputMode: "decimal" })}
         {input("g_min", "G/min", "number", { min: 0, step: "any", inputMode: "decimal" })}
         {select("dosifier_type_id", "Tipo de dosificador", dosifierTypes)}
@@ -285,14 +300,14 @@ export default function ReportEditor({ report, lines, clients, products, dosifie
         {input("waste", "Desperdicio", "number", { min: 0, step: "any", inputMode: "decimal" })}
         {input("process_performance", "Rendimiento del proceso (%)", "number", { step: "any", inputMode: "decimal" })}
         {input("operator_performance", "Rendimiento del Operario (%)", "number", { step: "any", inputMode: "decimal" })}
-        <label className="md:col-span-2 xl:col-span-3"><span className="field-label">Observaciones</span><textarea className="field-control min-h-28" value={form.observations} onChange={(event) => update("observations", event.target.value)} /></label>
+        <label className="md:col-span-2 xl:col-span-3"><span className="field-label">Observaciones</span><textarea className="field-control min-h-28" value={form.observations} disabled={connectionUnavailable} onChange={(event) => update("observations", event.target.value)} /></label>
       </div>
       <p className="mt-4 text-sm text-slate-500">Cliente y Producto aceptan texto libre; los valores frecuentes aparecen como sugerencias.</p>
       <div className="mt-6 flex flex-col gap-5 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-3">
-        {canSubmit ? <button className="button-danger w-full sm:w-auto" type="button" onClick={() => { setCancelReason(""); setModal("cancel"); }}>Cancelar reporte</button> : <span />}
+        {canSubmit ? <button className="button-danger w-full sm:w-auto" type="button" disabled={connectionUnavailable} onClick={() => { setCancelReason(""); setModal("cancel"); }}>Cancelar reporte</button> : <span />}
         <div className="grid gap-3 sm:flex sm:flex-wrap sm:justify-end">
-          <button className="button-secondary w-full sm:w-auto" type="button" onClick={() => void saveManually()}>Guardar ahora</button>
-          {canSubmit && <button className="button-primary w-full sm:w-auto" type="button" onClick={() => {
+          <button className="button-secondary w-full sm:w-auto" type="button" disabled={connectionUnavailable} onClick={() => void saveManually()}>Guardar ahora</button>
+          {canSubmit && <button className="button-primary w-full sm:w-auto" type="button" disabled={connectionUnavailable} onClick={() => {
             if (!form.ended_at) {
               setState("error");
               setMessage("Debes registrar la hora de finalización antes de enviar el reporte.");
@@ -302,14 +317,14 @@ export default function ReportEditor({ report, lines, clients, products, dosifie
           }}>Enviar reporte</button>}
         </div>
       </div>
-      {modal === "submit" && <PlatformModal title="Enviar reporte" confirmLabel="Enviar reporte" onCancel={() => setModal(null)} onConfirm={() => void submit()}>
+      {modal === "submit" && <PlatformModal title="Enviar reporte" confirmLabel="Enviar reporte" confirmDisabled={connectionUnavailable} onCancel={() => setModal(null)} onConfirm={() => void submit()}>
         <p>Después de enviarlo, el reporte quedará en modo de solo lectura para el Operario y ya no podrá modificarlo.</p>
       </PlatformModal>}
-      {modal === "cancel" && <PlatformModal title="Cancelar reporte" confirmLabel="Confirmar cancelación" destructive confirmDisabled={!cancelReason.trim()} initialFocusRef={cancellationReasonRef} onCancel={() => setModal(null)} onConfirm={() => void cancel()}>
+      {modal === "cancel" && <PlatformModal title="Cancelar reporte" confirmLabel="Confirmar cancelación" destructive confirmDisabled={!cancelReason.trim() || connectionUnavailable} initialFocusRef={cancellationReasonRef} onCancel={() => setModal(null)} onConfirm={() => void cancel()}>
         <p>El reporte quedará en modo de solo lectura y la máquina se liberará para un nuevo reporte.</p>
-        <label className="mt-5 block"><span className="field-label">Motivo de cancelación</span><textarea ref={cancellationReasonRef} className="field-control min-h-28" value={cancelReason} onChange={(event) => setCancelReason(event.target.value)} required /></label>
+        <label className="mt-5 block"><span className="field-label">Motivo de cancelación</span><textarea ref={cancellationReasonRef} className="field-control min-h-28" value={cancelReason} disabled={connectionUnavailable} onChange={(event) => setCancelReason(event.target.value)} required /></label>
       </PlatformModal>}
-      {frequentQuestion && <PlatformModal title={`Guardar ${frequentQuestion.label.toLocaleLowerCase("es-CO")}`} cancelLabel="No guardar" confirmLabel="Guardar como frecuente" onCancel={() => answerFrequentQuestion(false)} onConfirm={() => answerFrequentQuestion(true)}>
+      {frequentQuestion && <PlatformModal title={`Guardar ${frequentQuestion.label.toLocaleLowerCase("es-CO")}`} cancelLabel="No guardar" confirmLabel="Guardar como frecuente" confirmDisabled={connectionUnavailable} onCancel={() => answerFrequentQuestion(false)} onConfirm={() => answerFrequentQuestion(true)}>
         <p>“{frequentQuestion.name}” no existe entre los valores frecuentes. ¿Deseas guardarlo para futuros reportes?</p>
       </PlatformModal>}
     </section>

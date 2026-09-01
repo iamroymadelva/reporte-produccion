@@ -1,0 +1,107 @@
+<div class="connection-status" data-connection-status hidden role="status" aria-live="polite" aria-atomic="true">
+  <div class="connection-status__content">
+    <strong data-connection-title></strong>
+    <span data-connection-message></span>
+  </div>
+</div>
+
+<div class="connection-update" data-version-update hidden role="status" aria-live="polite">
+  <span>Nueva versión disponible</span>
+  <button type="button" data-version-update-button>Actualizar</button>
+</div>
+
+<div class="connection-notice" data-connectivity-notice hidden role="alert"></div>
+
+<script>
+  import {
+    initializeConnectivity,
+    subscribeConnectivity,
+    subscribeConnectivityNotices,
+  } from "../lib/connectivity";
+
+  const status = document.querySelector<HTMLElement>("[data-connection-status]");
+  const title = status?.querySelector<HTMLElement>("[data-connection-title]");
+  const message = status?.querySelector<HTMLElement>("[data-connection-message]");
+  const notice = document.querySelector<HTMLElement>("[data-connectivity-notice]");
+  let recoveryTimer: number | undefined;
+  let noticeTimer: number | undefined;
+
+  const showStatus = (tone: string, heading: string, detail: string) => {
+    if (!status || !title || !message) return;
+    status.dataset.tone = tone;
+    title.textContent = heading;
+    message.textContent = detail;
+    status.hidden = false;
+  };
+
+  initializeConnectivity();
+  subscribeConnectivity(({ state, restored }) => {
+    if (recoveryTimer) window.clearTimeout(recoveryTimer);
+    if (restored) {
+      showStatus("restored", "Conexión restablecida", "Ya puedes volver a usar las funciones en línea.");
+      recoveryTimer = window.setTimeout(() => { if (status) status.hidden = true; }, 3_000);
+      return;
+    }
+    if (state === "online") {
+      if (status) status.hidden = true;
+      return;
+    }
+    if (state === "checking") {
+      showStatus("checking", "Verificando conexión…", "Comprobando acceso al servidor.");
+      return;
+    }
+    if (state === "offline") {
+      showStatus("offline", "Sin conexión", "Algunas funciones no estarán disponibles hasta recuperar la conexión.");
+      return;
+    }
+    showStatus("unreachable", "Sin acceso al servidor", "Verifica la conexión e inténtalo de nuevo.");
+  });
+
+  subscribeConnectivityNotices((text) => {
+    if (!notice) return;
+    if (noticeTimer) window.clearTimeout(noticeTimer);
+    notice.textContent = text;
+    notice.hidden = false;
+    noticeTimer = window.setTimeout(() => { notice.hidden = true; }, 6_000);
+  });
+
+  const updateBanner = document.querySelector<HTMLElement>("[data-version-update]");
+  const updateButton = document.querySelector<HTMLButtonElement>("[data-version-update-button]");
+  let waitingRegistration: ServiceWorkerRegistration | null = null;
+  let activatingUpdate = false;
+  let reloadingForUpdate = false;
+
+  const showUpdate = (registration: ServiceWorkerRegistration) => {
+    if (!registration.waiting || !navigator.serviceWorker.controller) return;
+    waitingRegistration = registration;
+    if (updateBanner) updateBanner.hidden = false;
+  };
+
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      if (!activatingUpdate || reloadingForUpdate) return;
+      reloadingForUpdate = true;
+      window.location.reload();
+    });
+
+    window.addEventListener("load", () => {
+      void navigator.serviceWorker.register("/sw.js", { scope: "/", updateViaCache: "none" }).then((registration) => {
+        showUpdate(registration);
+        registration.addEventListener("updatefound", () => {
+          const installing = registration.installing;
+          installing?.addEventListener("statechange", () => {
+            if (installing.state === "installed") showUpdate(registration);
+          });
+        });
+      }).catch(() => {
+        // PWA installation remains an enhancement; connectivity UI still works if registration fails.
+      });
+    }, { once: true });
+  }
+
+  updateButton?.addEventListener("click", () => {
+    updateButton.disabled = true;
+    activatingUpdate = true;
+    waitingRegistration?.waiting?.postMessage({ type: "SKIP_WAITING" });
+  });
+</script>
