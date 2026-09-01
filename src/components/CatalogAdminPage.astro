@@ -39,18 +39,18 @@ const action = `/api/admin/catalogs/${catalog}`;
     </header>
     <AdminFlashMessage error={error} ok={ok} />
 
-    <label class="block max-w-lg"><span class="field-label">Buscar</span><input class="field-control" type="search" placeholder={`Buscar en ${title.toLocaleLowerCase("es-CO")}`} data-search-input /></label>
+    <label class="block max-w-lg"><span class="field-label">Buscar</span><input class="field-control" type="search" enterkeyhint="search" placeholder={`Buscar en ${title.toLocaleLowerCase("es-CO")}`} data-search-input /></label>
 
     <section class="panel overflow-hidden p-0">
       <div class="overflow-x-auto">
-        <table class="w-full min-w-[680px] text-left text-sm">
+        <table class="responsive-admin-table w-full min-w-[680px] text-left text-sm">
           <thead class="bg-slate-50 text-slate-600"><tr><th class="p-4">Código</th><th class="p-4">Nombre</th><th class="p-4">Estado</th><th class="p-4 text-right">Acción</th></tr></thead>
           <tbody>
             {items.map((item) => (
               <tr class="border-t align-top" data-search-row data-search-text={`${item.code} ${item.name} ${item.active ? "activo" : "inactivo"}`}>
-                <td class="p-4 font-semibold">{item.code}</td><td class="p-4">{item.name}</td>
-                <td class="p-4"><AdminStatusToggle id={item.id} action={action} active={item.active}><input type="hidden" name="code" value={item.code} /><input type="hidden" name="name" value={item.name} /></AdminStatusToggle></td>
-                <td class="p-4 text-right"><div class="flex flex-wrap items-center justify-end gap-2">
+                <td class="p-4 font-semibold" data-label="Código">{item.code}</td><td class="p-4" data-label="Nombre">{item.name}</td>
+                <td class="p-4" data-label="Estado"><AdminStatusToggle id={item.id} action={action} active={item.active}><input type="hidden" name="code" value={item.code} /><input type="hidden" name="name" value={item.name} /></AdminStatusToggle></td>
+                <td class="p-4 text-right" data-label="Acciones"><div class="flex flex-wrap items-center justify-end gap-2">
                   <AdminRecordModal id={`edit-${catalog}-${item.id}`} title={`Editar: ${item.name}`} action={action} submitLabel="Guardar" mode="edit" recordId={item.id}>
                     <div class="grid gap-4">
                       <label><span class="field-label">Código</span><input class="field-control" name="code" value={item.code} required /></label>

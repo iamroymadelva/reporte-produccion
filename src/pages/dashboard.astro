@@ -117,7 +117,29 @@ const hasError = Boolean(reportsResult.error);
       ) : recentReports.length === 0 ? (
         <p class="p-8 text-center text-slate-500">No hay reportes de producción para hoy.</p>
       ) : (
-        <div class="overflow-x-auto">
+        <>
+        <div class="mobile-card-list md:hidden">
+          {recentReports.map((report) => {
+            const hasOpenStop = report.report_stop_events?.some((stop: any) => !stop.ended_at);
+            return (
+              <article class="mobile-data-card">
+                <div class="flex items-start justify-between gap-3">
+                  <a class="min-w-0 break-words font-bold text-emerald-700" href={`/reportes/${report.id}`}>{report.folio}</a>
+                  <span class={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${report.status === "DRAFT" ? "bg-amber-100 text-amber-800" : report.status === "CANCELLED" ? "bg-red-100 text-red-800" : "bg-emerald-100 text-emerald-800"}`}>
+                    {statusLabels[report.status as ReportStatus]}
+                  </span>
+                </div>
+                <dl class="grid gap-2 text-sm">
+                  <div><dt class="text-slate-500">Fecha / hora</dt><dd>{formatDateTime(report.created_at)}</dd></div>
+                  <div><dt class="text-slate-500">Máquina</dt><dd class="font-semibold">{report.machine ? `${report.machine.code} · ${report.machine.name}` : "—"}</dd></div>
+                  <div><dt class="text-slate-500">Operario</dt><dd>{report.creator_full_name || "—"}</dd></div>
+                </dl>
+                {hasOpenStop && <p class="font-bold text-orange-700">● Parada activa</p>}
+              </article>
+            );
+          })}
+        </div>
+        <div class="hidden overflow-x-auto md:block" role="region" aria-label="Reportes recientes" tabindex="0">
           <table class="w-full min-w-[640px] text-left text-sm md:min-w-[900px]">
             <thead class="bg-slate-50 text-slate-600">
               <tr>
@@ -156,6 +178,7 @@ const hasError = Boolean(reportsResult.error);
             </tbody>
           </table>
         </div>
+        </>
       )}
     </section>
   </main>

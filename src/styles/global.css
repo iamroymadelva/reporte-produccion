@@ -11,6 +11,8 @@
 
   body {
     @apply m-0 min-h-screen bg-slate-100 font-sans text-slate-900 antialiased;
+    min-width: 0;
+    overflow-x: clip;
   }
 
   button,
@@ -18,6 +20,11 @@
   select,
   textarea {
     font: inherit;
+  }
+
+  :where(a, button, input, select, textarea, summary):focus-visible {
+    outline: 2px solid rgb(5 150 105);
+    outline-offset: 2px;
   }
 }
 
@@ -48,5 +55,107 @@
 
   .panel {
     @apply rounded-2xl border border-slate-200 bg-white p-5 shadow-sm;
+  }
+
+  .mobile-card-list {
+    @apply divide-y divide-slate-200;
+  }
+
+  .mobile-data-card {
+    @apply space-y-3 p-4;
+  }
+
+  .admin-action-text {
+    display: none;
+  }
+}
+
+@media (max-width: 639px) {
+  .responsive-admin-table,
+  .responsive-admin-table tbody {
+    display: block;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .responsive-admin-table thead {
+    display: none;
+  }
+
+  .responsive-admin-table tr[data-search-row] {
+    display: grid;
+    gap: 0.65rem;
+    margin: 0.75rem;
+    padding: 1rem;
+    border: 1px solid rgb(226 232 240);
+    border-radius: 1rem;
+    background: white;
+  }
+
+  .responsive-admin-table tr[data-search-row][hidden] {
+    display: none;
+  }
+
+  .responsive-admin-table td {
+    display: grid;
+    min-width: 0;
+    grid-template-columns: minmax(5.5rem, 0.4fr) minmax(0, 1fr);
+    gap: 0.75rem;
+    padding: 0;
+    text-align: left;
+    overflow-wrap: anywhere;
+  }
+
+  .responsive-admin-table td::before {
+    content: attr(data-label);
+    color: rgb(100 116 139);
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .responsive-admin-table td[data-label="Acciones"] {
+    display: block;
+    padding-top: 0.5rem;
+    border-top: 1px solid rgb(226 232 240);
+  }
+
+  .responsive-admin-table td[data-label="Acciones"]::before {
+    display: block;
+    margin-bottom: 0.5rem;
+  }
+
+  .responsive-admin-table td[data-label="Acciones"] > div {
+    justify-content: flex-start;
+  }
+
+  .responsive-admin-table .admin-action-text {
+    display: inline;
+  }
+}
+
+@media (min-width: 640px) and (max-width: 819px) {
+  .responsive-admin-table--wide,
+  .responsive-admin-table--wide tbody {
+    display: block;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .responsive-admin-table--wide thead { display: none; }
+  .responsive-admin-table--wide tr[data-search-row] { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; margin: 0.75rem; padding: 1rem; border: 1px solid rgb(226 232 240); border-radius: 1rem; }
+  .responsive-admin-table--wide tr[data-search-row][hidden] { display: none; }
+  .responsive-admin-table--wide td { display: grid; min-width: 0; grid-template-columns: minmax(5.5rem, 0.4fr) minmax(0, 1fr); gap: 0.75rem; padding: 0; text-align: left; overflow-wrap: anywhere; }
+  .responsive-admin-table--wide td::before { content: attr(data-label); color: rgb(100 116 139); font-size: 0.75rem; font-weight: 600; text-transform: uppercase; }
+  .responsive-admin-table--wide td[data-label="Acciones"] { display: block; grid-column: 1 / -1; padding-top: 0.5rem; border-top: 1px solid rgb(226 232 240); }
+  .responsive-admin-table--wide td[data-label="Acciones"]::before { display: block; margin-bottom: 0.5rem; }
+  .responsive-admin-table--wide td[data-label="Acciones"] > div { justify-content: flex-start; }
+  .responsive-admin-table--wide .admin-action-text { display: inline; }
+}
+
+@supports (padding: max(0px)) {
+  .safe-bottom {
+    padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
   }
 }

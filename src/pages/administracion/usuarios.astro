@@ -38,10 +38,10 @@ const ok = Astro.url.searchParams.get("ok");
 
 <BaseLayout title="Usuarios" description="Administración de usuarios y asignaciones" profile={auth.profile}>
   <main class="mx-auto max-w-7xl space-y-6 px-4 py-8 sm:px-6" data-search-scope>
-    <header><a class="text-sm font-semibold text-emerald-700" href="/administracion">← Administración</a><div class="mt-2 flex flex-wrap items-end justify-between gap-4"><h1 class="text-3xl font-bold">Usuarios y asignaciones</h1><AdminRecordModal id="create-user" title="Nuevo usuario" action="/api/admin/users/invite" submitLabel="Crear usuario" mode="create" size="large"><div class="grid gap-4 md:grid-cols-3"><label><span class="field-label">Nombre completo</span><input class="field-control" name="full_name" required /></label><label><span class="field-label">Correo</span><input class="field-control" type="email" name="email" required /></label><label><span class="field-label">Rol</span><select class="field-control" name="role"><option value="OPERATOR">Operario</option><option value="VIEWER">Consulta</option><option value="ADMINISTRATOR">Administrador</option></select></label></div></AdminRecordModal></div></header>
+    <header><a class="text-sm font-semibold text-emerald-700" href="/administracion">← Administración</a><div class="mt-2 flex flex-wrap items-end justify-between gap-4"><h1 class="text-3xl font-bold">Usuarios y asignaciones</h1><AdminRecordModal id="create-user" title="Nuevo usuario" action="/api/admin/users/invite" submitLabel="Crear usuario" mode="create" size="large"><div class="grid gap-4 md:grid-cols-3"><label><span class="field-label">Nombre completo</span><input class="field-control" name="full_name" required /></label><label><span class="field-label">Correo</span><input class="field-control" type="email" inputmode="email" autocomplete="email" name="email" required /></label><label><span class="field-label">Rol</span><select class="field-control" name="role"><option value="OPERATOR">Operario</option><option value="VIEWER">Consulta</option><option value="ADMINISTRATOR">Administrador</option></select></label></div></AdminRecordModal></div></header>
     <AdminFlashMessage error={error} ok={ok} />
-    <label class="block max-w-lg"><span class="field-label">Buscar</span><input class="field-control" type="search" placeholder="Buscar usuarios" data-search-input /></label>
-    <section class="panel overflow-hidden p-0"><div class="overflow-x-auto"><table class="w-full min-w-[1040px] text-left text-sm"><thead class="bg-slate-50 text-slate-600"><tr><th class="p-4">Nombre</th><th class="p-4">Correo</th><th class="p-4">Cargo</th><th class="p-4">Rol</th><th class="p-4">Máquinas</th><th class="p-4">Estado</th><th class="p-4 text-right">Acción</th></tr></thead><tbody>
+    <label class="block max-w-lg"><span class="field-label">Buscar</span><input class="field-control" type="search" enterkeyhint="search" placeholder="Buscar usuarios" data-search-input /></label>
+    <section class="panel overflow-hidden p-0"><div class="overflow-x-auto"><table class="responsive-admin-table responsive-admin-table--wide w-full min-w-[1040px] text-left text-sm"><thead class="bg-slate-50 text-slate-600"><tr><th class="p-4">Nombre</th><th class="p-4">Correo</th><th class="p-4">Cargo</th><th class="p-4">Rol</th><th class="p-4">Máquinas</th><th class="p-4">Estado</th><th class="p-4 text-right">Acción</th></tr></thead><tbody>
       {profiles.map((profile) => {
         const selected = new Set(assignments.filter((item) => item.operator_id === profile.id && item.active).map((item) => item.machine_id));
         const assigned = machines.filter((machine) => selected.has(machine.id));
@@ -49,19 +49,19 @@ const ok = Astro.url.searchParams.get("ok");
         const retired = !profile.active && Boolean(profile.removed_at);
         const status = retired ? "Retirado" : profile.active ? "Activo" : "Inactivo";
         return <tr class="border-t align-top" data-search-row data-search-text={`${profile.full_name} ${email} ${profile.job_title ?? ""} ${roleLabels[profile.role as AppRole]} ${status} ${assigned.map((machine) => `${machine.code} ${machine.name}`).join(" ")}`}>
-          <td class="p-4 font-semibold">{profile.full_name}</td>
-          <td class="p-4">{email}</td>
-          <td class="p-4">{profile.job_title || "—"}</td>
-          <td class="p-4">{roleLabels[profile.role as AppRole]}</td>
-          <td class="p-4">{assigned.length ? assigned.map((machine) => machine.code).join(", ") : "—"}</td>
-          <td class="p-4"><span class={`rounded-full px-3 py-1 font-semibold ${profile.active ? "bg-emerald-100 text-emerald-800" : retired ? "bg-red-100 text-red-800" : "bg-slate-100 text-slate-600"}`}>{status}</span></td>
-          <td class="p-4 text-right"><div class="flex flex-wrap items-center justify-end gap-2">
+          <td class="p-4 font-semibold" data-label="Nombre">{profile.full_name}</td>
+          <td class="p-4" data-label="Correo">{email}</td>
+          <td class="p-4" data-label="Cargo">{profile.job_title || "—"}</td>
+          <td class="p-4" data-label="Rol">{roleLabels[profile.role as AppRole]}</td>
+          <td class="p-4" data-label="Máquinas">{assigned.length ? assigned.map((machine) => machine.code).join(", ") : "—"}</td>
+          <td class="p-4" data-label="Estado"><span class={`rounded-full px-3 py-1 font-semibold ${profile.active ? "bg-emerald-100 text-emerald-800" : retired ? "bg-red-100 text-red-800" : "bg-slate-100 text-slate-600"}`}>{status}</span></td>
+          <td class="p-4 text-right" data-label="Acciones"><div class="flex flex-wrap items-center justify-end gap-2">
             {retired ? (
               <UserReactivateAction userId={profile.id} userName={profile.full_name} role={profile.role as AppRole} machines={machines} />
             ) : (
               <>
                 <AdminRecordModal id={`edit-user-${profile.id}`} title="Editar usuario" action={`/api/admin/users/${profile.id}`} submitLabel="Guardar cambios" mode="edit" size="large">
-                  <div class="grid gap-3 sm:grid-cols-2"><label><span class="field-label">Nombre</span><input class="field-control" name="full_name" value={profile.full_name} required /></label><label><span class="field-label">Correo</span><input class="field-control" type="email" name="email" value={email} required /></label><label><span class="field-label">Cargo</span><input class="field-control" name="job_title" value={profile.job_title ?? ""} /></label><label><span class="field-label">Rol</span><select class="field-control" name="role">{(Object.keys(roleLabels) as AppRole[]).map((role) => <option value={role} selected={role === profile.role}>{roleLabels[role]}</option>)}</select></label></div>
+                  <div class="grid gap-3 sm:grid-cols-2"><label><span class="field-label">Nombre</span><input class="field-control" name="full_name" value={profile.full_name} required /></label><label><span class="field-label">Correo</span><input class="field-control" type="email" inputmode="email" autocomplete="email" name="email" value={email} required /></label><label><span class="field-label">Cargo</span><input class="field-control" name="job_title" value={profile.job_title ?? ""} /></label><label><span class="field-label">Rol</span><select class="field-control" name="role">{(Object.keys(roleLabels) as AppRole[]).map((role) => <option value={role} selected={role === profile.role}>{roleLabels[role]}</option>)}</select></label></div>
                   <fieldset class="mt-4"><legend class="field-label">Máquinas asignadas</legend><div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{machines.map((machine) => <label class="flex min-h-12 items-center gap-3 rounded-xl border p-3"><input class="size-5" type="checkbox" name="machine_ids" value={machine.id} checked={selected.has(machine.id)} /><span>{machine.code} · {machine.name}</span></label>)}</div></fieldset>
                   <label class="mt-4 flex min-h-12 items-center gap-3"><input class="size-5" type="checkbox" name="active" checked={profile.active} /><span class="font-semibold">Usuario activo</span></label>
                 </AdminRecordModal>

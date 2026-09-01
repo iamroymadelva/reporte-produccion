@@ -117,7 +117,7 @@ const filterSummary = [filters.periodLabel, activeFilterLabel].filter(Boolean).j
             <span class="field-label">Fecha</span>
             <input class="field-control" type="date" name="report_date" value={today} disabled={drafts.length >= 5} />
           </label>
-          <button class="button-primary" type="submit" disabled={drafts.length >= 5}>Nuevo reporte</button>
+          <button class="button-primary w-full md:w-auto" type="submit" disabled={drafts.length >= 5}>Nuevo reporte</button>
         </form>
       </section>
     )}
@@ -128,31 +128,31 @@ const filterSummary = [filters.periodLabel, activeFilterLabel].filter(Boolean).j
           <h2 id="period-filter-title" class="text-lg font-bold">Período</h2>
           <p class="mt-1 text-sm text-slate-500">Filtra la tabla por la fecha operativa del reporte.</p>
         </div>
-        <div class="flex flex-wrap gap-2" aria-label="Seleccionar tipo de período">
-          <a class={`button-secondary ${filters.period === "day" ? "border-emerald-600 text-emerald-800" : ""}`} href={periodHref("day", filters)}>Día</a>
-          <a class={`button-secondary ${filters.period === "week" ? "border-emerald-600 text-emerald-800" : ""}`} href={periodHref("week", filters)}>Semana</a>
-          <a class={`button-secondary ${filters.period === "month" ? "border-emerald-600 text-emerald-800" : ""}`} href={periodHref("month", filters)}>Mes</a>
+        <div class="grid w-full grid-cols-3 gap-2 sm:flex sm:w-auto sm:flex-wrap" aria-label="Seleccionar tipo de período">
+          <a class={`button-secondary px-2 ${filters.period === "day" ? "border-emerald-600 text-emerald-800" : ""}`} href={periodHref("day", filters)}>Día</a>
+          <a class={`button-secondary px-2 ${filters.period === "week" ? "border-emerald-600 text-emerald-800" : ""}`} href={periodHref("week", filters)}>Semana</a>
+          <a class={`button-secondary px-2 ${filters.period === "month" ? "border-emerald-600 text-emerald-800" : ""}`} href={periodHref("month", filters)}>Mes</a>
         </div>
       </div>
 
       {filters.period && (
-        <form class="flex flex-wrap items-end gap-3" method="GET" action="/reportes">
+        <form class="grid gap-3 sm:flex sm:flex-wrap sm:items-end" method="GET" action="/reportes">
           <input type="hidden" name="period" value={filters.period} />
           {filters.activeStop && <input type="hidden" name="stop" value="active" />}
           {!filters.activeStop && filters.status && <input type="hidden" name="status" value={filters.status} />}
           {filters.period === "month" ? (
-            <label class="min-w-56 flex-1 sm:flex-none">
+            <label class="min-w-0 flex-1 sm:min-w-56 sm:flex-none">
               <span class="field-label">Mes</span>
               <input class="field-control" type="month" name="month" value={filters.month ?? currentMonth} required />
             </label>
           ) : (
-            <label class="min-w-56 flex-1 sm:flex-none">
+            <label class="min-w-0 flex-1 sm:min-w-56 sm:flex-none">
               <span class="field-label">{filters.period === "week" ? "Fecha dentro de la semana" : "Fecha"}</span>
               <input class="field-control" type="date" name="date" value={filters.date ?? today} required />
             </label>
           )}
-          <button class="button-primary" type="submit">Aplicar</button>
-          <a class="button-secondary" href={clearPeriodHref}>Limpiar período</a>
+          <button class="button-primary w-full sm:w-auto" type="submit">Aplicar</button>
+          <a class="button-secondary w-full sm:w-auto" href={clearPeriodHref}>Limpiar período</a>
         </form>
       )}
     </section>
@@ -172,10 +172,34 @@ const filterSummary = [filters.periodLabel, activeFilterLabel].filter(Boolean).j
           {(activeFilterLabel || filters.period) && <a class="font-bold text-emerald-700 hover:underline" href="/reportes">Limpiar filtros</a>}
         </div>
       </div>
-      <div class="overflow-x-auto">
-        <table class="w-full min-w-[960px] text-left text-sm">
+      <div class="mobile-card-list md:hidden">
+        {visibleReports.map((report) => {
+          const hasOpenStop = report.report_stop_events?.some((stop: any) => !stop.ended_at);
+          return (
+            <article class="mobile-data-card">
+              <div class="flex items-start justify-between gap-3">
+                <p class="min-w-0 break-words font-bold text-slate-900">{report.folio}</p>
+                <span class={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${report.status === "DRAFT" ? "bg-amber-100 text-amber-800" : report.status === "CANCELLED" ? "bg-red-100 text-red-800" : "bg-emerald-100 text-emerald-800"}`}>{statusLabels[report.status as keyof typeof statusLabels]}</span>
+              </div>
+              <dl class="grid gap-2 text-sm">
+                <div><dt class="text-slate-500">Fecha</dt><dd>{formatDate(report.report_date)}</dd></div>
+                <div><dt class="text-slate-500">Máquina</dt><dd class="font-semibold">{report.machine?.code} · {report.machine?.name}</dd></div>
+                <div><dt class="text-slate-500">Operario</dt><dd>{report.operator?.full_name || "—"}</dd></div>
+                {report.production_order && <div><dt class="text-slate-500">O.P.</dt><dd>{report.production_order}</dd></div>}
+              </dl>
+              <div class="flex min-h-11 items-center justify-between gap-3">
+                <span class={hasOpenStop ? "font-bold text-red-700" : "text-slate-500"}>{hasOpenStop ? "● Parada abierta" : "Sin parada activa"}</span>
+                <a class="inline-flex min-h-11 items-center rounded-lg px-3 font-bold text-emerald-700" href={`/reportes/${report.id}`}>Abrir</a>
+              </div>
+            </article>
+          );
+        })}
+        {visibleReports.length === 0 && <p class="p-8 text-center text-slate-500">No hay reportes disponibles.</p>}
+      </div>
+      <div class="hidden overflow-x-auto md:block" role="region" aria-label="Listado de reportes" tabindex="0">
+        <table class="w-full min-w-[760px] text-left text-sm lg:min-w-[960px]">
           <thead class="bg-slate-50 text-slate-600">
-            <tr><th class="p-4">Folio</th><th class="p-4">Fecha</th><th class="p-4">Máquina</th><th class="p-4">O.P.</th><th class="p-4">Operario</th><th class="p-4">Rol</th><th class="p-4">Estado</th><th class="p-4">Parada</th><th class="p-4"></th></tr>
+            <tr><th class="p-4">Folio</th><th class="p-4">Fecha</th><th class="p-4">Máquina</th><th class="hidden p-4 lg:table-cell">O.P.</th><th class="p-4">Operario</th><th class="hidden p-4 lg:table-cell">Rol</th><th class="p-4">Estado</th><th class="p-4">Parada</th><th class="p-4"></th></tr>
           </thead>
           <tbody>
             {visibleReports.map((report) => {
@@ -185,9 +209,9 @@ const filterSummary = [filters.periodLabel, activeFilterLabel].filter(Boolean).j
                   <td class="p-4 font-bold text-slate-900">{report.folio}</td>
                   <td class="p-4">{formatDate(report.report_date)}</td>
                   <td class="p-4 font-semibold">{report.machine?.code} · {report.machine?.name}</td>
-                  <td class="p-4">{report.production_order || "—"}</td>
+                  <td class="hidden p-4 lg:table-cell">{report.production_order || "—"}</td>
                   <td class="p-4">{report.operator?.full_name || "—"}</td>
-                  <td class="whitespace-nowrap p-4">{report.operator?.role ? roleLabels[report.operator.role as AppRole] ?? "—" : "—"}</td>
+                  <td class="hidden whitespace-nowrap p-4 lg:table-cell">{report.operator?.role ? roleLabels[report.operator.role as AppRole] ?? "—" : "—"}</td>
                   <td class="p-4"><span class={`rounded-full px-3 py-1 font-semibold ${report.status === "DRAFT" ? "bg-amber-100 text-amber-800" : report.status === "CANCELLED" ? "bg-red-100 text-red-800" : "bg-emerald-100 text-emerald-800"}`}>{statusLabels[report.status as keyof typeof statusLabels]}</span></td>
                   <td class="p-4">{hasOpenStop ? <span class="font-bold text-red-700">Abierta</span> : "—"}</td>
                   <td class="p-4 text-right"><a class="font-bold text-emerald-700 hover:underline" href={`/reportes/${report.id}`}>Abrir</a></td>

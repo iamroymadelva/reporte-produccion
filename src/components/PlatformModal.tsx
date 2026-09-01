@@ -53,13 +53,13 @@ export default function PlatformModal({
   }, []);
 
   return createPortal(
-    <dialog ref={dialogRef} className="m-auto max-h-[calc(100dvh-2rem)] w-[min(92vw,32rem)] overflow-y-auto rounded-2xl bg-white p-0 shadow-2xl backdrop:bg-slate-950/55" aria-labelledby={titleId} onMouseDown={(event) => {
+    <dialog ref={dialogRef} className="m-auto max-h-[calc(100dvh-1rem)] w-[min(calc(100vw-1rem),32rem)] overflow-hidden rounded-2xl bg-white p-0 shadow-2xl backdrop:bg-slate-950/55 sm:max-h-[calc(100dvh-2rem)]" aria-labelledby={titleId} onMouseDown={(event) => {
       if (event.target === event.currentTarget) dialogRef.current?.close();
     }}>
-      <section ref={surfaceRef} className="p-5 sm:p-6">
-        <h2 id={titleId} className="text-2xl font-bold text-slate-950">{title}</h2>
-        <div className="mt-4 text-base leading-7 text-slate-600">{children}</div>
-        <div className="mt-7 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+      <section ref={surfaceRef} className="grid max-h-[calc(100dvh-1rem)] grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden sm:max-h-[calc(100dvh-2rem)]">
+        <h2 id={titleId} className="px-5 pt-5 text-2xl font-bold text-slate-950 sm:px-6 sm:pt-6">{title}</h2>
+        <div className="mt-4 overflow-y-auto px-5 text-base leading-7 text-slate-600 sm:px-6">{children}</div>
+        <div className="safe-bottom mt-5 flex flex-col-reverse gap-3 border-t border-slate-200 bg-slate-50 px-5 pt-4 sm:mt-7 sm:flex-row sm:justify-end sm:px-6">
           <button ref={cancelRef} className="button-secondary min-h-12" type="button" onClick={() => dialogRef.current?.close()}>{cancelLabel}</button>
           <button className={`${destructive ? "button-danger" : "button-primary"} min-h-12`} type="button" disabled={confirmDisabled} onClick={onConfirm}>{confirmLabel}</button>
         </div>

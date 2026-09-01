@@ -21,7 +21,7 @@ const sections = [
     <h1 class="mt-1 text-3xl font-bold">Administración</h1>
     <div class="mt-7 grid gap-5 md:grid-cols-2">
       {sections.map((section) => (
-        <a class="panel block hover:border-emerald-500" href={section.href}>
+        <a class="panel block min-h-11 hover:border-emerald-500" href={section.href}>
           <div class="flex items-center gap-3">
             <AdminCategoryIcon type={section.icon} />
             <h2 class="text-xl font-bold">{section.title}</h2>

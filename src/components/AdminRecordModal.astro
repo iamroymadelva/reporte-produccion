@@ -17,8 +17,9 @@ const { id, title, action, submitLabel, mode, recordId, size = "default" } = Ast
 {mode === "create" ? (
   <button class="button-primary" type="button" data-admin-modal-open={id}>Nuevo</button>
 ) : (
-  <button class="inline-flex size-11 items-center justify-center rounded-xl text-emerald-700 transition hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2" type="button" title="Editar" aria-label="Editar" data-admin-modal-open={id}>
+  <button class="inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-xl px-3 text-emerald-700 transition hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2" type="button" title="Editar" aria-label="Editar" data-admin-modal-open={id}>
     <AdminActionIcon kind="edit" />
+    <span class="admin-action-text">Editar</span>
   </button>
 )}
 
@@ -103,6 +104,7 @@ const { id, title, action, submitLabel, mode, recordId, size = "default" } = Ast
     justify-content: flex-end;
     border-top: 1px solid rgb(226 232 240);
     background: rgb(248 250 252);
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
   }
 
   .admin-record-modal__close {
@@ -119,13 +121,20 @@ const { id, title, action, submitLabel, mode, recordId, size = "default" } = Ast
   .admin-record-modal__close:hover { background: rgb(241 245 249); color: rgb(15 23 42); }
 
   @media (max-width: 639px) {
+    .admin-record-modal {
+      width: calc(100vw - 1rem);
+      max-height: calc(100dvh - 1rem);
+    }
+
+    .admin-record-modal__surface { max-height: calc(100dvh - 1rem); }
     .admin-record-modal--large {
       width: calc(100vw - 1rem);
       max-height: calc(100dvh - 1rem);
     }
 
     .admin-record-modal--large .admin-record-modal__surface { max-height: calc(100dvh - 1rem); }
-    .admin-record-modal__footer > button { flex: 1; padding-inline: 0.75rem; }
+    .admin-record-modal__footer { flex-direction: column-reverse; align-items: stretch; }
+    .admin-record-modal__footer > button { width: 100%; padding-inline: 0.75rem; }
   }
 </style>
 

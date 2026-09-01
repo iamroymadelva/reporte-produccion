@@ -252,9 +252,9 @@ export default function ReportEditor({ report, lines, clients, products, dosifie
   );
 
   const input = (field: string, label: string, type = "text", extra: Record<string, string | number> = {}) => (
-    <label>
+    <label className="min-w-0">
       <span className="field-label">{label}</span>
-      <input className="field-control" type={type} value={form[field]} onChange={(event) => update(field, event.target.value)} {...extra} />
+      <input className={`field-control ${type === "number" ? "text-lg tabular-nums" : ""}`} type={type} value={form[field]} onChange={(event) => update(field, event.target.value)} {...extra} />
     </label>
   );
 
@@ -262,7 +262,7 @@ export default function ReportEditor({ report, lines, clients, products, dosifie
     <section className="panel">
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div><h2 className="text-xl font-bold">{adminCorrection ? "Corrección administrativa" : "Datos del reporte"}</h2><p className="text-sm text-slate-500">Los cambios se guardan automáticamente.</p></div>
-        <p className={`rounded-full px-3 py-2 text-sm font-semibold ${state === "error" ? "bg-red-100 text-red-800" : "bg-slate-100 text-slate-600"}`}>
+        <p className={`rounded-full px-3 py-2 text-sm font-semibold ${state === "error" ? "bg-red-100 text-red-800" : "bg-slate-100 text-slate-600"}`} aria-live="polite">
           {state === "saving" ? "Guardando…" : state === "saved" ? "Guardado" : state === "error" ? "Error al guardar" : dirty ? "Cambios pendientes" : "Sin cambios"}
         </p>
       </div>
@@ -275,24 +275,24 @@ export default function ReportEditor({ report, lines, clients, products, dosifie
         {input("lot", "Lote")}
         <label><span className="field-label">Turno</span><select className="field-control" value={form.shift_id} onChange={(event) => update("shift_id", event.target.value)}><option value="">Sin seleccionar</option>{shifts.map((shift) => <option key={shift.id} value={shift.id}>{shiftLabel(shift)}</option>)}</select></label>
         <label><span className="field-label">Producto</span><input className="field-control" list="product-suggestions" value={form.product_name} onChange={(event) => updateFrequentText("product_name", "product_id", event.target.value, products)} /><datalist id="product-suggestions">{products.map((product) => <option key={product.id} value={product.name}>{product.code}</option>)}</datalist></label>
-        {input("weight", "Peso (gr)", "number", { min: 0, step: "any" })}
-        {input("g_min", "G/min", "number", { min: 0, step: "any" })}
+        {input("weight", "Peso (gr)", "number", { min: 0, step: "any", inputMode: "decimal" })}
+        {input("g_min", "G/min", "number", { min: 0, step: "any", inputMode: "decimal" })}
         {select("dosifier_type_id", "Tipo de dosificador", dosifierTypes)}
         {input("started_at", "Hora de inicio", "datetime-local")}
         {input("ended_at", "Hora de finalización", "datetime-local")}
-        {input("programmed_hours", "Horas programadas", "number", { min: 0, step: "any" })}
-        {input("units_produced", "Unidades producidas", "number", { min: 0, step: 1 })}
-        {input("waste", "Desperdicio", "number", { min: 0, step: "any" })}
-        {input("process_performance", "Rendimiento del proceso (%)", "number", { step: "any" })}
-        {input("operator_performance", "Rendimiento del Operario (%)", "number", { step: "any" })}
+        {input("programmed_hours", "Horas programadas", "number", { min: 0, step: "any", inputMode: "decimal" })}
+        {input("units_produced", "Unidades producidas", "number", { min: 0, step: 1, inputMode: "numeric" })}
+        {input("waste", "Desperdicio", "number", { min: 0, step: "any", inputMode: "decimal" })}
+        {input("process_performance", "Rendimiento del proceso (%)", "number", { step: "any", inputMode: "decimal" })}
+        {input("operator_performance", "Rendimiento del Operario (%)", "number", { step: "any", inputMode: "decimal" })}
         <label className="md:col-span-2 xl:col-span-3"><span className="field-label">Observaciones</span><textarea className="field-control min-h-28" value={form.observations} onChange={(event) => update("observations", event.target.value)} /></label>
       </div>
       <p className="mt-4 text-sm text-slate-500">Cliente y Producto aceptan texto libre; los valores frecuentes aparecen como sugerencias.</p>
-      <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
-        {canSubmit ? <button className="button-danger" type="button" onClick={() => { setCancelReason(""); setModal("cancel"); }}>Cancelar reporte</button> : <span />}
-        <div className="flex flex-wrap justify-end gap-3">
-          <button className="button-secondary" type="button" onClick={() => void saveManually()}>Guardar ahora</button>
-          {canSubmit && <button className="button-primary" type="button" onClick={() => {
+      <div className="mt-6 flex flex-col gap-5 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-3">
+        {canSubmit ? <button className="button-danger w-full sm:w-auto" type="button" onClick={() => { setCancelReason(""); setModal("cancel"); }}>Cancelar reporte</button> : <span />}
+        <div className="grid gap-3 sm:flex sm:flex-wrap sm:justify-end">
+          <button className="button-secondary w-full sm:w-auto" type="button" onClick={() => void saveManually()}>Guardar ahora</button>
+          {canSubmit && <button className="button-primary w-full sm:w-auto" type="button" onClick={() => {
             if (!form.ended_at) {
               setState("error");
               setMessage("Debes registrar la hora de finalización antes de enviar el reporte.");

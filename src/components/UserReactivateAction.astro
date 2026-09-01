@@ -99,14 +99,15 @@ const dialogId = `reactivate-user-${userId.replace(/[^a-zA-Z0-9_-]/g, "-")}`;
   .user-reactivate-modal__header { justify-content: space-between; border-bottom: 1px solid rgb(226 232 240); }
   .user-reactivate-modal__header h2 { font-size: 1.25rem; font-weight: 700; color: rgb(15 23 42); }
   .user-reactivate-modal__body { min-height: 0; overflow-y: auto; padding: 1.25rem; }
-  .user-reactivate-modal__footer { justify-content: flex-end; border-top: 1px solid rgb(226 232 240); background: rgb(248 250 252); }
+  .user-reactivate-modal__footer { justify-content: flex-end; border-top: 1px solid rgb(226 232 240); background: rgb(248 250 252); padding-bottom: max(1rem, env(safe-area-inset-bottom)); }
   .user-reactivate-modal__close { display: inline-flex; width: 2.75rem; height: 2.75rem; align-items: center; justify-content: center; border-radius: 0.75rem; color: rgb(71 85 105); }
   .user-reactivate-modal__close:hover { background: rgb(241 245 249); color: rgb(15 23 42); }
 
   @media (max-width: 639px) {
     .user-reactivate-modal { width: calc(100vw - 1rem); max-height: calc(100dvh - 1rem); }
     .user-reactivate-modal__surface { max-height: calc(100dvh - 1rem); }
-    .user-reactivate-modal__footer > button { flex: 1; padding-inline: 0.75rem; }
+    .user-reactivate-modal__footer { flex-direction: column-reverse; align-items: stretch; }
+    .user-reactivate-modal__footer > button { width: 100%; padding-inline: 0.75rem; }
   }
 </style>
 
