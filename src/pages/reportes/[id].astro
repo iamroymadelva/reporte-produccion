@@ -1,5 +1,6 @@
 ---
 import BaseLayout from "../../layouts/BaseLayout.astro";
+import OfflineDraftNotice from "../../components/OfflineDraftNotice";
 import ReportEditor from "../../components/ReportEditor";
 import StopManager from "../../components/StopManager";
 import StopEventsTable from "../../components/StopEventsTable";
@@ -113,6 +114,15 @@ if (auth.profile.role === "ADMINISTRATOR") {
       </section>
     )}
 
+    {auth.profile.role === "OPERATOR" && !isOwnerDraft && (
+      <OfflineDraftNotice
+        client:load
+        userId={auth.user.id}
+        reportId={id}
+        finalized
+      />
+    )}
+
     <section class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
       <article class="panel"><p class="text-sm text-slate-500">Unidades teóricas/hora</p><p class="mt-2 text-2xl font-bold">{formatNumber(metrics.theoretical_units_per_hour)}</p></article>
       <article class="panel"><p class="text-sm text-slate-500">Tiempo total de parada</p><p class="mt-2 text-2xl font-bold">{formatDuration(metrics.total_downtime_seconds)}</p></article>
@@ -135,6 +145,12 @@ if (auth.profile.role === "ADMINISTRATOR") {
         shifts={(shiftsResult.data ?? []) as any[]}
         canSubmit={isOwnerDraft}
         adminCorrection={adminCorrection && report.status !== "DRAFT"}
+        offlinePersistence={isOwnerDraft}
+        authenticatedUserId={isOwnerDraft ? auth.user.id : undefined}
+        serverUpdatedAt={isOwnerDraft ? report.updated_at : undefined}
+        reportFolio={isOwnerDraft ? report.folio : undefined}
+        machineId={isOwnerDraft ? report.machine_id : undefined}
+        machineLabel={isOwnerDraft ? `${report.machine?.code} · ${report.machine?.name}` : undefined}
       />
     ) : (
       <section class="panel">

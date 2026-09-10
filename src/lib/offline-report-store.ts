@@ -2,6 +2,7 @@ import {
   pickReportEditableValues,
   type PartialReportEditableValues,
 } from "./report-fields";
+import { ClientOperationIdError, createClientOperationId } from "./client-operation-id";
 
 export const OFFLINE_REPORT_DATABASE_NAME = "reporte-produccion-offline";
 export const OFFLINE_REPORT_DATABASE_VERSION = 1;
@@ -62,6 +63,7 @@ export type OfflineReportStorageErrorCode =
   | "OPEN_FAILED"
   | "TRANSACTION_ABORTED"
   | "QUOTA_EXCEEDED"
+  | "SECURE_RANDOM_UNAVAILABLE"
   | "READ_FAILED"
   | "WRITE_FAILED"
   | "INVALID_INPUT"
@@ -156,6 +158,13 @@ function mapStorageError(
   fallbackMessage: string,
 ) {
   if (error instanceof OfflineReportStorageError) return error;
+  if (error instanceof ClientOperationIdError) {
+    return new OfflineReportStorageError(
+      "SECURE_RANDOM_UNAVAILABLE",
+      "No fue posible generar un identificador seguro para el guardado local.",
+      error,
+    );
+  }
   return new OfflineReportStorageError(fallbackCode, fallbackMessage, error);
 }
 
@@ -331,6 +340,9 @@ export async function savePendingReportRevision(input: SavePendingReportRevision
   assertIsoDate(localUpdatedAt, "localUpdatedAt");
 
   try {
+    // Generate this before opening a transaction so compatibility failures are
+    // classified without leaving an IndexedDB transaction in an ambiguous state.
+    const operationId = createClientOperationId();
     const database = await openDatabase();
     const transaction = database.transaction([REPORT_DRAFTS_STORE, OUTBOX_STORE], "readwrite");
     const completion = transactionComplete(transaction);
@@ -371,7 +383,7 @@ export async function savePendingReportRevision(input: SavePendingReportRevision
     };
 
     const operation: SaveReportOutboxOperation = {
-      operationId: existingOperation?.operationId ?? crypto.randomUUID(),
+      operationId: existingOperation?.operationId ?? operationId,
       userId: input.userId,
       reportId: input.reportId,
       operationType: SAVE_REPORT_OPERATION,

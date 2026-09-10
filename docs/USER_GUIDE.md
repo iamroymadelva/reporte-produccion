@@ -75,7 +75,11 @@ El Operario solo puede crear reportes para máquinas activas que tenga asignadas
 2. Elija una máquina disponible y confirme la fecha operativa.
 3. Complete los datos de producción que correspondan al trabajo realizado.
 
-El reporte guarda cambios automáticamente después de una breve pausa y también permite guardar de forma manual. Espere la confirmación de guardado antes de abandonar la página.
+El reporte guarda cambios automáticamente después de una breve pausa y también permite guardar de forma manual. Antes de enviarlos al servidor, el editor de un reporte en curso propio conserva una copia de seguridad en este dispositivo. Distinga **Guardado en servidor** de **Guardado en este dispositivo** o **Cambios pendientes de sincronizar**.
+
+Si se pierde la conexión mientras el editor ya está abierto, puede continuar completando los campos normales y usar **Guardar en este dispositivo**. START, STOP, enviar, cancelar y guardar Cliente/Producto como valor frecuente siguen necesitando conexión. Recuperar la conexión no envía por sí solo los cambios pendientes en esta etapa: continúe editando o seleccione **Guardar ahora**.
+
+Si cierra la aplicación, los cambios locales pueden restaurarse al volver a abrir el mismo borrador con conexión y la misma cuenta autenticada. Una recarga mientras continúa completamente offline muestra la página de contingencia; no existe un editor autenticado totalmente offline. Si el reporte cambió o fue finalizado en el servidor, la aplicación conserva los datos locales y avisa que requieren revisión, pero todavía no ofrece combinación de conflictos.
 
 Los campos de cliente y producto permiten texto libre. Cuando corresponde, la interfaz puede ofrecer guardar ese valor como frecuente para volver a utilizarlo. Esta acción no sustituye la revisión del dato escrito.
 

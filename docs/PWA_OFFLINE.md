@@ -4,9 +4,9 @@
 
 La aplicación incluye un manifiesto instalable, iconos neutrales, una página estática de contingencia, detección de conectividad y un service worker conservador. Esta base mejora la instalación y comunica interrupciones, pero los datos de producción siguen siendo autoritativos únicamente en el servidor.
 
-Block 3A agrega únicamente infraestructura interna: contrato compartido de campos editables, concurrencia optimista opcional para guardados de borradores del Operador y una base IndexedDB nativa con stores `reportDrafts`, `outbox` y `leases`. Sus APIs soportan escrituras atómicas y confirmación protegida por `localRevision`.
+Block 3B conecta esa infraestructura al editor de un reporte `DRAFT` propio del Operador. Cada edición crea, tras una pausa corta, una copia de seguridad local y una operación `SAVE_REPORT` coalescida en IndexedDB antes del autoguardado del servidor. Si se pierde la conexión con el editor abierto, los campos normales continúan editables y **Guardar en este dispositivo** confirma la escritura local sin intentar mutaciones de red.
 
-Esta infraestructura todavía no está conectada al editor. No existe edición offline habilitada, no se escriben borradores locales desde la interfaz, no hay sincronización automática, no hay UI global de pendientes y no se usa Background Sync. Crear, editar, guardar, iniciar o cerrar paradas, enviar, cancelar y administrar continúan requiriendo conexión confirmada.
+Todavía no existe un procesador automático de outbox, retry/backoff, coordinación multi-pestaña, Background Sync ni UI global de pendientes. START/STOP, enviar, cancelar, crear reportes, crear valores frecuentes, administrar y autenticar continúan requiriendo conexión confirmada.
 
 ## Límite de caché
 
@@ -26,7 +26,9 @@ Los eventos `online` y `offline` del navegador se combinan con `HEAD /api/health
 
 Una mutación conocida como offline o inaccesible no se envía. Si la red falla después de enviar una solicitud, la interfaz indica que el resultado es incierto y no reintenta automáticamente. El usuario debe recuperar la conexión y actualizar para reconciliar con el servidor.
 
-En un editor abierto, los valores ya escritos permanecen solamente en memoria. Al perder conectividad se bloquea la edición, se muestran como cambios sin guardar y no se persisten ni se envían automáticamente al reconectar. El guardado posterior debe ser explícito.
+En el editor abierto de un borrador propio, una pérdida de conectividad no bloquea los campos normales. Los cambios se conservan en memoria y se intentan persistir en IndexedDB. La aplicación no envía `PATCH` mientras conoce que el servidor está offline o inaccesible.
+
+Volver a estar online no procesa automáticamente la outbox en Block 3B. El Operador debe continuar editando o usar **Guardar ahora** dentro del editor abierto. START/STOP, envío, cancelación y creación de valores frecuentes permanecen bloqueados offline.
 
 ## Versionado y actualizaciones
 
@@ -67,5 +69,13 @@ La base `reporte-produccion-offline`, versión 1, define datos aislados por `use
 
 Una escritura pendiente actualiza snapshot y outbox en la misma transacción. Una confirmación del servidor solo puede borrar la revisión exacta enviada; si ya existe una revisión local mayor, se conserva y se actualiza su versión base. Las APIs no almacenan tokens, perfiles completos, catálogos ni filas completas de `production_reports`.
 
-Block 3B deberá conectar esta base al ciclo de edición y autoguardado. Un bloque posterior implementará el flusher, reintentos, estados visibles y recuperación. Hasta entonces IndexedDB permanece sin uso por la UI.
+El editor incrementa `localRevision` con cada cambio. Una respuesta del servidor solo elimina la revisión exacta que confirmó; si apareció una revisión mayor durante el request, primero se persiste y luego se rebasa sobre la nueva versión del servidor.
+
+Al volver a abrir el mismo borrador con conexión y autenticación válidas:
+
+- si la versión del servidor aún coincide con la versión base, se restauran los valores locales;
+- si el servidor ya contiene valores equivalentes, se limpia la copia local confirmada;
+- si el servidor cambió o dejó de estar en borrador, los datos locales se conservan y se muestra un aviso, sin sobrescribir ni ofrecer un merge en Block 3B.
+
+El HTML autenticado continúa fuera de Cache Storage. Una recarga completamente offline muestra `/offline.html`; el borrador permanece en IndexedDB y se evalúa cuando la página autenticada pueda cargarse nuevamente.
 
