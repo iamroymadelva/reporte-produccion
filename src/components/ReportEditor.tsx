@@ -10,6 +10,7 @@ import {
 import {
   acknowledgeConfirmedReportRevision,
   getReportDraft,
+  getSaveReportOperation,
   OfflineReportStorageError,
   savePendingReportRevision,
 } from "../lib/offline-report-store";
@@ -37,6 +38,7 @@ type SaveState =
   | "server-error"
   | "review";
 type ReviewReason = "server-changed" | "finalized" | null;
+type ReportFieldErrors = Partial<Record<ReportEditableField, string>>;
 
 interface Props {
   report: Report;
@@ -60,6 +62,9 @@ const timestampFields = new Set<ReportEditableField>(["started_at", "ended_at"])
 const LOCAL_SAVE_DEBOUNCE_MS = 275;
 const SERVER_SAVE_DEBOUNCE_MS = 800;
 const LOCAL_STORAGE_ERROR = "No se pudo guardar en este dispositivo. No cierres esta pantalla.";
+const REQUIRED_REPORT_FIELDS = [
+  { field: "ended_at", message: "La hora de finalización es obligatoria." },
+] as const satisfies ReadonlyArray<{ field: ReportEditableField; message: string }>;
 
 function localDateTime(value: unknown) {
   if (!value) return "";
@@ -137,6 +142,8 @@ export default function ReportEditor({
   const [confirmationLocked, setConfirmationLocked] = useState(false);
   const [reviewReason, setReviewReason] = useState<ReviewReason>(null);
   const [autoSaveRevision, setAutoSaveRevision] = useState<number | null>(null);
+  const [showReconnectReminder, setShowReconnectReminder] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<ReportFieldErrors>({});
 
   const formRef = useRef(form);
   const dirtyRef = useRef(false);
@@ -161,6 +168,7 @@ export default function ReportEditor({
   const serverSavePromise = useRef<Promise<boolean> | null>(null);
   const serverSaveRequested = useRef(false);
   const forceServerSaveRequested = useRef(false);
+  const reconnectReminderCheck = useRef(0);
   const connectionUnavailable = connectionState === "offline" || connectionState === "unreachable";
   const fieldsDisabled = confirmationLocked
     || reviewReason !== null
@@ -385,15 +393,34 @@ export default function ReportEditor({
       connectionUnavailableRef.current = unavailable;
       setConnectionState(snapshot.state);
       if (unavailable) {
+        reconnectReminderCheck.current += 1;
         setAutoSaveRevision(null);
         if (serverSaveTimer.current !== null) {
           window.clearTimeout(serverSaveTimer.current);
           serverSaveTimer.current = null;
         }
       }
+      if (snapshot.restored && localPersistenceEnabled && authenticatedUserId) {
+        const check = ++reconnectReminderCheck.current;
+        void getSaveReportOperation(authenticatedUserId, report.id).then((operation) => {
+          if (reconnectReminderCheck.current !== check || connectionUnavailableRef.current) return;
+          setShowReconnectReminder(Boolean(operation));
+        }).catch((error) => {
+          if (reconnectReminderCheck.current !== check) return;
+          logOfflineStorageError(error);
+          setShowReconnectReminder(false);
+        });
+      }
       // A transition back online deliberately does not request an outbox replay.
     });
-  }, []);
+  }, [authenticatedUserId, localPersistenceEnabled, report.id]);
+
+  useEffect(() => {
+    if (!hasLocalPending) {
+      reconnectReminderCheck.current += 1;
+      setShowReconnectReminder(false);
+    }
+  }, [hasLocalPending]);
 
   useEffect(() => {
     if (!localPersistenceEnabled) {
@@ -530,6 +557,16 @@ export default function ReportEditor({
     setForm(next);
     setDirty(true);
     setMessage("");
+    setFieldErrors((current) => {
+      let updated = current;
+      for (const requirement of REQUIRED_REPORT_FIELDS) {
+        if (current[requirement.field] && next[requirement.field].trim()) {
+          if (updated === current) updated = { ...current };
+          delete updated[requirement.field];
+        }
+      }
+      return updated;
+    });
 
     if (localPersistenceEnabled) {
       localPendingRef.current = true;
@@ -679,6 +716,29 @@ export default function ReportEditor({
     }
   };
 
+  const beginSubmit = () => {
+    const errors: ReportFieldErrors = {};
+    for (const requirement of REQUIRED_REPORT_FIELDS) {
+      if (!formRef.current[requirement.field].trim()) {
+        errors[requirement.field] = requirement.message;
+      }
+    }
+    setFieldErrors(errors);
+
+    const firstInvalid = REQUIRED_REPORT_FIELDS.find(({ field }) => errors[field]);
+    if (firstInvalid) {
+      setModal(null);
+      window.requestAnimationFrame(() => {
+        const field = document.querySelector<HTMLElement>(`[data-report-field="${firstInvalid.field}"]`);
+        field?.scrollIntoView({ behavior: "smooth", block: "center" });
+        field?.focus({ preventScroll: true });
+      });
+      return;
+    }
+
+    setModal("submit");
+  };
+
   const select = (field: ReportEditableField, label: string, options: Option[]) => (
     <label>
       <span className="field-label">{label}</span>
@@ -692,7 +752,18 @@ export default function ReportEditor({
   const input = (field: ReportEditableField, label: string, type = "text", extra: Record<string, string | number> = {}) => (
     <label className="min-w-0">
       <span className="field-label">{label}</span>
-      <input className={`field-control ${type === "number" ? "text-lg tabular-nums" : ""}`} type={type} value={form[field]} disabled={fieldsDisabled} onChange={(event) => update(field, event.target.value)} {...extra} />
+      <input
+        className={`field-control scroll-mt-40 ${type === "number" ? "text-lg tabular-nums" : ""} ${fieldErrors[field] ? "border-red-500 ring-2 ring-red-200" : ""}`}
+        type={type}
+        value={form[field]}
+        disabled={fieldsDisabled}
+        data-report-field={field}
+        aria-invalid={fieldErrors[field] ? "true" : undefined}
+        aria-describedby={fieldErrors[field] ? `report-field-${field}-error` : undefined}
+        onChange={(event) => update(field, event.target.value)}
+        {...extra}
+      />
+      {fieldErrors[field] && <p id={`report-field-${field}-error`} className="mt-1 text-sm font-semibold text-red-700">{fieldErrors[field]}</p>}
     </label>
   );
 
@@ -722,6 +793,20 @@ export default function ReportEditor({
 
   return (
     <>
+      {Object.keys(fieldErrors).length > 0 && (
+        <div
+          className="pointer-events-none fixed inset-x-0 z-[100] px-3 sm:px-6"
+          style={{ top: "calc(env(safe-area-inset-top, 0px) + 0.75rem)" }}
+          role="alert"
+          aria-live="assertive"
+          aria-atomic="true"
+        >
+          <section className="mx-auto max-w-2xl rounded-2xl border border-red-300 bg-red-50 px-4 py-3 text-red-950 shadow-xl sm:px-5 sm:py-4">
+            <h2 className="font-bold">Faltan campos obligatorios</h2>
+            <p className="mt-1 text-sm">Completa los campos resaltados antes de enviar el reporte.</p>
+          </section>
+        </div>
+      )}
       <OfflineDraftNotice visible={reviewReason !== null} finalized={reviewReason === "finalized"} />
       <section className="panel">
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
@@ -742,6 +827,30 @@ export default function ReportEditor({
           </p>
         </div>
         {message && <p className="mb-5 rounded-xl bg-red-50 p-4 text-sm text-red-800">{message}</p>}
+        {showReconnectReminder && hasLocalPending && (
+          <section
+            className="mb-5 rounded-2xl border border-amber-300 bg-amber-50 p-4 text-amber-950 sm:flex sm:items-center sm:justify-between sm:gap-5"
+            role="status"
+            aria-live="polite"
+            aria-atomic="true"
+          >
+            <div>
+              <h3 className="text-base font-bold">Hay cambios pendientes de guardar</h3>
+              <p className="mt-1 text-sm">
+                Los cambios realizados sin conexión están guardados en este dispositivo. Revisa la información y pulsa Guardar ahora para enviarlos al servidor.
+              </p>
+            </div>
+            <button
+              className="button-primary mt-4 w-full shrink-0 sm:mt-0 sm:w-auto"
+              type="button"
+              aria-label="Guardar ahora los cambios pendientes en el servidor"
+              disabled={restoreChecking || reviewReason !== null || connectionUnavailable}
+              onClick={() => void saveManually()}
+            >
+              Guardar ahora
+            </button>
+          </section>
+        )}
         {saveState === "storage-error" && (dirty || hasLocalPending) && (
           <button className="button-secondary mb-5" type="button" onClick={() => void persistLatest()}>
             Reintentar guardado local
@@ -774,14 +883,7 @@ export default function ReportEditor({
             <button className="button-secondary w-full sm:w-auto" type="button" disabled={restoreChecking || reviewReason !== null || (connectionUnavailable && !localPersistenceEnabled)} onClick={() => void saveManually()}>
               {connectionUnavailable && localPersistenceEnabled ? "Guardar en este dispositivo" : "Guardar ahora"}
             </button>
-            {canSubmit && <button className="button-primary w-full sm:w-auto" type="button" disabled={onlineActionDisabled} onClick={() => {
-              if (!form.ended_at) {
-                setSaveState("server-error");
-                setMessage("Debes registrar la hora de finalización antes de enviar el reporte.");
-                return;
-              }
-              setModal("submit");
-            }}>Enviar reporte</button>}
+            {canSubmit && <button className="button-primary w-full sm:w-auto" type="button" disabled={onlineActionDisabled} onClick={beginSubmit}>Enviar reporte</button>}
           </div>
         </div>
         {modal === "submit" && <PlatformModal title="Enviar reporte" confirmLabel="Enviar reporte" confirmDisabled={connectionUnavailable} onCancel={() => setModal(null)} onConfirm={() => void submit()}>
