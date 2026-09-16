@@ -74,7 +74,7 @@ export const GET: APIRoute = async ({ request, cookies, locals }) => {
     while (true) {
       const stopsResult = await supabase
         .from("report_stop_events")
-        .select("id, report_id, stop_category_id, started_at, ended_at, duration_seconds, description, stop_category:stop_categories(id, code, name, numeric_code)")
+        .select("id, report_id, stop_category_id, started_at, ended_at, duration_seconds, description, cancelled_at, cancellation_reason, stop_category:stop_categories(id, code, name, numeric_code)")
         .in("report_id", idChunk)
         .order("started_at", { ascending: true })
         .range(from, from + PAGE_SIZE - 1);

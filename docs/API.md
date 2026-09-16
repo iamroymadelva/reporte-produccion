@@ -72,7 +72,7 @@ Form endpoints generally redirect with Spanish flash-message query parameters. I
 - **Purpose:** Submit an owned draft.
 - **Authentication:** Responsible `OPERATOR`.
 - **Input:** No additional business payload.
-- **Rules:** The report must be an owned `DRAFT`, have `ended_at`, and have no open downtime event.
+- **Rules:** The report must be an owned `DRAFT`, have no active downtime event, and have all Operator inputs complete. Required fields are date, product text, production order, line, client text, lot, shift, weight, g/min, dosifier, start/end, programmed hours, units and waste. Observations is optional; numeric zeros are valid. Missing/invalid fields return `400` with `fieldErrors`; an active stop returns `409`. The database independently enforces required inputs and serializes stop mutations against finalization.
 - **Success:** JSON confirmation.
 - **Response:** JSON.
 
@@ -105,6 +105,8 @@ Form endpoints generally redirect with Spanish flash-message query parameters. I
 
 ### `GET /api/reports/export`
 
+Cancelled stops remain in the detail sheet with their reason and are excluded from durations and category totals.
+
 - **Purpose:** Generate an Excel workbook from the caller's visible reports.
 - **Authentication:** `ADMINISTRATOR` or `VIEWER`; `OPERATOR` receives `403`.
 - **Input:** Query parameters for period (`day`, `week`, or `month` and its date), status, and active-stop filtering. With no filters, all reports visible through RLS are considered.
@@ -112,6 +114,22 @@ Form endpoints generally redirect with Spanish flash-message query parameters. I
 - **Success:** `.xlsx` attachment generated with ExcelJS.
 - **Failure:** Spanish text response with an appropriate HTTP status.
 - **Response:** File or text error.
+
+### `PATCH /api/reports/[id]/stops/[stopId]/category`
+
+- **Authentication:** Responsible `OPERATOR` with an owned editable `DRAFT` and an active stop.
+- **Input:** JSON `stop_category_id`, referencing an active category.
+- **Rules:** Changes category without changing start time; audited in `report_audit_log`.
+- **Response:** JSON `{ ok, stop }` with the authoritative event and category; `409` if no longer editable.
+
+### `POST /api/reports/[id]/stops/[stopId]/cancel`
+
+- **Authentication:** Responsible `OPERATOR` with an owned editable `DRAFT` and an active stop.
+- **Input:** Required, non-whitespace string `reason`.
+- **Rules:** The database stamps `cancelled_at`, `cancelled_by`, and `ended_at`, stores the trimmed reason, and sets duration to `NULL`. The row remains readable and is audited. Operators cannot mutate or delete closed/cancelled stops. Administrator correction permissions remain available through the existing database model.
+- **Response:** JSON `{ ok, stop }`; `400` for empty reason; `409` if no longer editable.
+
+All stop mutations require connectivity and return the full event selection used by the history. The client does not queue or replay them, or supply authoritative elapsed durations. Closing a stop returns `409` if already closed, cancelled, or inaccessible.
 
 ## Frequent Catalogs
 

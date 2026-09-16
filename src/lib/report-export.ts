@@ -9,6 +9,8 @@ type ExportStop = {
   ended_at: string | null;
   duration_seconds: number | null;
   description: string | null;
+  cancelled_at: string | null;
+  cancellation_reason: string | null;
   stop_category_id: string;
   stop_category?: ExportCategory | null;
 };
@@ -168,7 +170,7 @@ export async function buildProductionWorkbook(input: WorkbookInput) {
     const reportStops = stopsByReport.get(report.id) ?? [];
     const categoryDurations = new Map<string, number>();
     for (const stop of reportStops) {
-      if (!stop.ended_at || stop.duration_seconds === null) continue;
+      if (!stop.ended_at || stop.cancelled_at || stop.duration_seconds === null) continue;
       categoryDurations.set(stop.stop_category_id, (categoryDurations.get(stop.stop_category_id) ?? 0) + Number(stop.duration_seconds));
     }
     production.addRow([
@@ -230,9 +232,9 @@ export async function buildProductionWorkbook(input: WorkbookInput) {
       category?.name ?? null,
       bogotaDateTime(stop.started_at),
       bogotaDateTime(stop.ended_at),
-      stop.ended_at ? durationValue(stop.duration_seconds) : null,
-      stop.ended_at ? "Cerrada" : "Activa",
-      stop.description || null,
+      stop.ended_at && !stop.cancelled_at ? durationValue(stop.duration_seconds) : null,
+      stop.cancelled_at ? "Cancelada" : stop.ended_at ? "Cerrada" : "Activa",
+      stop.cancelled_at ? `Motivo de cancelación: ${stop.cancellation_reason}` : stop.description || null,
     ]);
   }
   styleSheet(detail, detailHeaders.length, [18, 13, 22, 24, 16, 15, 30, 20, 20, 16, 16, 36]);

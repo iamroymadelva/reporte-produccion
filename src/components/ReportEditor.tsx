@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import OfflineDraftNotice from "./OfflineDraftNotice";
 import PlatformModal from "./PlatformModal";
+import { ACTIVE_STOP_SUBMISSION_ERROR, REQUIRED_REPORT_FIELDS, localDateTime, validateReportForSubmission, type ReportFieldErrors } from "../lib/report-validation";
+import { REPORT_STOPS_CHANGED } from "../lib/stop-events";
 import {
   getConnectivitySnapshot,
   guardedMutationFetch,
@@ -38,7 +40,6 @@ type SaveState =
   | "server-error"
   | "review";
 type ReviewReason = "server-changed" | "finalized" | null;
-type ReportFieldErrors = Partial<Record<ReportEditableField, string>>;
 
 interface Props {
   report: Report;
@@ -55,6 +56,7 @@ interface Props {
   reportFolio?: string;
   machineId?: string;
   machineLabel?: string;
+  hasActiveStop?: boolean;
 }
 
 const percentageFields = new Set<ReportEditableField>(["process_performance", "operator_performance"]);
@@ -62,16 +64,7 @@ const timestampFields = new Set<ReportEditableField>(["started_at", "ended_at"])
 const LOCAL_SAVE_DEBOUNCE_MS = 275;
 const SERVER_SAVE_DEBOUNCE_MS = 800;
 const LOCAL_STORAGE_ERROR = "No se pudo guardar en este dispositivo. No cierres esta pantalla.";
-const REQUIRED_REPORT_FIELDS = [
-  { field: "ended_at", message: "La hora de finalización es obligatoria." },
-] as const satisfies ReadonlyArray<{ field: ReportEditableField; message: string }>;
-
-function localDateTime(value: unknown) {
-  if (!value) return "";
-  const date = new Date(String(value));
-  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
-  return local.toISOString().slice(0, 16);
-}
+const requiredFields = new Set<string>(REQUIRED_REPORT_FIELDS.map(({ field }) => field));
 
 function initialForm(values: Record<string, unknown>): ReportForm {
   const result = {} as ReportForm;
@@ -124,6 +117,7 @@ export default function ReportEditor({
   reportFolio,
   machineId,
   machineLabel,
+  hasActiveStop = false,
 }: Props) {
   const offlineFieldEditingEnabled = offlinePersistence;
   const localPersistenceEnabled = offlinePersistence
@@ -144,6 +138,17 @@ export default function ReportEditor({
   const [autoSaveRevision, setAutoSaveRevision] = useState<number | null>(null);
   const [showReconnectReminder, setShowReconnectReminder] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<ReportFieldErrors>({});
+  const [activeStop, setActiveStop] = useState(hasActiveStop);
+  const [finalizing, setFinalizing] = useState(false);
+
+  useEffect(() => {
+    const changed = (event: Event) => {
+      const detail = (event as CustomEvent<{ reportId: string; active: boolean }>).detail;
+      if (detail.reportId === report.id) setActiveStop(detail.active);
+    };
+    window.addEventListener(REPORT_STOPS_CHANGED, changed);
+    return () => window.removeEventListener(REPORT_STOPS_CHANGED, changed);
+  }, [report.id]);
 
   const formRef = useRef(form);
   const dirtyRef = useRef(false);
@@ -171,9 +176,10 @@ export default function ReportEditor({
   const reconnectReminderCheck = useRef(0);
   const connectionUnavailable = connectionState === "offline" || connectionState === "unreachable";
   const fieldsDisabled = confirmationLocked
+    || finalizing || modal !== null
     || reviewReason !== null
     || (offlineFieldEditingEnabled ? restoreChecking : connectionUnavailable);
-  const onlineActionDisabled = restoreChecking || reviewReason !== null || connectionUnavailable;
+  const onlineActionDisabled = finalizing || restoreChecking || reviewReason !== null || connectionUnavailable;
 
   const persistRevision = useCallback((targetRevision: number, values: ReportForm) => {
     if (!localPersistenceEnabled || !authenticatedUserId || !serverVersionRef.current) {
@@ -558,9 +564,10 @@ export default function ReportEditor({
     setDirty(true);
     setMessage("");
     setFieldErrors((current) => {
+      const remaining = validateReportForSubmission(next);
       let updated = current;
       for (const requirement of REQUIRED_REPORT_FIELDS) {
-        if (current[requirement.field] && next[requirement.field].trim()) {
+        if (current[requirement.field] && !remaining[requirement.field]) {
           if (updated === current) updated = { ...current };
           delete updated[requirement.field];
         }
@@ -669,22 +676,30 @@ export default function ReportEditor({
   };
 
   const submit = async () => {
+    if (submitting.current || onlineActionDisabled) return;
     setModal(null);
-    const prepared = await prepareFrequentValues();
-    if (!prepared) return;
+    if (activeStop) { setMessage(ACTIVE_STOP_SUBMISSION_ERROR); return; }
+    if (!validateSubmissionFields()) return;
     submitting.current = true;
-    if (!(await requestServerSave(true)) || dirtyRef.current || localPendingRef.current) {
+    setFinalizing(true);
+    const prepared = await prepareFrequentValues();
+    if (!prepared || !(await requestServerSave(true)) || dirtyRef.current || localPendingRef.current) {
       submitting.current = false;
+      setFinalizing(false);
       return;
     }
     setSaveState("server-saving");
     try {
       const response = await guardedMutationFetch(`/api/reports/${report.id}/submit`, { method: "POST" });
       const body = await response.json();
-      if (!response.ok) throw new Error(body.error ?? "No fue posible enviar el reporte.");
+      if (!response.ok) {
+        if (body.fieldErrors) showFieldErrors(body.fieldErrors);
+        throw new Error(body.error ?? "No fue posible enviar el reporte.");
+      }
       window.location.reload();
     } catch (error) {
       submitting.current = false;
+      setFinalizing(false);
       setSaveState("server-error");
       setMessage(error instanceof Error ? error.message : "No fue posible enviar el reporte.");
     }
@@ -716,13 +731,7 @@ export default function ReportEditor({
     }
   };
 
-  const beginSubmit = () => {
-    const errors: ReportFieldErrors = {};
-    for (const requirement of REQUIRED_REPORT_FIELDS) {
-      if (!formRef.current[requirement.field].trim()) {
-        errors[requirement.field] = requirement.message;
-      }
-    }
+  const showFieldErrors = (errors: ReportFieldErrors) => {
     setFieldErrors(errors);
 
     const firstInvalid = REQUIRED_REPORT_FIELDS.find(({ field }) => errors[field]);
@@ -733,19 +742,36 @@ export default function ReportEditor({
         field?.scrollIntoView({ behavior: "smooth", block: "center" });
         field?.focus({ preventScroll: true });
       });
-      return;
+      return false;
     }
-
+    return true;
+  };
+  const validateSubmissionFields = () => showFieldErrors(validateReportForSubmission(formRef.current));
+  const beginSubmit = () => {
+    if (activeStop) { setMessage(ACTIVE_STOP_SUBMISSION_ERROR); return; }
+    if (!validateSubmissionFields()) return;
+    setMessage("");
     setModal("submit");
   };
+
+  const fieldProps = (field: ReportEditableField) => ({
+    className: `field-control scroll-mt-40 ${fieldErrors[field] ? "border-red-500 ring-2 ring-red-200" : ""}`,
+    "data-report-field": field,
+    "aria-invalid": fieldErrors[field] ? true : undefined,
+    "aria-describedby": fieldErrors[field] ? `report-field-${field}-error` : undefined,
+    required: canSubmit && requiredFields.has(field),
+  });
+  const fieldError = (field: ReportEditableField) => fieldErrors[field]
+    ? <p id={`report-field-${field}-error`} className="mt-1 text-sm font-semibold text-red-700">{fieldErrors[field]}</p> : null;
 
   const select = (field: ReportEditableField, label: string, options: Option[]) => (
     <label>
       <span className="field-label">{label}</span>
-      <select className="field-control" value={form[field]} disabled={fieldsDisabled} onChange={(event) => update(field, event.target.value)}>
+      <select {...fieldProps(field)} value={form[field]} disabled={fieldsDisabled} onChange={(event) => update(field, event.target.value)}>
         <option value="">Sin seleccionar</option>
         {options.map((option) => <option key={option.id} value={option.id}>{option.code} · {option.name}</option>)}
       </select>
+      {fieldError(field)}
     </label>
   );
 
@@ -753,6 +779,7 @@ export default function ReportEditor({
     <label className="min-w-0">
       <span className="field-label">{label}</span>
       <input
+        {...fieldProps(field)}
         className={`field-control scroll-mt-40 ${type === "number" ? "text-lg tabular-nums" : ""} ${fieldErrors[field] ? "border-red-500 ring-2 ring-red-200" : ""}`}
         type={type}
         value={form[field]}
@@ -765,6 +792,19 @@ export default function ReportEditor({
       />
       {fieldErrors[field] && <p id={`report-field-${field}-error`} className="mt-1 text-sm font-semibold text-red-700">{fieldErrors[field]}</p>}
     </label>
+  );
+
+  const frequentInput = (field: "client_name" | "product_name", idField: "client_id" | "product_id", label: string, options: Option[]) => (
+    <label><span className="field-label">{label}</span>
+      <input {...fieldProps(field)} list={`${field}-suggestions`} value={form[field]} disabled={fieldsDisabled} onChange={(event) => updateFrequentText(field, idField, event.target.value, options)} />
+      <datalist id={`${field}-suggestions`}>{options.map((option) => <option key={option.id} value={option.name}>{option.code}</option>)}</datalist>
+      {fieldError(field)}
+    </label>
+  );
+  const timeInput = (field: "started_at" | "ended_at", label: string) => (
+    <div>{input(field, label, "datetime-local")}
+      <button className="button-secondary mt-2" type="button" disabled={fieldsDisabled} onClick={() => update(field, localDateTime(new Date().toISOString()))}>Usar hora actual</button>
+    </div>
   );
 
   const statusLabel = restoreChecking
@@ -826,7 +866,7 @@ export default function ReportEditor({
             {statusLabel}
           </p>
         </div>
-        {message && <p className="mb-5 rounded-xl bg-red-50 p-4 text-sm text-red-800">{message}</p>}
+        {message && <p role="alert" className="mb-5 rounded-xl bg-red-50 p-4 text-sm text-red-800">{message}</p>}
         {showReconnectReminder && hasLocalPending && (
           <section
             className="mb-5 rounded-2xl border border-amber-300 bg-amber-50 p-4 text-amber-950 sm:flex sm:items-center sm:justify-between sm:gap-5"
@@ -857,37 +897,41 @@ export default function ReportEditor({
           </button>
         )}
         <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+          {canSubmit && <>
+            <label><span className="field-label">Máquina</span><input className="field-control" value={machineLabel ?? ""} readOnly /></label>
+            <label><span className="field-label">Operario responsable</span><input className="field-control" value={String(report.creator_full_name ?? "")} readOnly /></label>
+          </>}
           {input("report_date", "Fecha", "date")}
-          {input("production_order", "Orden de producción (O.P.)")}
+          {frequentInput("product_name", "product_id", "Producto", products)}
+          {input("production_order", "O.P.")}
           {select("line_id", "Área / Línea", lines)}
-          <label><span className="field-label">Cliente</span><input className="field-control" list="client-suggestions" value={form.client_name} disabled={fieldsDisabled} onChange={(event) => updateFrequentText("client_name", "client_id", event.target.value, clients)} /><datalist id="client-suggestions">{clients.map((client) => <option key={client.id} value={client.name}>{client.code}</option>)}</datalist></label>
+          {frequentInput("client_name", "client_id", "Cliente", clients)}
           {input("lot", "Lote")}
-          <label><span className="field-label">Turno</span><select className="field-control" value={form.shift_id} disabled={fieldsDisabled} onChange={(event) => update("shift_id", event.target.value)}><option value="">Sin seleccionar</option>{shifts.map((shift) => <option key={shift.id} value={shift.id}>{shiftLabel(shift)}</option>)}</select></label>
-          <label><span className="field-label">Producto</span><input className="field-control" list="product-suggestions" value={form.product_name} disabled={fieldsDisabled} onChange={(event) => updateFrequentText("product_name", "product_id", event.target.value, products)} /><datalist id="product-suggestions">{products.map((product) => <option key={product.id} value={product.name}>{product.code}</option>)}</datalist></label>
+          <label><span className="field-label">Turno</span><select {...fieldProps("shift_id")} value={form.shift_id} disabled={fieldsDisabled} onChange={(event) => update("shift_id", event.target.value)}><option value="">Sin seleccionar</option>{shifts.map((shift) => <option key={shift.id} value={shift.id}>{shiftLabel(shift)}</option>)}</select>{fieldError("shift_id")}</label>
           {input("weight", "Peso (gr)", "number", { min: 0, step: "any", inputMode: "decimal" })}
           {input("g_min", "G/min", "number", { min: 0, step: "any", inputMode: "decimal" })}
           {select("dosifier_type_id", "Tipo de dosificador", dosifierTypes)}
-          {input("started_at", "Hora de inicio", "datetime-local")}
-          {input("ended_at", "Hora de finalización", "datetime-local")}
+          {timeInput("started_at", "Hora inicio")}
+          {timeInput("ended_at", "Hora finalización")}
           {input("programmed_hours", "Horas programadas", "number", { min: 0, step: "any", inputMode: "decimal" })}
           {input("units_produced", "Unidades producidas", "number", { min: 0, step: 1, inputMode: "numeric" })}
           {input("waste", "Desperdicio", "number", { min: 0, step: "any", inputMode: "decimal" })}
-          {input("process_performance", "Rendimiento del proceso (%)", "number", { step: "any", inputMode: "decimal" })}
-          {input("operator_performance", "Rendimiento del Operario (%)", "number", { step: "any", inputMode: "decimal" })}
-          <label className="md:col-span-2 xl:col-span-3"><span className="field-label">Observaciones</span><textarea className="field-control min-h-28" value={form.observations} disabled={fieldsDisabled} onChange={(event) => update("observations", event.target.value)} /></label>
+          {!canSubmit && input("process_performance", "Rendimiento del proceso (%)", "number", { step: "any", inputMode: "decimal" })}
+          {!canSubmit && input("operator_performance", "Rendimiento del Operario (%)", "number", { step: "any", inputMode: "decimal" })}
+          <label className="md:col-span-2 xl:col-span-3"><span className="field-label">Observaciones (opcional)</span><textarea className="field-control min-h-28" value={form.observations} disabled={fieldsDisabled} onChange={(event) => update("observations", event.target.value)} /></label>
         </div>
         <p className="mt-4 text-sm text-slate-500">Cliente y Producto aceptan texto libre; los valores frecuentes aparecen como sugerencias.</p>
         <div className="mt-6 flex flex-col gap-5 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-3">
           {canSubmit ? <button className="button-danger w-full sm:w-auto" type="button" disabled={onlineActionDisabled} onClick={() => { setCancelReason(""); setModal("cancel"); }}>Cancelar reporte</button> : <span />}
           <div className="grid gap-3 sm:flex sm:flex-wrap sm:justify-end">
-            <button className="button-secondary w-full sm:w-auto" type="button" disabled={restoreChecking || reviewReason !== null || (connectionUnavailable && !localPersistenceEnabled)} onClick={() => void saveManually()}>
+            <button className="button-secondary w-full sm:w-auto" type="button" disabled={finalizing || restoreChecking || reviewReason !== null || (connectionUnavailable && !localPersistenceEnabled)} onClick={() => void saveManually()}>
               {connectionUnavailable && localPersistenceEnabled ? "Guardar en este dispositivo" : "Guardar ahora"}
             </button>
             {canSubmit && <button className="button-primary w-full sm:w-auto" type="button" disabled={onlineActionDisabled} onClick={beginSubmit}>Enviar reporte</button>}
           </div>
         </div>
-        {modal === "submit" && <PlatformModal title="Enviar reporte" confirmLabel="Enviar reporte" confirmDisabled={connectionUnavailable} onCancel={() => setModal(null)} onConfirm={() => void submit()}>
-          <p>Después de enviarlo, el reporte quedará en modo de solo lectura para el Operario y ya no podrá modificarlo.</p>
+        {modal === "submit" && <PlatformModal title="¿Enviar reporte?" cancelLabel="Cancelar" confirmLabel="Enviar reporte" confirmDisabled={onlineActionDisabled} onCancel={() => setModal(null)} onConfirm={() => void submit()}>
+          <p>Verifica que la información esté completa. Después de enviarlo, no podrás modificarlo.</p>
         </PlatformModal>}
         {modal === "cancel" && <PlatformModal title="Cancelar reporte" confirmLabel="Confirmar cancelación" destructive confirmDisabled={!cancelReason.trim() || connectionUnavailable} initialFocusRef={cancellationReasonRef} onCancel={() => setModal(null)} onConfirm={() => void cancel()}>
           <p>El reporte quedará en modo de solo lectura y la máquina se liberará para un nuevo reporte.</p>

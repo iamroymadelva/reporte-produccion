@@ -108,13 +108,17 @@ select throws_ok(
   'Solo puede existir una parada abierta por reporte'
 );
 
-update public.production_reports set ended_at = now()
+update public.production_reports set ended_at = now(), report_date = current_date,
+  production_order = 'OP-PRUEBA', line_id = (select id from public.lines limit 1),
+  lot = 'L-PRUEBA', shift_id = (select id from public.shifts limit 1), weight = 0, g_min = 0,
+  dosifier_type_id = (select id from public.dosifier_types limit 1), started_at = now(),
+  programmed_hours = 0, units_produced = 0, waste = 0
 where id = '80000000-0000-0000-0000-000000000001';
 
 select throws_ok(
   $$update public.production_reports set status = 'SUBMITTED'
     where id = '80000000-0000-0000-0000-000000000001'$$,
-  'P0001', 'No se puede enviar un reporte con una parada abierta',
+  'P0001', 'No puedes enviar el reporte mientras haya una parada activa. Detén o cancela la parada primero.',
   'No se puede enviar con una parada abierta'
 );
 
@@ -127,7 +131,7 @@ where id = '80000000-0000-0000-0000-000000000001';
 select throws_ok(
   $$update public.production_reports set status = 'SUBMITTED'
     where id = '80000000-0000-0000-0000-000000000001'$$,
-  'P0001', 'Debes registrar la hora de finalización antes de enviar el reporte',
+  'P0001', 'Hora finalización es obligatorio.',
   'La base de datos exige hora final para enviar'
 );
 

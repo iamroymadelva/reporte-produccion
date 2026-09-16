@@ -1,6 +1,7 @@
 import type { APIRoute } from "astro";
 import { createSupabaseServerClient } from "../../../../../lib/supabase/server";
 import { json } from "../../../../../lib/http";
+import { STOP_EVENT_SELECTION } from "../../../../../lib/stop-events";
 
 export const POST: APIRoute = async ({ request, cookies, locals, params }) => {
   const auth = locals.auth;
@@ -22,7 +23,7 @@ export const POST: APIRoute = async ({ request, cookies, locals, params }) => {
       description,
       responsible_user_id: auth.user.id,
     })
-    .select("id, started_at")
+    .select(STOP_EVENT_SELECTION)
     .single();
 
   if (error) {

@@ -5,6 +5,7 @@
   "type": "module",
   "packageManager": "bun@1.3.14",
   "scripts": {
+    "test": "bun test",
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
@@ -27,6 +28,9 @@
     "tailwindcss": "^4.3.3"
   },
   "devDependencies": {
+    "@types/bun": "^1.4.2",
+    "fake-indexeddb": "^6.2.5",
+    "happy-dom": "^20.14.5",
     "supabase": "^2.116.0"
   }
 }

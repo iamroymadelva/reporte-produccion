@@ -47,11 +47,13 @@ The central report table uses a UUID primary key. It references its creator, mac
 
 ### `report_stop_events`
 
-Downtime events use UUID primary keys and reference a report, stop category, and responsible profile. Start/end timestamps, duration, description, and open/closed state support downtime tracking. An open event has no closed duration.
+Downtime events use UUID primary keys and reference a report, stop category, and responsible profile. An active event has no end or duration. Normal closed events have an authoritative duration. Cancelled events retain `cancellation_reason`, `cancelled_at`, and `cancelled_by`; their end equals cancellation time and duration is `NULL`. A check constraint enforces this representation. Existing duration sums therefore exclude cancelled stops without changing production formulas.
+
+Operators can change category, close or cancel only active stops belonging to their own draft. They cannot change start time, elapsed duration, identity or parent report, and cannot update/delete closed or cancelled stops. Administrator corrections remain permitted. Stop mutation triggers lock the parent report to serialize against submission/cancellation, without updating the report's optimistic-concurrency version.
 
 ### `report_audit_log`
 
-Stores field-level old/new values, actor, and time for supported administrator changes to finalized reports. It is distinct from the administration audit log.
+Stores field-level old/new values, actor, and time for supported administrator changes to finalized reports. It also records stop creation, category changes, normal closure, cancellation, and administrative corrections/deletions as `stop_event.*` entries with the full old/new event. It is distinct from the administration audit log.
 
 ### `administrative_audit_log`
 
@@ -125,6 +127,6 @@ net_performance =
   units_produced / net_target
 ```
 
-Open stops contribute no provisional duration. Division uses a null denominator guard, so performance is `NULL` rather than an error when the corresponding target is zero. Net productive hours are not clamped by the view.
+Open and cancelled stops contribute no duration. Every category of valid closed stop contributes to the total. Division uses a null denominator guard, so performance is `NULL` rather than an error when the corresponding target is zero. Net productive hours are not clamped by the view.
 
-**Process %** and **Operator %** are manual report inputs. They are not calculated by `production_report_metrics`.
+**Process %** and **Operator %** remain stored for administrative functionality. They and other management metrics are hidden from Operator editing and read-only report views.

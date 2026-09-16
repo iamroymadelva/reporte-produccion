@@ -7,7 +7,7 @@ This application digitizes daily production and maintenance reporting for a manu
 ## Core Capabilities
 
 - Machine-specific production reports with autosave and controlled submission or cancellation.
-- Downtime tracking by category with START/STOP workflows and overlap prevention.
+- Downtime tracking with confirmed start/close/category changes, auditable active-stop cancellation, and overlap prevention.
 - Role-specific dashboards and report visibility.
 - Administration of users, assignments, machines, and operational catalogs.
 - Server-generated Excel workbooks for authorized reporting and analysis.
@@ -18,7 +18,7 @@ This application digitizes daily production and maintenance reporting for a manu
 | Role | Primary capabilities |
 | --- | --- |
 | Administrator | Reviews all reports, manages users and catalogs, performs supported report corrections, and exports data. |
-| Operator | Creates and edits assigned-machine drafts, records downtime, and submits or cancels owned reports. |
+| Operator | Creates and edits assigned-machine drafts, records downtime, and submits or cancels owned drafts. Finalized reports remain read-only. |
 | Viewer | Reads submitted reports and exports the data visible through RLS. |
 
 ## Architecture
@@ -73,9 +73,10 @@ The local Supabase seed creates role-specific demonstration accounts for isolate
 
 ## Tests
 
-The repository includes pgTAP database tests for critical constraints, cancellation behavior, catalog uniqueness, and final demonstration readiness.
+The repository includes Bun tests for Operator validation, confirmations, stop summaries, exports and offline draft persistence, plus pgTAP tests for database constraints, role permissions, auditability and report lifecycle.
 
 ```sh
+bun test
 bun run db:test
 ```
 

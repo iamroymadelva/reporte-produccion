@@ -4,18 +4,21 @@ import OfflineDraftNotice from "../../components/OfflineDraftNotice";
 import ReportEditor from "../../components/ReportEditor";
 import StopManager from "../../components/StopManager";
 import StopEventsTable from "../../components/StopEventsTable";
+import StopSummary from "../../components/StopSummary";
+import { STOP_EVENT_SELECTION, isActiveStop } from "../../lib/stop-events";
 import { createSupabaseServerClient } from "../../lib/supabase/server";
 import { formatDateTime, formatDuration, formatNumber, formatPercent } from "../../lib/format";
 import { roleLabels, statusLabels } from "../../lib/types";
 
 const auth = Astro.locals.auth!;
+const isOperator = auth.profile.role === "OPERATOR";
 const id = Astro.params.id!;
 const supabase = createSupabaseServerClient(Astro.request, Astro.cookies);
 
 const [reportResult, metricsResult, stopsResult, linesResult, clientsResult, productsResult, dosifiersResult, shiftsResult, categoriesResult] = await Promise.all([
   supabase.from("production_reports").select("*, machine:machines(id, code, name), line:lines(id, code, name), client:clients(id, code, name), product:products(id, code, name), dosifier_type:dosifier_types(id, code, name), shift_catalog:shifts(id, name, start_time, end_time), operator:profiles!production_reports_created_by_fkey(id, full_name, job_title, role), cancelled_by_profile:profiles!production_reports_cancelled_by_fkey(id, full_name)").eq("id", id).single(),
-  supabase.from("production_report_metrics").select("*").eq("id", id).single(),
-  supabase.from("report_stop_events").select("id, started_at, ended_at, duration_seconds, description, responsible_user_id, stop_category:stop_categories(id, code, name)").eq("report_id", id).order("started_at"),
+  isOperator ? Promise.resolve({ data: null }) : supabase.from("production_report_metrics").select("*").eq("id", id).single(),
+  supabase.from("report_stop_events").select(STOP_EVENT_SELECTION).eq("report_id", id).order("started_at"),
   supabase.from("lines").select("id, code, name").eq("active", true).order("name").order("code"),
   supabase.from("clients").select("id, code, name").eq("active", true).order("name").order("code"),
   supabase.from("products").select("id, code, name").eq("active", true).order("name").order("code"),
@@ -25,6 +28,7 @@ const [reportResult, metricsResult, stopsResult, linesResult, clientsResult, pro
 ]);
 
 if (reportResult.error || !reportResult.data) return Astro.redirect("/reportes?error=Reporte no encontrado");
+if (stopsResult.error) throw new Error("No fue posible consultar las paradas del reporte.");
 const report = reportResult.data as any;
 const metrics = (metricsResult.data ?? {}) as any;
 const stops = (stopsResult.data ?? []) as any[];
@@ -73,7 +77,7 @@ if (auth.profile.role === "ADMINISTRATOR") {
           return (
             <a class={`min-w-44 rounded-xl px-4 py-3 ${draft.id === id ? "bg-emerald-700 text-white" : "bg-slate-50 text-slate-800"}`} href={`/reportes/${draft.id}`}>
               <span class="block font-bold">{draft.machine?.code} · {draft.machine?.name}</span>
-              <span class={`mt-1 block text-xs font-semibold ${draft.id === id ? "text-emerald-50" : hasOpenStop ? "text-red-700" : "text-emerald-700"}`}>
+              <span data-stop-report-id={draft.id} data-current-report={draft.id === id ? "true" : "false"} class={`mt-1 block text-xs font-semibold ${draft.id === id ? "text-emerald-50" : hasOpenStop ? "text-red-700" : "text-emerald-700"}`}>
                 {hasOpenStop ? "● Parada abierta" : "● En operación"}
               </span>
             </a>
@@ -123,12 +127,12 @@ if (auth.profile.role === "ADMINISTRATOR") {
       />
     )}
 
-    <section class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    {!isOperator && <section class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
       <article class="panel"><p class="text-sm text-slate-500">Unidades teóricas/hora</p><p class="mt-2 text-2xl font-bold">{formatNumber(metrics.theoretical_units_per_hour)}</p></article>
       <article class="panel"><p class="text-sm text-slate-500">Tiempo total de parada</p><p class="mt-2 text-2xl font-bold">{formatDuration(metrics.total_downtime_seconds)}</p></article>
       <article class="panel"><p class="text-sm text-slate-500">Rendimiento teórico</p><p class="mt-2 text-2xl font-bold">{formatPercent(metrics.theoretical_performance)}</p></article>
       <article class="panel"><p class="text-sm text-slate-500">Rendimiento neto</p><p class="mt-2 text-2xl font-bold">{formatPercent(metrics.net_performance)}</p></article>
-    </section>
+    </section>}
 
     {isOwnerDraft && (
       <StopManager client:load reportId={id} stops={stops} categories={(categoriesResult.data ?? []) as any[]} />
@@ -144,6 +148,7 @@ if (auth.profile.role === "ADMINISTRATOR") {
         dosifierTypes={(dosifiersResult.data ?? []) as any[]}
         shifts={(shiftsResult.data ?? []) as any[]}
         canSubmit={isOwnerDraft}
+        hasActiveStop={stops.some(isActiveStop)}
         adminCorrection={adminCorrection && report.status !== "DRAFT"}
         offlinePersistence={isOwnerDraft}
         authenticatedUserId={isOwnerDraft ? auth.user.id : undefined}
@@ -156,16 +161,22 @@ if (auth.profile.role === "ADMINISTRATOR") {
       <section class="panel">
         <h2 class="text-xl font-bold">Datos del reporte</h2>
         <dl class="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {isOperator && <>
+            <div><dt class="text-sm text-slate-500">Máquina</dt><dd class="font-semibold">{report.machine?.code} · {report.machine?.name}</dd></div>
+            <div><dt class="text-sm text-slate-500">Operario responsable</dt><dd class="font-semibold">{report.creator_full_name}</dd></div>
+          </>}
           <div><dt class="text-sm text-slate-500">Fecha</dt><dd class="font-semibold">{report.report_date || "—"}</dd></div>
+          <div><dt class="text-sm text-slate-500">Producto</dt><dd class="font-semibold">{report.product_name || report.product?.name || "—"}</dd></div>
           <div><dt class="text-sm text-slate-500">O.P.</dt><dd class="font-semibold">{report.production_order || "—"}</dd></div>
           <div><dt class="text-sm text-slate-500">Área / Línea</dt><dd class="font-semibold">{report.line?.name || "—"}</dd></div>
           <div><dt class="text-sm text-slate-500">Cliente</dt><dd class="font-semibold">{report.client_name || report.client?.name || "—"}</dd></div>
           <div><dt class="text-sm text-slate-500">Lote</dt><dd class="font-semibold">{report.lot || "—"}</dd></div>
           <div><dt class="text-sm text-slate-500">Turno</dt><dd class="font-semibold">{shiftLabel(report.shift_catalog)}</dd></div>
-          <div><dt class="text-sm text-slate-500">Producto</dt><dd class="font-semibold">{report.product_name || report.product?.name || "—"}</dd></div>
           <div><dt class="text-sm text-slate-500">Peso (gr)</dt><dd class="font-semibold">{formatNumber(report.weight)}</dd></div>
-          <div><dt class="text-sm text-slate-500">Inicio</dt><dd class="font-semibold">{formatDateTime(report.started_at)}</dd></div>
-          <div><dt class="text-sm text-slate-500">Final</dt><dd class="font-semibold">{formatDateTime(report.ended_at)}</dd></div>
+          <div><dt class="text-sm text-slate-500">G/min</dt><dd class="font-semibold">{formatNumber(report.g_min)}</dd></div>
+          <div><dt class="text-sm text-slate-500">Tipo de dosificador</dt><dd class="font-semibold">{report.dosifier_type?.name || "—"}</dd></div>
+          <div><dt class="text-sm text-slate-500">Hora inicio</dt><dd class="font-semibold">{formatDateTime(report.started_at)}</dd></div>
+          <div><dt class="text-sm text-slate-500">Hora finalización</dt><dd class="font-semibold">{formatDateTime(report.ended_at)}</dd></div>
           <div><dt class="text-sm text-slate-500">Horas programadas</dt><dd class="font-semibold">{formatNumber(report.programmed_hours)}</dd></div>
           <div><dt class="text-sm text-slate-500">Unidades producidas</dt><dd class="font-semibold">{formatNumber(report.units_produced, 0)}</dd></div>
           <div><dt class="text-sm text-slate-500">Desperdicio</dt><dd class="font-semibold">{formatNumber(report.waste)}</dd></div>
@@ -177,7 +188,8 @@ if (auth.profile.role === "ADMINISTRATOR") {
     {!isOwnerDraft && (
       <section class="panel">
         <h2 class="text-xl font-bold">Paradas registradas</h2>
-        <div class="mt-4"><StopEventsTable client:load stops={stops} /></div>
+        {isOperator && <div class="mt-4"><StopSummary stops={stops} /></div>}
+        <div class="mt-4"><StopEventsTable client:load stops={stops} chronologicalOnly={isOperator} /></div>
       </section>
     )}
 
@@ -192,3 +204,18 @@ if (auth.profile.role === "ADMINISTRATOR") {
     )}
   </main>
 </BaseLayout>
+
+<script>
+  import { REPORT_STOPS_CHANGED } from "../../lib/stop-events";
+  window.addEventListener(REPORT_STOPS_CHANGED, (event) => {
+    const { reportId, active } = (event as CustomEvent<{ reportId: string; active: boolean }>).detail;
+    for (const badge of document.querySelectorAll<HTMLElement>("[data-stop-report-id]")) {
+      if (badge.dataset.stopReportId !== reportId) continue;
+      badge.textContent = active ? "● Parada abierta" : "● En operación";
+      if (badge.dataset.currentReport !== "true") {
+        badge.classList.toggle("text-red-700", active);
+        badge.classList.toggle("text-emerald-700", !active);
+      }
+    }
+  });
+</script>

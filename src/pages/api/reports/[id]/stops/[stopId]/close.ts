@@ -1,6 +1,7 @@
 import type { APIRoute } from "astro";
 import { createSupabaseServerClient } from "../../../../../../lib/supabase/server";
 import { json } from "../../../../../../lib/http";
+import { STOP_EVENT_SELECTION } from "../../../../../../lib/stop-events";
 
 export const POST: APIRoute = async ({ request, cookies, locals, params }) => {
   const auth = locals.auth;
@@ -15,9 +16,11 @@ export const POST: APIRoute = async ({ request, cookies, locals, params }) => {
     .eq("id", params.stopId)
     .eq("report_id", params.id)
     .is("ended_at", null)
-    .select("id, ended_at, duration_seconds")
-    .single();
+    .is("cancelled_at", null)
+    .select(STOP_EVENT_SELECTION)
+    .maybeSingle();
 
   if (error) return json({ error: error.message }, 400);
+  if (!data) return json({ error: "La parada ya no está activa o el reporte no permite cambios." }, 409);
   return json({ ok: true, stop: data });
 };

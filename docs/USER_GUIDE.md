@@ -77,26 +77,30 @@ El Operario solo puede crear reportes para máquinas activas que tenga asignadas
 
 El reporte guarda cambios automáticamente después de una breve pausa y también permite guardar de forma manual. Antes de enviarlos al servidor, el editor de un reporte en curso propio conserva una copia de seguridad en este dispositivo. Distinga **Guardado en servidor** de **Guardado en este dispositivo** o **Cambios pendientes de sincronizar**.
 
-Si se pierde la conexión mientras el editor ya está abierto, puede continuar completando los campos normales y usar **Guardar en este dispositivo**. START, STOP, enviar, cancelar y guardar Cliente/Producto como valor frecuente siguen necesitando conexión. Recuperar la conexión no envía por sí solo los cambios pendientes en esta etapa: continúe editando o seleccione **Guardar ahora**.
+Si se pierde la conexión mientras el editor ya está abierto, puede continuar completando los campos normales y usar **Guardar en este dispositivo**. Iniciar, detener, cancelar o cambiar la categoría de una parada, enviar o cancelar el reporte y guardar Cliente/Producto como valor frecuente siguen necesitando conexión. Recuperar la conexión no envía por sí solo los cambios pendientes en esta etapa: continúe editando o seleccione **Guardar ahora**.
 
 Si cierra la aplicación, los cambios locales pueden restaurarse al volver a abrir el mismo borrador con conexión y la misma cuenta autenticada. Una recarga mientras continúa completamente offline muestra la página de contingencia; no existe un editor autenticado totalmente offline. Si el reporte cambió o fue finalizado en el servidor, la aplicación conserva los datos locales y avisa que requieren revisión, pero todavía no ofrece combinación de conflictos.
 
 Los campos de cliente y producto permiten texto libre. Cuando corresponde, la interfaz puede ofrecer guardar ese valor como frecuente para volver a utilizarlo. Esta acción no sustituye la revisión del dato escrito.
 
-No todos los campos de la pantalla son obligatorios. Para **Enviar reporte**, el sistema exige que el reporte tenga hora de finalización y que no exista una parada abierta.
+Todos los campos de entrada del Operario son obligatorios excepto **Observaciones**. La máquina y el Operario responsable se derivan del reporte. Producto y Cliente aceptan texto libre con sugerencias; Área / Línea, Turno y Tipo de dosificador se seleccionan del catálogo. Los valores numéricos admiten cero y no admiten negativos; Unidades producidas debe ser entero.
+
+Ingrese **Hora inicio**, **Hora finalización** y **Horas programadas** manualmente. Los campos de fecha y hora permiten indicar el día siguiente para trabajos que cruzan medianoche. **Usar hora actual** completa la fecha y hora local y permite editarlas después. Elegir un turno no cambia las horas programadas ni los horarios ingresados. Los indicadores de gestión no se muestran en la pantalla del Operario.
 
 ### Registrar una parada
 
-1. Seleccione **START**.
-2. Elija una categoría de parada y agregue una descripción si es necesaria.
-3. Mientras la parada esté abierta, la aplicación la mostrará **En curso**.
-4. Seleccione **STOP** para cerrarla.
+1. Elija una categoría de parada.
+2. Seleccione **Iniciar parada**, revise la categoría y confirme.
+3. Mientras esté activa, verá el contador. Puede cambiar la categoría con confirmación; el inicio y el contador se conservan.
+4. Seleccione **Detener**, revise la categoría y el tiempo transcurrido y confirme **Detener parada**. Cancelar el diálogo mantiene la parada activa.
 
-Solo puede existir una parada abierta por reporte. Las paradas no pueden superponerse. El tiempo se establece con el reloj del servidor; una parada abierta no aporta una duración provisional a los totales.
+Si inició una parada por error, use **Cancelar parada**, escriba un motivo y confirme. La parada queda marcada **Cancelada**, con su motivo, en su posición cronológica del historial. No cuenta para las estadísticas. El Operario no puede modificar, reabrir ni borrar paradas cerradas o canceladas; las correcciones posteriores corresponden al Administrador.
+
+Solo puede existir una parada abierta por reporte. Las paradas no pueden superponerse. El tiempo se establece con el reloj del servidor. **Número de paradas** y **Tiempo total de parada** cuentan exclusivamente paradas cerradas válidas, de todas las categorías; excluyen las activas y canceladas. No se muestran totales por categoría al Operario.
 
 ### Enviar un reporte
 
-Verifique los datos, registre la hora de finalización y cierre cualquier parada abierta. Después seleccione **Enviar reporte** y confirme. El estado cambiará a **Enviado**.
+Complete los campos obligatorios y detenga o cancele cualquier parada activa. **Enviar reporte** resalta los campos faltantes y lleva al primero. Con la información completa, revise la confirmación y seleccione **Enviar reporte**. El estado cambiará a **Enviado**. Puede seguir consultándolo, pero no editarlo, cancelarlo ni cambiar su estado.
 
 ### Cancelar un reporte
 
