@@ -133,7 +133,6 @@ export default function ReportEditor({
   const [frequentQuestion, setFrequentQuestion] = useState<{ label: string; name: string } | null>(null);
   const [connectionState, setConnectionState] = useState<ConnectivityState>("online");
   const [restoreChecking, setRestoreChecking] = useState(localPersistenceEnabled);
-  const [confirmationLocked, setConfirmationLocked] = useState(false);
   const [reviewReason, setReviewReason] = useState<ReviewReason>(null);
   const [autoSaveRevision, setAutoSaveRevision] = useState<number | null>(null);
   const [showReconnectReminder, setShowReconnectReminder] = useState(false);
@@ -175,8 +174,7 @@ export default function ReportEditor({
   const forceServerSaveRequested = useRef(false);
   const reconnectReminderCheck = useRef(0);
   const connectionUnavailable = connectionState === "offline" || connectionState === "unreachable";
-  const fieldsDisabled = confirmationLocked
-    || finalizing || modal !== null
+  const fieldsDisabled = finalizing || modal !== null
     || reviewReason !== null
     || (offlineFieldEditingEnabled ? restoreChecking : connectionUnavailable);
   const onlineActionDisabled = finalizing || restoreChecking || reviewReason !== null || connectionUnavailable;
@@ -312,11 +310,7 @@ export default function ReportEditor({
           if (localPersistenceEnabled && savingRevision > 0 && localPendingRef.current) {
             let acknowledgement;
             confirmationLockedRef.current = true;
-            setConfirmationLocked(true);
             try {
-              // Let React disable the fields before the transaction that may delete
-              // the confirmed revision, then persist any edit still in its debounce.
-              await new Promise<void>((resolve) => window.setTimeout(resolve, 0));
               if (revision.current > savingRevision) {
                 const newerPersisted = await persistRevision(revision.current, { ...formRef.current });
                 if (!newerPersisted) return false;
@@ -328,6 +322,13 @@ export default function ReportEditor({
                 confirmedServerValues: outgoing,
                 confirmedServerUpdatedAt: confirmedUpdatedAt,
               });
+              // Edits remain enabled while IndexedDB acknowledges the confirmed
+              // revision. Persist anything entered during that transaction before
+              // releasing the acknowledgement barrier.
+              while (revision.current > savingRevision && persistedRevision.current < revision.current) {
+                const newerPersisted = await persistRevision(revision.current, { ...formRef.current });
+                if (!newerPersisted) return false;
+              }
             } catch (error) {
               logOfflineStorageError(error);
               storageFailedRef.current = true;
@@ -336,7 +337,6 @@ export default function ReportEditor({
               return false;
             } finally {
               confirmationLockedRef.current = false;
-              setConfirmationLocked(false);
             }
 
             if (acknowledgement.status === "cleared" || acknowledgement.status === "missing") {
@@ -555,7 +555,6 @@ export default function ReportEditor({
   }, []);
 
   const applyEditedForm = (next: ReportForm) => {
-    if (confirmationLockedRef.current) return;
     const nextRevision = revision.current + 1;
     revision.current = nextRevision;
     formRef.current = next;
@@ -579,6 +578,7 @@ export default function ReportEditor({
       localPendingRef.current = true;
       setHasLocalPending(true);
       setSaveState("local-saving");
+      if (confirmationLockedRef.current) void persistRevision(nextRevision, { ...next });
     } else setSaveState("idle");
 
     if (connectionUnavailableRef.current) setAutoSaveRevision(null);

@@ -228,18 +228,30 @@ describe("Operator interactions", () => {
     expect((await getReportDraft("owner", input.reportId))?.localValues.lot).toBe("B");
     expect((await getSaveReportOperation("owner", input.reportId))?.payload.lot).toBe("B");
   });
-  test("server saves are serialized and preserve edits made during an in-flight save", async () => {
-    await mount(<ReportEditor {...props} />);
+  test("autosave acknowledgement preserves focus and serializes newer edits", async () => {
+    const id = "serialized-ui";
+    await mount(<ReportEditor {...props} report={{ ...complete, id }} offlinePersistence authenticatedUserId="owner" serverUpdatedAt={complete.updated_at} />);
+    await settle(30);
     let release!: (response: Response) => void;
     respond = () => requests.length === 1 ? new Promise<Response>((resolve) => { release = resolve; }) : json({ ok: true, report: { updated_at: "2026-09-15T02:00:00Z" } });
     await change('[data-report-field="lot"]', "FIRST");
-    await click(buttons("Guardar ahora")[0]);
+    await settle(900);
     expect(requests.length).toBe(1);
     await change('[data-report-field="lot"]', "SECOND");
+    const field = document.querySelector<HTMLInputElement>('[data-report-field="lot"]')!;
+    field.focus();
+    let disabledMutationCount = 0;
+    const observer = new browser.MutationObserver((records) => { disabledMutationCount += records.length; });
+    observer.observe(field as unknown as Parameters<typeof observer.observe>[0], { attributes: true, attributeFilter: ["disabled"] });
     expect(requests.length).toBe(1);
     await act(async () => { release(json({ ok: true, report: { updated_at: "2026-09-15T01:00:00Z" } })); });
+    await settle(50);
+    observer.disconnect();
     expect(requests.length).toBe(2);
     expect(JSON.parse(String(requests[1].init.body)).lot).toBe("SECOND");
-    expect(document.querySelector<HTMLInputElement>('[data-report-field="lot"]')!.value).toBe("SECOND");
+    expect(field.value).toBe("SECOND");
+    expect(field.disabled).toBe(false);
+    expect(disabledMutationCount).toBe(0);
+    expect(document.activeElement).toBe(field);
   });
 });

@@ -117,19 +117,55 @@ const isCurrent = (href: string) => href === "/dashboard"
     checkingForms.add(form);
 
     const submitter = submitEvent.submitter;
-    if (submitter instanceof HTMLElement) submitter.setAttribute("aria-busy", "true");
+    const submitButton = submitter instanceof HTMLButtonElement || submitter instanceof HTMLInputElement
+      ? submitter
+      : null;
+    const wasDisabled = submitButton?.disabled ?? false;
+    const originalButtonContent = submitButton instanceof HTMLButtonElement
+      ? Array.from(submitButton.childNodes)
+      : null;
+    const originalInputValue = submitButton instanceof HTMLInputElement
+      ? submitButton.value
+      : null;
+
+    if (submitButton) {
+      submitButton.setAttribute("aria-busy", "true");
+      submitButton.disabled = true;
+      if (submitButton instanceof HTMLButtonElement) submitButton.replaceChildren("Comprobando conexión…");
+      else submitButton.value = "Comprobando conexión…";
+    }
+
+    const restoreSubmitButton = () => {
+      if (!submitButton) return;
+      submitButton.removeAttribute("aria-busy");
+      submitButton.disabled = wasDisabled;
+      if (submitButton instanceof HTMLButtonElement && originalButtonContent) submitButton.replaceChildren(...originalButtonContent);
+      else if (submitButton instanceof HTMLInputElement && originalInputValue !== null) submitButton.value = originalInputValue;
+    };
 
     void canSendMutation().then((allowed) => {
       checkingForms.delete(form);
-      if (submitter instanceof HTMLElement) submitter.removeAttribute("aria-busy");
+      restoreSubmitButton();
       if (!allowed) {
         showConnectivityNotice(MUTATION_REQUIRES_CONNECTION);
         return;
       }
 
       guardedForms.add(form);
-      if (submitter instanceof HTMLButtonElement || submitter instanceof HTMLInputElement) form.requestSubmit(submitter);
-      else form.requestSubmit();
+      const submitNatively = () => {
+        guardedForms.delete(form);
+        HTMLFormElement.prototype.submit.call(form);
+      };
+
+      try {
+        if (submitter instanceof HTMLButtonElement || submitter instanceof HTMLInputElement) form.requestSubmit(submitter);
+        else form.requestSubmit();
+      } catch {
+        submitNatively();
+        return;
+      }
+
+      if (guardedForms.has(form)) submitNatively();
     });
   }, true);
 </script>
