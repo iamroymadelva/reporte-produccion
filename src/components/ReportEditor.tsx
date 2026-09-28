@@ -371,8 +371,9 @@ export default function ReportEditor({
             setSaveState("server-saved");
           }
 
-          if (revision.current > savingRevision && !connectionUnavailableRef.current) {
-            serverSaveRequested.current = true;
+          if (revision.current > savingRevision) {
+            if (adminCorrection) setSaveState("idle");
+            else if (!connectionUnavailableRef.current) serverSaveRequested.current = true;
           }
         } catch (error) {
           completed = false;
@@ -390,7 +391,7 @@ export default function ReportEditor({
       if (serverSavePromise.current === task) serverSavePromise.current = null;
     });
     return task;
-  }, [authenticatedUserId, localPersistenceEnabled, persistRevision, report.id]);
+  }, [adminCorrection, authenticatedUserId, localPersistenceEnabled, persistRevision, report.id]);
 
   useEffect(() => {
     setConnectionState(getConnectivitySnapshot().state);
@@ -505,7 +506,8 @@ export default function ReportEditor({
 
   useEffect(() => {
     if (
-      autoSaveRevision === null
+      adminCorrection
+      || autoSaveRevision === null
       || autoSaveRevision !== revision.current
       || connectionUnavailable
       || restoreChecking
@@ -521,7 +523,7 @@ export default function ReportEditor({
       window.clearTimeout(timer);
       if (serverSaveTimer.current === timer) serverSaveTimer.current = null;
     };
-  }, [autoSaveRevision, connectionUnavailable, requestServerSave, restoreChecking, reviewReason]);
+  }, [adminCorrection, autoSaveRevision, connectionUnavailable, requestServerSave, restoreChecking, reviewReason]);
 
   useEffect(() => {
     const flushLocal = () => {
@@ -581,7 +583,7 @@ export default function ReportEditor({
       if (confirmationLockedRef.current) void persistRevision(nextRevision, { ...next });
     } else setSaveState("idle");
 
-    if (connectionUnavailableRef.current) setAutoSaveRevision(null);
+    if (adminCorrection || connectionUnavailableRef.current) setAutoSaveRevision(null);
     else {
       setAutoSaveRevision(nextRevision);
       if (serverSavePromise.current) serverSaveRequested.current = true;
@@ -853,7 +855,9 @@ export default function ReportEditor({
           <div>
             <h2 className="text-xl font-bold">{adminCorrection ? "Corrección administrativa" : "Datos del reporte"}</h2>
             <p className="text-sm text-slate-500">
-              {connectionUnavailable
+              {adminCorrection
+                ? "Los cambios se aplican únicamente al seleccionar Guardar cambios."
+                : connectionUnavailable
                 ? localPersistenceEnabled
                   ? "Puedes seguir editando. Los cambios se guardan en este dispositivo."
                   : "La edición requiere conexión. Los cambios actuales no se guardarán automáticamente."
@@ -924,8 +928,8 @@ export default function ReportEditor({
         <div className="mt-6 flex flex-col gap-5 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-3">
           {canSubmit ? <button className="button-danger w-full sm:w-auto" type="button" disabled={onlineActionDisabled} onClick={() => { setCancelReason(""); setModal("cancel"); }}>Cancelar reporte</button> : <span />}
           <div className="grid gap-3 sm:flex sm:flex-wrap sm:justify-end">
-            <button className="button-secondary w-full sm:w-auto" type="button" disabled={finalizing || restoreChecking || reviewReason !== null || (connectionUnavailable && !localPersistenceEnabled)} onClick={() => void saveManually()}>
-              {connectionUnavailable && localPersistenceEnabled ? "Guardar en este dispositivo" : "Guardar ahora"}
+            <button className="button-secondary w-full sm:w-auto" type="button" disabled={finalizing || restoreChecking || reviewReason !== null || (connectionUnavailable && !localPersistenceEnabled) || (adminCorrection && (!dirty || saveState === "server-saving"))} onClick={() => void saveManually()}>
+              {adminCorrection ? "Guardar cambios" : connectionUnavailable && localPersistenceEnabled ? "Guardar en este dispositivo" : "Guardar ahora"}
             </button>
             {canSubmit && <button className="button-primary w-full sm:w-auto" type="button" disabled={onlineActionDisabled} onClick={beginSubmit}>Enviar reporte</button>}
           </div>

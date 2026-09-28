@@ -98,15 +98,19 @@ Por ejemplo, un registro desactivado sigue reservando su nombre y código. Use *
 
 ## 12. Correcciones administrativas de reportes
 
-El Administrador puede abrir los reportes y realizar las correcciones que la pantalla y las reglas actuales permiten. La base de datos protege folio, creador, estados y demás campos inmutables. Las correcciones de campos soportados en reportes **Enviados** o **Cancelados** se registran en `report_audit_log`. El Administrador no crea reportes y la interfaz no ofrece el flujo operativo START/STOP para alterar paradas.
+El Administrador puede abrir los reportes y realizar únicamente las correcciones que la pantalla y las reglas actuales permiten. Esta funcionalidad no amplía los permisos de edición de borradores. En reportes **Enviados** o **Cancelados**, los cambios quedan preparados en pantalla hasta seleccionar **Guardar cambios**; una confirmación puede incluir varios campos. La base de datos protege folio, creador, estados y demás campos inmutables. Cada campo corregido agrega un registro a `report_audit_log`; nunca sustituye uno anterior. El Administrador no crea reportes y la interfaz no ofrece el flujo operativo START/STOP para alterar paradas.
 
 ## 13. Auditoría disponible
 
 La auditoría implementada actualmente cubre:
 
-- Cambios administrativos soportados en campos de reportes finalizados, con valor anterior, nuevo, actor y fecha.
+- Cambios administrativos confirmados en campos de reportes enviados o cancelados, con valor anterior, nuevo, actor y fecha. La edición normal de campos mientras el reporte está en curso no se registra como corrección administrativa.
+- Inicio, cambio de categoría, cierre, cancelación y correcciones administrativas de paradas.
+- Consulta del historial completo del reporte desde su detalle para Administrador y Consulta, con nombres legibles de campos, valores de catálogo y número cronológico de parada.
 - Eliminaciones exitosas de catálogos.
 - Retiro de usuario (`REMOVE_USER`).
 - Reactivación de usuario (`REACTIVATE_USER`).
 
-No existe evidencia en el repositorio de auditoría completa para inicios de sesión, exportaciones, intentos fallidos, creación/edición/desactivación/reactivación de catálogos, invitaciones, edición normal de usuarios o asignaciones, ni cada acción operativa de reportes. Tampoco existe una pantalla administrativa dedicada para consultar todos los registros de auditoría. No interprete esta cobertura como un historial integral de actividad.
+Administrador y Consulta pueden leer el historial únicamente de los reportes que sus políticas permiten consultar. Operario no recibe acceso a esta sección. Las cuentas de aplicación no pueden insertar, modificar ni eliminar directamente sus filas; el registro se genera mediante funciones y disparadores de base de datos.
+
+No existe evidencia en el repositorio de auditoría completa para inicios de sesión, exportaciones, intentos fallidos, creación/edición/desactivación/reactivación de catálogos, invitaciones, edición normal de usuarios o asignaciones. No interprete esta cobertura como un historial integral de actividad.

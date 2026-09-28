@@ -108,7 +108,9 @@ Un reporte en curso propio puede cancelarse si no tiene una parada abierta. Sele
 
 ## 9. Consultar reportes
 
-La lista **Reportes de producción** muestra folio, fecha, máquina, O.P., Operario, Rol, Estado, Parada y la acción **Abrir**. La visibilidad depende del rol: el Administrador consulta todos, el Operario consulta los propios y Consulta ve los enviados.
+La lista **Reportes de producción** muestra folio, fecha, máquina, O.P., Operario, Estado, información de producción y la acción **Abrir**. En teléfono y tableta, las tarjetas de Administrador y Consulta resumen además producto, turno, número de paradas válidas y tiempo total. La visibilidad depende del rol: el Administrador consulta todos, el Operario consulta los propios y Consulta ve los enviados.
+
+Al abrir un reporte, Administrador y Consulta pueden revisar **Auditoría de correcciones**. Cada evento indica quién realizó el cambio, cuándo ocurrió y los valores anterior y nuevo. Los eventos de paradas identifican su número cronológico. Las correcciones administrativas de un reporte enviado o cancelado se registran cuando el Administrador selecciona **Guardar cambios**; escribir en un reporte en curso no genera un historial por cada carácter. Consulta puede leer este historial, pero no editar el reporte; Operario no ve esta sección administrativa.
 
 ## 10. Filtros
 

@@ -5,6 +5,7 @@ import ReportEditor from "../../components/ReportEditor";
 import StopManager from "../../components/StopManager";
 import StopEventsTable from "../../components/StopEventsTable";
 import StopSummary from "../../components/StopSummary";
+import { describeAuditRows, type AuditCatalogs, type ReportAuditRow } from "../../lib/report-audit";
 import { STOP_EVENT_SELECTION, isActiveStop } from "../../lib/stop-events";
 import { createSupabaseServerClient } from "../../lib/supabase/server";
 import { formatDateTime, formatDuration, formatNumber, formatPercent } from "../../lib/format";
@@ -19,12 +20,12 @@ const [reportResult, metricsResult, stopsResult, linesResult, clientsResult, pro
   supabase.from("production_reports").select("*, machine:machines(id, code, name), line:lines(id, code, name), client:clients(id, code, name), product:products(id, code, name), dosifier_type:dosifier_types(id, code, name), shift_catalog:shifts(id, name, start_time, end_time), operator:profiles!production_reports_created_by_fkey(id, full_name, job_title, role), cancelled_by_profile:profiles!production_reports_cancelled_by_fkey(id, full_name)").eq("id", id).single(),
   isOperator ? Promise.resolve({ data: null }) : supabase.from("production_report_metrics").select("*").eq("id", id).single(),
   supabase.from("report_stop_events").select(STOP_EVENT_SELECTION).eq("report_id", id).order("started_at"),
-  supabase.from("lines").select("id, code, name").eq("active", true).order("name").order("code"),
-  supabase.from("clients").select("id, code, name").eq("active", true).order("name").order("code"),
-  supabase.from("products").select("id, code, name").eq("active", true).order("name").order("code"),
-  supabase.from("dosifier_types").select("id, code, name").eq("active", true).order("name").order("code"),
-  supabase.from("shifts").select("id, name, start_time, end_time").eq("active", true).order("start_time").order("end_time"),
-  supabase.from("stop_categories").select("id, code, name, numeric_code").eq("active", true).order("numeric_code").order("code"),
+  supabase.from("lines").select("id, code, name, active").order("name").order("code"),
+  supabase.from("clients").select("id, code, name, active").order("name").order("code"),
+  supabase.from("products").select("id, code, name, active").order("name").order("code"),
+  supabase.from("dosifier_types").select("id, code, name, active").order("name").order("code"),
+  supabase.from("shifts").select("id, name, start_time, end_time, active").order("start_time").order("end_time"),
+  supabase.from("stop_categories").select("id, code, name, numeric_code, active").order("numeric_code").order("code"),
 ]);
 
 if (reportResult.error || !reportResult.data) return Astro.redirect("/reportes?error=Reporte no encontrado");
@@ -32,6 +33,12 @@ if (stopsResult.error) throw new Error("No fue posible consultar las paradas del
 const report = reportResult.data as any;
 const metrics = (metricsResult.data ?? {}) as any;
 const stops = (stopsResult.data ?? []) as any[];
+const lines = (linesResult.data ?? []) as any[];
+const clients = (clientsResult.data ?? []) as any[];
+const products = (productsResult.data ?? []) as any[];
+const dosifierTypes = (dosifiersResult.data ?? []) as any[];
+const shifts = (shiftsResult.data ?? []) as any[];
+const categories = (categoriesResult.data ?? []) as any[];
 const isOwnerDraft = auth.profile.role === "OPERATOR" && report.created_by === auth.user.id && report.status === "DRAFT";
 const adminCorrection = auth.profile.role === "ADMINISTRATOR";
 const editable = isOwnerDraft || adminCorrection;
@@ -57,15 +64,32 @@ if (auth.profile.role === "OPERATOR") {
   openDrafts = (data ?? []) as any[];
 }
 
-let audit: any[] = [];
-if (auth.profile.role === "ADMINISTRATOR") {
-  const { data } = await supabase
+let audit: ReportAuditRow[] = [];
+let auditError: string | null = null;
+if (auth.profile.role === "ADMINISTRATOR" || auth.profile.role === "VIEWER") {
+  const { data, error } = await supabase
     .from("report_audit_log")
-    .select("id, changed_at, field_name, old_value, new_value, user:profiles!report_audit_log_changed_by_fkey(full_name)")
+    .select("id, changed_at, changed_by, field_name, old_value, new_value, user:profiles!report_audit_log_changed_by_fkey(full_name)")
     .eq("report_id", id)
     .order("changed_at", { ascending: false });
-  audit = (data ?? []) as any[];
+  audit = (data ?? []) as unknown as ReportAuditRow[];
+  auditError = error ? "No fue posible consultar la auditoría del reporte." : null;
 }
+
+const catalogMap = (rows: any[], label: (row: any) => string) => new Map(
+  rows.map((row) => [row.id, label(row)]),
+);
+const codeName = (row: any) => [row.code, row.name].filter(Boolean).join(" · ");
+const auditCatalogs: AuditCatalogs = {
+  machine_id: new Map([[report.machine_id, `${report.machine?.code} · ${report.machine?.name}`]]),
+  line_id: catalogMap(lines, codeName),
+  client_id: catalogMap(clients, codeName),
+  product_id: catalogMap(products, codeName),
+  dosifier_type_id: catalogMap(dosifierTypes, codeName),
+  shift_id: catalogMap(shifts, (shift) => shiftLabel(shift)),
+  stop_category_id: catalogMap(categories, codeName),
+};
+const auditEntries = describeAuditRows(audit, { catalogs: auditCatalogs, stops });
 ---
 
 <BaseLayout title={report.folio} description="Detalle del reporte de producción" profile={auth.profile}>
@@ -135,18 +159,18 @@ if (auth.profile.role === "ADMINISTRATOR") {
     </section>}
 
     {isOwnerDraft && (
-      <StopManager client:load reportId={id} stops={stops} categories={(categoriesResult.data ?? []) as any[]} />
+      <StopManager client:load reportId={id} stops={stops} categories={categories.filter((category) => category.active)} />
     )}
 
     {editable ? (
       <ReportEditor
         client:load
         report={report}
-        lines={(linesResult.data ?? []) as any[]}
-        clients={(clientsResult.data ?? []) as any[]}
-        products={(productsResult.data ?? []) as any[]}
-        dosifierTypes={(dosifiersResult.data ?? []) as any[]}
-        shifts={(shiftsResult.data ?? []) as any[]}
+        lines={lines.filter((line) => line.active)}
+        clients={clients.filter((client) => client.active)}
+        products={products.filter((product) => product.active)}
+        dosifierTypes={dosifierTypes.filter((dosifier) => dosifier.active)}
+        shifts={shifts.filter((shift) => shift.active)}
         canSubmit={isOwnerDraft}
         hasActiveStop={stops.some(isActiveStop)}
         adminCorrection={adminCorrection && report.status !== "DRAFT"}
@@ -193,13 +217,34 @@ if (auth.profile.role === "ADMINISTRATOR") {
       </section>
     )}
 
-    {auth.profile.role === "ADMINISTRATOR" && (
-      <section class="panel">
-        <h2 class="text-xl font-bold">Auditoría de correcciones</h2>
-        <div class="mt-4 space-y-3">
-          {audit.map((item) => <article class="rounded-xl bg-slate-50 p-4 text-sm"><p class="font-semibold">{item.field_name} · {item.user?.full_name}</p><p class="mt-1 text-slate-500">{formatDateTime(item.changed_at)}</p></article>)}
-          {audit.length === 0 && <p class="text-sm text-slate-500">No hay correcciones registradas.</p>}
-        </div>
+    {(auth.profile.role === "ADMINISTRATOR" || auth.profile.role === "VIEWER") && (
+      <section class="panel" aria-labelledby="report-audit-title">
+        <h2 id="report-audit-title" class="text-xl font-bold">Auditoría de correcciones</h2>
+        {auditError ? (
+          <p class="mt-4 rounded-xl bg-red-50 p-4 text-sm font-semibold text-red-800" role="alert">{auditError}</p>
+        ) : (
+          <div class="mt-4 space-y-3">
+            {auditEntries.map((entry) => (
+              <article class="rounded-xl bg-slate-50 p-4 text-sm">
+                <div class="flex flex-wrap items-start justify-between gap-2">
+                  <h3 class="font-bold text-slate-900">{entry.title}{entry.stopNumber ? ` · Parada #${entry.stopNumber}` : ""}</h3>
+                  <time class="text-slate-500" datetime={entry.changedAt}>{formatDateTime(entry.changedAt)}</time>
+                </div>
+                <p class="mt-1 text-slate-600"><span class="font-semibold text-slate-700">Actor:</span> {entry.actor}</p>
+                <div class="mt-3 space-y-3">
+                  {entry.details.map((detail) => (
+                    <div class="grid gap-2 border-t border-slate-200 pt-3 min-[420px]:grid-cols-2">
+                      <p class="font-semibold text-slate-700 min-[420px]:col-span-2">{detail.label}</p>
+                      {detail.previous !== undefined && <dl><dt class="text-xs uppercase tracking-wide text-slate-500">Valor anterior</dt><dd class="mt-1 break-words text-slate-900">{detail.previous}</dd></dl>}
+                      {detail.next !== undefined && <dl><dt class="text-xs uppercase tracking-wide text-slate-500">Valor nuevo</dt><dd class="mt-1 break-words text-slate-900">{detail.next}</dd></dl>}
+                    </div>
+                  ))}
+                </div>
+              </article>
+            ))}
+            {auditEntries.length === 0 && <p class="text-sm text-slate-500">No hay correcciones registradas.</p>}
+          </div>
+        )}
       </section>
     )}
   </main>

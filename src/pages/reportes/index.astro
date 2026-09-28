@@ -3,13 +3,16 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
 import { createSupabaseServerClient } from "../../lib/supabase/server";
 import { formatDate, getBogotaDateKey } from "../../lib/format";
 import { applyReportFilters, parseReportFilters, periodHref, reportFilterParams } from "../../lib/report-filters";
+import { stopDuration, summarizeClosedStops } from "../../lib/stop-events";
 import { roleLabels, statusLabels, type AppRole } from "../../lib/types";
 
 const auth = Astro.locals.auth!;
 const supabase = createSupabaseServerClient(Astro.request, Astro.cookies);
+const administrativeList = auth.profile.role === "ADMINISTRATOR" || auth.profile.role === "VIEWER";
+const reportSelection = "id, folio, report_date, production_order, product_name, shift, status, created_by, created_at, machine:machines(id, code, name), product:products(id, name), shift_catalog:shifts(id, name, start_time, end_time), operator:profiles!production_reports_created_by_fkey(full_name, role), report_stop_events(id, ended_at, duration_seconds, cancelled_at)";
 const { data: reportRows, error: reportError } = await supabase
   .from("production_reports")
-  .select("id, folio, report_date, production_order, status, created_by, created_at, machine:machines(id, code, name), operator:profiles!production_reports_created_by_fkey(full_name, role), report_stop_events(id, ended_at)")
+  .select(reportSelection)
   .order("created_at", { ascending: false });
 
 const reports = (reportRows ?? []) as any[];
@@ -25,14 +28,14 @@ let visibleReports = filters.error ? [] : reports;
 let visibleReportError: string | null = null;
 
 if (!filters.error && hasDisplayFilters) {
-  const stopsSelection = filters.activeStop
-    ? "report_stop_events:report_stop_events!inner(id, ended_at)"
-    : "report_stop_events(id, ended_at)";
+  const visibleSelection = filters.activeStop
+    ? `${reportSelection}, active_stop:report_stop_events!inner(id, ended_at)`
+    : reportSelection;
   let visibleQuery = supabase
     .from("production_reports")
-    .select(`id, folio, report_date, production_order, status, created_by, created_at, machine:machines(id, code, name), operator:profiles!production_reports_created_by_fkey(full_name, role), ${stopsSelection}`)
+    .select(visibleSelection)
     .order("created_at", { ascending: false });
-  visibleQuery = applyReportFilters(visibleQuery, filters);
+  visibleQuery = applyReportFilters(visibleQuery, filters, filters.activeStop ? "active_stop" : "report_stop_events");
   const visibleResult = await visibleQuery;
   visibleReports = (visibleResult.data ?? []) as any[];
   visibleReportError = visibleResult.error ? "No fue posible aplicar los filtros de reportes." : null;
@@ -57,6 +60,11 @@ const exportHref = `/api/reports/export${exportParams.size ? `?${exportParams.to
 const withoutPeriodParams = reportFilterParams(filters, { includePeriod: false });
 const clearPeriodHref = `/reportes${withoutPeriodParams.size ? `?${withoutPeriodParams.toString()}` : ""}`;
 const filterSummary = [filters.periodLabel, activeFilterLabel].filter(Boolean).join(" · ");
+const shiftLabel = (report: any) => {
+  if (!report.shift_catalog) return report.shift || "—";
+  const range = `${String(report.shift_catalog.start_time).slice(0, 5)} - ${String(report.shift_catalog.end_time).slice(0, 5)}`;
+  return report.shift_catalog.name ? `${report.shift_catalog.name} · ${range}` : range;
+};
 ---
 
 <BaseLayout title="Reportes de producción" description="Gestión de reportes de producción" profile={auth.profile}>
@@ -172,31 +180,55 @@ const filterSummary = [filters.periodLabel, activeFilterLabel].filter(Boolean).j
           {(activeFilterLabel || filters.period) && <a class="font-bold text-emerald-700 hover:underline" href="/reportes">Limpiar filtros</a>}
         </div>
       </div>
-      <div class="mobile-card-list md:hidden">
+      <div class={`mobile-card-list ${administrativeList ? "lg:hidden" : "md:hidden"}`}>
         {visibleReports.map((report) => {
           const hasOpenStop = report.report_stop_events?.some((stop: any) => !stop.ended_at);
+          const stopSummary = summarizeClosedStops(report.report_stop_events ?? []);
           return (
-            <article class="mobile-data-card">
+            <article class={administrativeList ? "space-y-2 p-3" : "mobile-data-card"}>
               <div class="flex items-start justify-between gap-3">
                 <p class="min-w-0 break-words font-bold text-slate-900">{report.folio}</p>
                 <span class={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${report.status === "DRAFT" ? "bg-amber-100 text-amber-800" : report.status === "CANCELLED" ? "bg-red-100 text-red-800" : "bg-emerald-100 text-emerald-800"}`}>{statusLabels[report.status as keyof typeof statusLabels]}</span>
               </div>
-              <dl class="grid gap-2 text-sm">
-                <div><dt class="text-slate-500">Fecha</dt><dd>{formatDate(report.report_date)}</dd></div>
-                <div><dt class="text-slate-500">Máquina</dt><dd class="font-semibold">{report.machine?.code} · {report.machine?.name}</dd></div>
-                <div><dt class="text-slate-500">Operario</dt><dd>{report.operator?.full_name || "—"}</dd></div>
-                {report.production_order && <div><dt class="text-slate-500">O.P.</dt><dd>{report.production_order}</dd></div>}
-              </dl>
-              <div class="flex min-h-11 items-center justify-between gap-3">
-                <span class={hasOpenStop ? "font-bold text-red-700" : "text-slate-500"}>{hasOpenStop ? "● Parada abierta" : "Sin parada activa"}</span>
-                <a class="inline-flex min-h-11 items-center rounded-lg px-3 font-bold text-emerald-700" href={`/reportes/${report.id}`}>Abrir</a>
-              </div>
+              {administrativeList ? (
+                <>
+                  <dl class="grid grid-cols-1 gap-x-4 gap-y-2 text-sm min-[380px]:grid-cols-2">
+                    <div><dt class="text-slate-500">Fecha</dt><dd>{formatDate(report.report_date)}</dd></div>
+                    <div><dt class="text-slate-500">Máquina</dt><dd class="font-semibold">{report.machine?.code} · {report.machine?.name}</dd></div>
+                    <div><dt class="text-slate-500">Operario</dt><dd>{report.operator?.full_name || "—"}</dd></div>
+                    <div><dt class="text-slate-500">Producto</dt><dd>{report.product_name || report.product?.name || "—"}</dd></div>
+                    <div><dt class="text-slate-500">O.P.</dt><dd>{report.production_order || "—"}</dd></div>
+                    <div><dt class="text-slate-500">Turno</dt><dd>{shiftLabel(report)}</dd></div>
+                  </dl>
+                  <div class="flex flex-wrap gap-x-5 gap-y-1 text-sm font-semibold">
+                    <span>Paradas: {stopSummary.count}</span>
+                    <span>Tiempo total: <span class="font-mono tabular-nums">{stopDuration(stopSummary.seconds)}</span></span>
+                  </div>
+                  <div class="flex min-h-11 items-center justify-between gap-3 border-t border-slate-100 pt-1">
+                    <span class={hasOpenStop ? "text-sm font-bold text-red-700" : "text-sm text-slate-500"}>{hasOpenStop ? "● Parada abierta" : ""}</span>
+                    <a class="inline-flex min-h-11 items-center rounded-lg px-3 font-bold text-emerald-700" href={`/reportes/${report.id}`}>Abrir</a>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <dl class="grid gap-2 text-sm">
+                    <div><dt class="text-slate-500">Fecha</dt><dd>{formatDate(report.report_date)}</dd></div>
+                    <div><dt class="text-slate-500">Máquina</dt><dd class="font-semibold">{report.machine?.code} · {report.machine?.name}</dd></div>
+                    <div><dt class="text-slate-500">Operario</dt><dd>{report.operator?.full_name || "—"}</dd></div>
+                    {report.production_order && <div><dt class="text-slate-500">O.P.</dt><dd>{report.production_order}</dd></div>}
+                  </dl>
+                  <div class="flex min-h-11 items-center justify-between gap-3">
+                    <span class={hasOpenStop ? "font-bold text-red-700" : "text-slate-500"}>{hasOpenStop ? "● Parada abierta" : "Sin parada activa"}</span>
+                    <a class="inline-flex min-h-11 items-center rounded-lg px-3 font-bold text-emerald-700" href={`/reportes/${report.id}`}>Abrir</a>
+                  </div>
+                </>
+              )}
             </article>
           );
         })}
         {visibleReports.length === 0 && <p class="p-8 text-center text-slate-500">No hay reportes disponibles.</p>}
       </div>
-      <div class="hidden overflow-x-auto md:block" role="region" aria-label="Listado de reportes" tabindex="0">
+      <div class={`hidden overflow-x-auto ${administrativeList ? "lg:block" : "md:block"}`} role="region" aria-label="Listado de reportes" tabindex="0">
         <table class="w-full min-w-[760px] text-left text-sm lg:min-w-[960px]">
           <thead class="bg-slate-50 text-slate-600">
             <tr><th class="p-4">Folio</th><th class="p-4">Fecha</th><th class="p-4">Máquina</th><th class="hidden p-4 lg:table-cell">O.P.</th><th class="p-4">Operario</th><th class="hidden p-4 lg:table-cell">Rol</th><th class="p-4">Estado</th><th class="p-4">Parada</th><th class="p-4"></th></tr>

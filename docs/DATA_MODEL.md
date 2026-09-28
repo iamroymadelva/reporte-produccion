@@ -53,7 +53,9 @@ Operators can change category, close or cancel only active stops belonging to th
 
 ### `report_audit_log`
 
-Stores field-level old/new values, actor, and time for supported administrator changes to finalized reports. It also records stop creation, category changes, normal closure, cancellation, and administrative corrections/deletions as `stop_event.*` entries with the full old/new event. It is distinct from the administration audit log.
+Stores field-level old/new values, actor, and time for administrator changes already permitted by the report policies and application when the previous report state is `SUBMITTED` or `CANCELLED`. Normal report-field editing while the report is `DRAFT` is deliberately excluded. Stop creation, active category changes, normal closure, cancellation, and administrative corrections/deletions remain recorded as `stop_event.*` entries in every report state with the full old/new event. Catalog references written by current triggers include a readable snapshot so a later catalog rename does not make the event unintelligible.
+
+The table is append-only for application-facing roles: `anon` and `authenticated` have no direct `INSERT`, `UPDATE`, or `DELETE` privilege. Audit rows are inserted by the existing `SECURITY DEFINER` trigger path; `service_role` privileges are preserved. Administrators can read the audit for reports they can access, and Consulta can read it for reports visible under the report RLS policy. Operarios cannot read this administrative history. A report with audit rows cannot be deleted through a cascading foreign key, so deleting the parent cannot erase its history.
 
 ### `administrative_audit_log`
 

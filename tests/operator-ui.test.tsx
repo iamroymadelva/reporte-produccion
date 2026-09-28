@@ -75,6 +75,48 @@ describe("Operator interactions", () => {
     expect(text()).toContain("Rendimiento del proceso (%)");
     expect(text()).toContain("Rendimiento del Operario (%)");
   });
+  test("administrative corrections wait for one explicit batched save", async () => {
+    await mount(<ReportEditor {...props} canSubmit={false} adminCorrection />);
+    expect(text()).toContain("Los cambios se aplican únicamente al seleccionar Guardar cambios.");
+    expect(buttons("Guardar cambios")[0].disabled).toBe(true);
+
+    await change('[data-report-field="production_order"]', "AP15");
+    await change('[data-report-field="production_order"]', "AP1555");
+    await change('[data-report-field="lot"]', "LOTE-FINAL");
+    await settle(900);
+    expect(requests.length).toBe(0);
+
+    await click(buttons("Guardar cambios")[0]);
+    expect(requests.length).toBe(1);
+    expect(requests[0].init.method).toBe("PATCH");
+    expect(JSON.parse(String(requests[0].init.body))).toMatchObject({
+      production_order: "AP1555",
+      lot: "LOTE-FINAL",
+    });
+    expect(text()).toContain("Guardado en servidor");
+  });
+  test("edits made during an administrative save require another explicit save", async () => {
+    await mount(<ReportEditor {...props} canSubmit={false} adminCorrection />);
+    let release!: (response: Response) => void;
+    respond = () => requests.length === 1
+      ? new Promise<Response>((resolve) => { release = resolve; })
+      : json({ ok: true, report: { updated_at: "2026-09-15T02:00:00Z" } });
+
+    await change('[data-report-field="lot"]', "PRIMER-CAMBIO");
+    await click(buttons("Guardar cambios")[0]);
+    await change('[data-report-field="lot"]', "SEGUNDO-CAMBIO");
+    await settle(900);
+    expect(requests.length).toBe(1);
+
+    await act(async () => { release(json({ ok: true, report: { updated_at: "2026-09-15T01:00:00Z" } })); });
+    await settle(40);
+    expect(requests.length).toBe(1);
+    expect(text()).toContain("Cambios pendientes");
+
+    await click(buttons("Guardar cambios")[0]);
+    expect(requests.length).toBe(2);
+    expect(JSON.parse(String(requests[1].init.body)).lot).toBe("SEGUNDO-CAMBIO");
+  });
   test("orders fields, hides analytics and validates every required control with focus", async () => {
     await mount(<ReportEditor {...props} report={{ id: "empty", creator_full_name: "Operario" }} />);
     const labels = [...container.querySelectorAll(".field-label")].map((node) => node.textContent);
