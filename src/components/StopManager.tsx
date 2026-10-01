@@ -94,7 +94,7 @@ export default function StopManager({ reportId, stops, categories }: Props) {
       {error && <p role="alert" className="mt-4 rounded-xl bg-red-50 p-4 text-sm text-red-800">{error}</p>}
       {connectionUnavailable && <p className="mt-4 rounded-xl bg-amber-50 p-4 text-sm text-amber-900">Iniciar, detener, cancelar o cambiar la categoría de una parada requiere conexión. El contador de una parada activa continúa.</p>}
       {openStop ? (
-        <div className="mt-5 rounded-2xl border-2 border-red-200 bg-red-50 p-5">
+        <div className="mt-5 rounded-xl border-2 border-red-200 bg-red-50 p-5">
           <p className="font-bold text-red-900">{openStop.stop_category?.code} · {openStop.stop_category?.name}</p>
           <p className="mt-1 text-sm text-red-800">Inició: {new Date(openStop.started_at).toLocaleString("es-CO")}</p>
           <p className="mt-3 text-sm font-semibold uppercase tracking-wide text-red-700">Duración en curso</p>

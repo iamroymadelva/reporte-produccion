@@ -47,8 +47,8 @@ const hasError = Boolean(reportsResult.error);
 <BaseLayout title="Dashboard" description="Resumen operativo de producción" profile={auth.profile}>
   <main class="mx-auto max-w-7xl space-y-6 px-4 py-6 sm:px-6 lg:py-8">
     <header>
-      <p class="text-sm font-bold uppercase tracking-wider text-emerald-700">Resumen de hoy</p>
-      <h1 class="mt-1 text-3xl font-bold tracking-tight">Dashboard</h1>
+      <p class="eyebrow">Resumen de hoy</p>
+      <h1 class="page-title">Dashboard</h1>
       <p class="mt-2 text-slate-600">Estado operativo de los reportes de producción del día.</p>
     </header>
 
@@ -58,47 +58,47 @@ const hasError = Boolean(reportsResult.error);
       </p>
     )}
 
-    <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-label="Indicadores de hoy">
+    <section class="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4" aria-label="Indicadores de hoy">
       {!isViewer && (
-        <article class="panel kpi-card kpi-card-draft">
+        <article class="panel kpi-card p-4 sm:p-5 kpi-card-draft">
           <a class="kpi-link" href="/reportes?status=DRAFT" title="Ver reportes en curso">
             <span>{kpiLabels.DRAFT}</span>
             <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M5 12h14M13 6l6 6-6 6"></path>
             </svg>
           </a>
-          <p class="mt-2 text-3xl font-bold text-slate-900">{reportCounts?.DRAFT ?? "—"}</p>
+          <p class="data-mono mt-3 text-3xl font-semibold text-slate-900">{reportCounts?.DRAFT ?? "—"}</p>
         </article>
       )}
-      <article class="panel kpi-card kpi-card-submitted">
+      <article class="panel kpi-card p-4 sm:p-5 kpi-card-submitted">
         <a class="kpi-link" href="/reportes?status=SUBMITTED" title="Ver reportes enviados">
           <span>{isViewer ? "Reportes enviados hoy" : kpiLabels.SUBMITTED}</span>
           <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M5 12h14M13 6l6 6-6 6"></path>
           </svg>
         </a>
-        <p class="mt-2 text-3xl font-bold text-slate-900">{reportCounts?.SUBMITTED ?? "—"}</p>
+        <p class="data-mono mt-3 text-3xl font-semibold text-slate-900">{reportCounts?.SUBMITTED ?? "—"}</p>
       </article>
       {!isViewer && (
-        <article class="panel kpi-card kpi-card-cancelled">
+        <article class="panel kpi-card p-4 sm:p-5 kpi-card-cancelled">
           <a class="kpi-link" href="/reportes?status=CANCELLED" title="Ver reportes cancelados">
             <span>{kpiLabels.CANCELLED}</span>
             <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M5 12h14M13 6l6 6-6 6"></path>
             </svg>
           </a>
-          <p class="mt-2 text-3xl font-bold text-slate-900">{reportCounts?.CANCELLED ?? "—"}</p>
+          <p class="data-mono mt-3 text-3xl font-semibold text-slate-900">{reportCounts?.CANCELLED ?? "—"}</p>
         </article>
       )}
       {!isViewer && (
-        <article class="panel kpi-card kpi-card-stop">
+        <article class="panel kpi-card p-4 sm:p-5 kpi-card-stop">
           <a class="kpi-link" href="/reportes?stop=active" title="Ver reportes en parada">
             <span>{kpiLabels.ACTIVE_STOP}</span>
             <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M5 12h14M13 6l6 6-6 6"></path>
             </svg>
           </a>
-          <p class="mt-2 text-3xl font-bold text-slate-900">{reportCounts?.ACTIVE_STOP ?? "—"}</p>
+          <p class="data-mono mt-3 text-3xl font-semibold text-slate-900">{reportCounts?.ACTIVE_STOP ?? "—"}</p>
         </article>
       )}
     </section>
@@ -109,7 +109,7 @@ const hasError = Boolean(reportsResult.error);
           <h2 class="text-xl font-bold">{isOperator ? "Mis reportes recientes" : "Reportes recientes"}</h2>
           <p class="mt-1 text-sm text-slate-500">Últimos reportes con fecha operativa de hoy.</p>
         </div>
-        <a class="font-bold text-emerald-700 hover:underline" href="/reportes">Ver todos</a>
+        <a class="link" href="/reportes">Ver todos</a>
       </div>
 
       {reportsResult.error ? (
@@ -124,7 +124,7 @@ const hasError = Boolean(reportsResult.error);
             return (
               <article class="mobile-data-card">
                 <div class="flex items-start justify-between gap-3">
-                  <a class="min-w-0 break-words font-bold text-emerald-700" href={`/reportes/${report.id}`}>{report.folio}</a>
+                  <a class="link data-mono min-w-0 break-words" href={`/reportes/${report.id}`}>{report.folio}</a>
                   <span class={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${report.status === "DRAFT" ? "bg-amber-100 text-amber-800" : report.status === "CANCELLED" ? "bg-red-100 text-red-800" : "bg-emerald-100 text-emerald-800"}`}>
                     {statusLabels[report.status as ReportStatus]}
                   </span>
@@ -158,7 +158,7 @@ const hasError = Boolean(reportsResult.error);
                 return (
                   <tr class="border-t">
                     <td class="p-4">
-                      <a class="font-bold text-emerald-700 hover:underline" href={`/reportes/${report.id}`}>{report.folio}</a>
+                      <a class="link data-mono" href={`/reportes/${report.id}`}>{report.folio}</a>
                     </td>
                     <td class="p-4 text-slate-600">{formatDateTime(report.created_at)}</td>
                     <td class="p-4 font-semibold">{report.machine ? `${report.machine.code} · ${report.machine.name}` : "—"}</td>
@@ -186,45 +186,50 @@ const hasError = Boolean(reportsResult.error);
 
 <style>
   .kpi-card {
-    border-width: 1px;
+    position: relative;
+    border-left-width: 4px;
+    transition: border-color 150ms ease, box-shadow 150ms ease;
   }
 
-  .kpi-card-draft {
-    border-color: #fde68a;
-    background: #fffbeb;
+  .kpi-card:hover {
+    box-shadow: 0 4px 12px rgb(15 23 42 / 0.08);
   }
 
-  .kpi-card-submitted {
-    border-color: #a7f3d0;
-    background: #ecfdf5;
-  }
-
-  .kpi-card-cancelled {
-    border-color: #fecaca;
-    background: #fef2f2;
-  }
-
-  .kpi-card-stop {
-    border-color: #fed7aa;
-    background: #fff7ed;
-  }
+  .kpi-card-draft { border-left-color: var(--color-amber-500); }
+  .kpi-card-submitted { border-left-color: var(--color-emerald-600); }
+  .kpi-card-cancelled { border-left-color: var(--color-red-600); }
+  .kpi-card-stop { border-left-color: var(--color-orange-600); }
 
   .kpi-link {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35rem;
-    color: #334155;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.5rem;
+    color: var(--color-slate-600);
     font-size: 0.875rem;
     font-weight: 600;
   }
 
-  .kpi-link:hover {
-    text-decoration: underline;
+  /* Toda la tarjeta es clicable */
+  .kpi-link::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
   }
 
+  .kpi-link:hover { color: var(--color-brand-800); }
+
   .kpi-link svg {
-    width: 1rem;
-    height: 1rem;
+    width: 1.125rem;
+    height: 1.125rem;
     flex: none;
+    color: var(--color-slate-400);
+    transition: color 150ms ease, transform 150ms ease;
+  }
+
+  .kpi-card:hover .kpi-link svg {
+    color: var(--color-brand-700);
+    transform: translateX(2px);
   }
 </style>

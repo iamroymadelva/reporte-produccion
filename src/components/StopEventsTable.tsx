@@ -63,7 +63,7 @@ export default function StopEventsTable({ stops, chronologicalOnly = false }: Pr
   };
 
   const heading = (key: SortKey, label: string) => chronologicalOnly ? label : (
-    <button className="flex min-h-11 items-center gap-1 font-semibold hover:text-emerald-700" type="button" onClick={() => changeSort(key)}>
+    <button className="flex min-h-11 items-center gap-1 font-semibold hover:text-brand-700" type="button" onClick={() => changeSort(key)}>
       {label}<span aria-hidden="true">{sortKey === key ? direction === "asc" ? "↑" : "↓" : "↕"}</span>
     </button>
   );
@@ -78,7 +78,7 @@ export default function StopEventsTable({ stops, chronologicalOnly = false }: Pr
           ["ended_at", "Final"],
           ["duration", "Duración"],
         ] as Array<[SortKey, string]>).map(([key, label]) => (
-          <button key={key} className={`inline-flex min-h-11 shrink-0 items-center rounded-xl border px-3 text-sm font-semibold ${sortKey === key ? "border-emerald-600 bg-emerald-50 text-emerald-800" : "border-slate-300 bg-white text-slate-700"}`} type="button" onClick={() => changeSort(key)}>
+          <button key={key} className={`inline-flex min-h-11 shrink-0 items-center rounded-lg border px-3 text-sm font-semibold transition-colors duration-150 ${sortKey === key ? "border-brand-600 bg-brand-50 text-brand-800" : "border-slate-300 bg-white text-slate-700"}`} type="button" onClick={() => changeSort(key)}>
             {label}<span className="ml-1" aria-hidden="true">{sortKey === key ? direction === "asc" ? "↑" : "↓" : "↕"}</span>
           </button>
         ))}
@@ -102,7 +102,7 @@ export default function StopEventsTable({ stops, chronologicalOnly = false }: Pr
       </div>
       <div className="hidden overflow-x-auto md:block" role="region" aria-label="Historial de paradas" tabIndex={0}>
       <table className="w-full min-w-[760px] text-left text-sm">
-        <thead className="border-b text-slate-500">
+        <thead className="border-b bg-slate-50 text-slate-600">
           <tr>
             <th className="p-3">{heading("sequence", "#")}</th>
             <th className="p-3">{heading("category", "Categoría")}</th>

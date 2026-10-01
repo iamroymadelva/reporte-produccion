@@ -71,8 +71,8 @@ const shiftLabel = (report: any) => {
   <main class="mx-auto max-w-7xl space-y-6 px-4 py-6 sm:px-6 lg:py-8">
     <header class="flex flex-wrap items-end justify-between gap-4">
       <div>
-        <p class="text-sm font-bold uppercase tracking-wider text-emerald-700">Operación diaria</p>
-        <h1 class="mt-1 text-3xl font-bold tracking-tight">Reportes de producción</h1>
+        <p class="eyebrow">Operación diaria</p>
+        <h1 class="page-title">Reportes de producción</h1>
         <p class="mt-2 text-slate-600">
           {auth.profile.role === "OPERATOR" ? `${drafts.length} de 5 reportes abiertos.` : "Consulta de reportes autorizados."}
         </p>
@@ -90,7 +90,7 @@ const shiftLabel = (report: any) => {
           {drafts.map((report) => {
             const hasOpenStop = report.report_stop_events?.some((stop: any) => !stop.ended_at);
             return (
-              <a class="min-w-48 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm hover:border-emerald-500" href={`/reportes/${report.id}`}>
+              <a class="min-w-48 rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:border-brand-500" href={`/reportes/${report.id}`}>
                 <span class="font-bold text-slate-900">{report.machine?.code} · {report.machine?.name}</span>
                 <span class={`mt-2 block text-xs font-bold ${hasOpenStop ? "text-red-700" : "text-emerald-700"}`}>
                   {hasOpenStop ? "● Parada abierta" : "● En operación"}
@@ -125,7 +125,7 @@ const shiftLabel = (report: any) => {
             <span class="field-label">Fecha</span>
             <input class="field-control" type="date" name="report_date" value={today} disabled={drafts.length >= 5} />
           </label>
-          <button class="button-primary w-full md:w-auto" type="submit" disabled={drafts.length >= 5}>Nuevo reporte</button>
+          <button class="button-accent w-full md:w-auto" type="submit" disabled={drafts.length >= 5}>Nuevo reporte</button>
         </form>
       </section>
     )}
@@ -137,9 +137,9 @@ const shiftLabel = (report: any) => {
           <p class="mt-1 text-sm text-slate-500">Filtra la tabla por la fecha operativa del reporte.</p>
         </div>
         <div class="grid w-full grid-cols-3 gap-2 sm:flex sm:w-auto sm:flex-wrap" aria-label="Seleccionar tipo de período">
-          <a class={`button-secondary px-2 ${filters.period === "day" ? "border-emerald-600 text-emerald-800" : ""}`} href={periodHref("day", filters)}>Día</a>
-          <a class={`button-secondary px-2 ${filters.period === "week" ? "border-emerald-600 text-emerald-800" : ""}`} href={periodHref("week", filters)}>Semana</a>
-          <a class={`button-secondary px-2 ${filters.period === "month" ? "border-emerald-600 text-emerald-800" : ""}`} href={periodHref("month", filters)}>Mes</a>
+          <a class={`button-secondary px-2 ${filters.period === "day" ? "is-active" : ""}`} href={periodHref("day", filters)}>Día</a>
+          <a class={`button-secondary px-2 ${filters.period === "week" ? "is-active" : ""}`} href={periodHref("week", filters)}>Semana</a>
+          <a class={`button-secondary px-2 ${filters.period === "month" ? "is-active" : ""}`} href={periodHref("month", filters)}>Mes</a>
         </div>
       </div>
 
@@ -177,7 +177,7 @@ const shiftLabel = (report: any) => {
           {(auth.profile.role === "ADMINISTRATOR" || auth.profile.role === "VIEWER") && !filters.error && (
             <a class="button-primary" href={exportHref}>Exportar Excel</a>
           )}
-          {(activeFilterLabel || filters.period) && <a class="font-bold text-emerald-700 hover:underline" href="/reportes">Limpiar filtros</a>}
+          {(activeFilterLabel || filters.period) && <a class="link" href="/reportes">Limpiar filtros</a>}
         </div>
       </div>
       <div class={`mobile-card-list ${administrativeList ? "lg:hidden" : "md:hidden"}`}>
@@ -187,7 +187,7 @@ const shiftLabel = (report: any) => {
           return (
             <article class={administrativeList ? "space-y-2 p-3" : "mobile-data-card"}>
               <div class="flex items-start justify-between gap-3">
-                <p class="min-w-0 break-words font-bold text-slate-900">{report.folio}</p>
+                <p class="data-mono min-w-0 break-words font-semibold text-slate-900">{report.folio}</p>
                 <span class={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${report.status === "DRAFT" ? "bg-amber-100 text-amber-800" : report.status === "CANCELLED" ? "bg-red-100 text-red-800" : "bg-emerald-100 text-emerald-800"}`}>{statusLabels[report.status as keyof typeof statusLabels]}</span>
               </div>
               {administrativeList ? (
@@ -206,7 +206,7 @@ const shiftLabel = (report: any) => {
                   </div>
                   <div class="flex min-h-11 items-center justify-between gap-3 border-t border-slate-100 pt-1">
                     <span class={hasOpenStop ? "text-sm font-bold text-red-700" : "text-sm text-slate-500"}>{hasOpenStop ? "● Parada abierta" : ""}</span>
-                    <a class="inline-flex min-h-11 items-center rounded-lg px-3 font-bold text-emerald-700" href={`/reportes/${report.id}`}>Abrir</a>
+                    <a class="inline-flex min-h-11 items-center rounded-lg px-3 font-bold text-brand-700" href={`/reportes/${report.id}`}>Abrir</a>
                   </div>
                 </>
               ) : (
@@ -219,7 +219,7 @@ const shiftLabel = (report: any) => {
                   </dl>
                   <div class="flex min-h-11 items-center justify-between gap-3">
                     <span class={hasOpenStop ? "font-bold text-red-700" : "text-slate-500"}>{hasOpenStop ? "● Parada abierta" : "Sin parada activa"}</span>
-                    <a class="inline-flex min-h-11 items-center rounded-lg px-3 font-bold text-emerald-700" href={`/reportes/${report.id}`}>Abrir</a>
+                    <a class="inline-flex min-h-11 items-center rounded-lg px-3 font-bold text-brand-700" href={`/reportes/${report.id}`}>Abrir</a>
                   </div>
                 </>
               )}
@@ -238,7 +238,7 @@ const shiftLabel = (report: any) => {
               const hasOpenStop = report.report_stop_events?.some((stop: any) => !stop.ended_at);
               return (
                 <tr class="border-t">
-                  <td class="p-4 font-bold text-slate-900">{report.folio}</td>
+                  <td class="data-mono p-4 font-semibold text-slate-900">{report.folio}</td>
                   <td class="p-4">{formatDate(report.report_date)}</td>
                   <td class="p-4 font-semibold">{report.machine?.code} · {report.machine?.name}</td>
                   <td class="hidden p-4 lg:table-cell">{report.production_order || "—"}</td>
@@ -246,7 +246,7 @@ const shiftLabel = (report: any) => {
                   <td class="hidden whitespace-nowrap p-4 lg:table-cell">{report.operator?.role ? roleLabels[report.operator.role as AppRole] ?? "—" : "—"}</td>
                   <td class="p-4"><span class={`rounded-full px-3 py-1 font-semibold ${report.status === "DRAFT" ? "bg-amber-100 text-amber-800" : report.status === "CANCELLED" ? "bg-red-100 text-red-800" : "bg-emerald-100 text-emerald-800"}`}>{statusLabels[report.status as keyof typeof statusLabels]}</span></td>
                   <td class="p-4">{hasOpenStop ? <span class="font-bold text-red-700">Abierta</span> : "—"}</td>
-                  <td class="p-4 text-right"><a class="font-bold text-emerald-700 hover:underline" href={`/reportes/${report.id}`}>Abrir</a></td>
+                  <td class="p-4 text-right"><a class="link" href={`/reportes/${report.id}`}>Abrir</a></td>
                 </tr>
               );
             })}
