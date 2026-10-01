@@ -53,7 +53,7 @@ export default function PlatformModal({
   }, []);
 
   return createPortal(
-    <dialog ref={dialogRef} className="m-auto max-h-[calc(100dvh-1rem)] w-[min(calc(100vw-1rem),32rem)] overflow-hidden rounded-2xl bg-white p-0 shadow-2xl backdrop:bg-slate-950/55 sm:max-h-[calc(100dvh-2rem)]" aria-labelledby={titleId} onMouseDown={(event) => {
+    <dialog ref={dialogRef} className="m-auto max-h-[calc(100dvh-1rem)] w-[min(calc(100vw-1rem),32rem)] overflow-hidden rounded-xl bg-white p-0 shadow-2xl backdrop:bg-slate-950/55 sm:max-h-[calc(100dvh-2rem)]" aria-labelledby={titleId} onMouseDown={(event) => {
       if (event.target === event.currentTarget) dialogRef.current?.close();
     }}>
       <section ref={surfaceRef} className="grid max-h-[calc(100dvh-1rem)] grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden sm:max-h-[calc(100dvh-2rem)]">

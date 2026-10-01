@@ -17,11 +17,11 @@ const sections = [
 
 <BaseLayout title="Administración" description="Administración del sistema" profile={auth.profile}>
   <main class="mx-auto max-w-6xl px-4 py-8 sm:px-6">
-    <p class="text-sm font-bold uppercase tracking-wider text-emerald-700">Configuración</p>
-    <h1 class="mt-1 text-3xl font-bold">Administración</h1>
+    <p class="eyebrow">Configuración</p>
+    <h1 class="page-title">Administración</h1>
     <div class="mt-7 grid gap-5 md:grid-cols-2">
       {sections.map((section) => (
-        <a class="panel block min-h-11 hover:border-emerald-500" href={section.href}>
+        <a class="panel block min-h-11 hover:border-brand-500" href={section.href}>
           <div class="flex items-center gap-3">
             <AdminCategoryIcon type={section.icon} />
             <h2 class="text-xl font-bold">{section.title}</h2>

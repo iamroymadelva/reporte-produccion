@@ -26,9 +26,9 @@ const action = `/api/admin/catalogs/${catalog}`;
 <BaseLayout title={title} description={description} profile={profile}>
   <main class="mx-auto max-w-6xl space-y-6 px-4 py-8 sm:px-6" data-search-scope>
     <header>
-      <a class="text-sm font-semibold text-emerald-700" href="/administracion">← Administración</a>
+      <a class="link text-sm" href="/administracion">← Administración</a>
       <div class="mt-2 flex flex-wrap items-end justify-between gap-4">
-        <div><h1 class="text-3xl font-bold">{title}</h1><p class="mt-2 text-slate-600">{description}</p></div>
+        <div><h1 class="page-title mt-0">{title}</h1><p class="mt-2 text-slate-600">{description}</p></div>
         <AdminRecordModal id={`create-${catalog}`} title={`Nuevo: ${title}`} action={action} submitLabel="Crear" mode="create">
           <div class="grid gap-4">
             <label><span class="field-label">Código</span><input class="field-control" name="code" required /></label>

@@ -782,7 +782,7 @@ export default function ReportEditor({
       <span className="field-label">{label}</span>
       <input
         {...fieldProps(field)}
-        className={`field-control scroll-mt-40 ${type === "number" ? "text-lg tabular-nums" : ""} ${fieldErrors[field] ? "border-red-500 ring-2 ring-red-200" : ""}`}
+        className={`field-control scroll-mt-40 ${type === "number" ? "data-mono text-lg" : ""} ${fieldErrors[field] ? "border-red-500 ring-2 ring-red-200" : ""}`}
         type={type}
         value={form[field]}
         disabled={fieldsDisabled}
@@ -843,7 +843,7 @@ export default function ReportEditor({
           aria-live="assertive"
           aria-atomic="true"
         >
-          <section className="mx-auto max-w-2xl rounded-2xl border border-red-300 bg-red-50 px-4 py-3 text-red-950 shadow-xl sm:px-5 sm:py-4">
+          <section className="mx-auto max-w-2xl rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-red-950 shadow-xl sm:px-5 sm:py-4">
             <h2 className="font-bold">Faltan campos obligatorios</h2>
             <p className="mt-1 text-sm">Completa los campos resaltados antes de enviar el reporte.</p>
           </section>
@@ -873,7 +873,7 @@ export default function ReportEditor({
         {message && <p role="alert" className="mb-5 rounded-xl bg-red-50 p-4 text-sm text-red-800">{message}</p>}
         {showReconnectReminder && hasLocalPending && (
           <section
-            className="mb-5 rounded-2xl border border-amber-300 bg-amber-50 p-4 text-amber-950 sm:flex sm:items-center sm:justify-between sm:gap-5"
+            className="mb-5 rounded-xl border border-amber-300 bg-amber-50 p-4 text-amber-950 sm:flex sm:items-center sm:justify-between sm:gap-5"
             role="status"
             aria-live="polite"
             aria-atomic="true"

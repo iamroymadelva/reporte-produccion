@@ -95,13 +95,13 @@ const auditEntries = describeAuditRows(audit, { catalogs: auditCatalogs, stops }
 <BaseLayout title={report.folio} description="Detalle del reporte de producción" profile={auth.profile}>
   <main class="mx-auto max-w-7xl space-y-6 px-4 py-6 sm:px-6 lg:py-8">
     {openDrafts.length > 0 && (
-      <nav class="flex gap-2 overflow-x-auto rounded-2xl border bg-white p-2" aria-label="Reportes abiertos por máquina">
+      <nav class="flex gap-2 overflow-x-auto rounded-xl border bg-white p-2" aria-label="Reportes abiertos por máquina">
         {openDrafts.map((draft) => {
           const hasOpenStop = draft.report_stop_events?.some((stop: any) => !stop.ended_at);
           return (
-            <a class={`min-w-44 rounded-xl px-4 py-3 ${draft.id === id ? "bg-emerald-700 text-white" : "bg-slate-50 text-slate-800"}`} href={`/reportes/${draft.id}`}>
+            <a class={`min-w-44 rounded-xl px-4 py-3 ${draft.id === id ? "bg-brand-700 text-white" : "bg-slate-50 text-slate-800"}`} href={`/reportes/${draft.id}`}>
               <span class="block font-bold">{draft.machine?.code} · {draft.machine?.name}</span>
-              <span data-stop-report-id={draft.id} data-current-report={draft.id === id ? "true" : "false"} class={`mt-1 block text-xs font-semibold ${draft.id === id ? "text-emerald-50" : hasOpenStop ? "text-red-700" : "text-emerald-700"}`}>
+              <span data-stop-report-id={draft.id} data-current-report={draft.id === id ? "true" : "false"} class={`mt-1 block text-xs font-semibold ${draft.id === id ? "text-brand-100" : hasOpenStop ? "text-red-700" : "text-emerald-700"}`}>
                 {hasOpenStop ? "● Parada abierta" : "● En operación"}
               </span>
             </a>
@@ -112,9 +112,9 @@ const auditEntries = describeAuditRows(audit, { catalogs: auditCatalogs, stops }
 
     <header class="flex flex-wrap items-start justify-between gap-4">
       <div>
-        <a class="text-sm font-semibold text-emerald-700 hover:underline" href="/reportes">← Volver a reportes</a>
-        <p class="mt-2 text-sm font-bold uppercase tracking-wider text-emerald-700">Folio del reporte</p>
-        <h1 class="text-3xl font-bold">{report.folio}</h1>
+        <a class="link text-sm" href="/reportes">← Volver a reportes</a>
+        <p class="mt-2 eyebrow">Folio del reporte</p>
+        <h1 class="data-mono mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">{report.folio}</h1>
         <p class="mt-2 text-lg font-semibold text-slate-800">{report.machine?.code} · {report.machine?.name}</p>
         <p class="mt-1 text-slate-600">Operario: {report.creator_full_name}</p>
       </div>
