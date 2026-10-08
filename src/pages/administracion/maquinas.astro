@@ -7,11 +7,12 @@ import AdminStatusToggle from "../../components/AdminStatusToggle.astro";
 import DestructiveAction from "../../components/DestructiveAction.astro";
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import { createSupabaseServerClient } from "../../lib/supabase/server";
+import { readAllPages } from "../../lib/supabase/read-all-pages";
 const auth = Astro.locals.auth!;
 const supabase = createSupabaseServerClient(Astro.request, Astro.cookies);
-const { data } = await supabase.from("machines").select("id, code, name, description, active").order("code").order("name");
+const { data, error: readError } = await readAllPages((start, end) => supabase.from("machines").select("id, code, name, description, active").order("code").order("name").order("id").range(start, end));
 const machines = (data ?? []) as any[];
-const error = Astro.url.searchParams.get("error");
+const error = Astro.url.searchParams.get("error") ?? (readError ? "No fue posible cargar todas las máquinas." : null);
 const ok = Astro.url.searchParams.get("ok");
 ---
 

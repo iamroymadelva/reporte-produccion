@@ -28,7 +28,7 @@ const actionLabel = intent === "remove" ? "Retirar usuario" : "Eliminar";
   <AdminActionIcon kind={intent === "remove" ? "remove" : "delete"} />
   <span class="admin-action-text">{actionLabel}</span>
 </button>
-<dialog id={dialogId} class="m-auto max-h-[calc(100dvh-1rem)] w-[min(calc(100vw-1rem),32rem)] overflow-y-auto rounded-xl bg-white p-0 shadow-2xl backdrop:bg-slate-950/55 sm:max-h-[calc(100dvh-2rem)]">
+<template id={dialogId} data-admin-dialog-template data-dialog-title={title} data-dialog-kind="alert">
   <section class="p-6" aria-labelledby={`${dialogId}-title`}>
     <h2 id={`${dialogId}-title`} class="text-2xl font-bold text-slate-950">{title}</h2>
     <p class="mt-4 text-slate-700">Registro: <strong>{recordName}</strong></p>
@@ -40,19 +40,4 @@ const actionLabel = intent === "remove" ? "Retirar usuario" : "Eliminar";
       <button class="button-danger min-h-12" type="submit">{confirmLabel}</button>
     </form>
   </section>
-</dialog>
-
-<script>
-  document.addEventListener("click", (event) => {
-    const target = event.target;
-    if (!(target instanceof HTMLElement)) return;
-    const opener = target.closest<HTMLElement>("[data-modal-open]");
-    if (opener) {
-      const dialog = document.getElementById(opener.dataset.modalOpen ?? "");
-      if (dialog instanceof HTMLDialogElement && !dialog.open) dialog.showModal();
-    }
-    const closer = target.closest<HTMLElement>("[data-modal-close]");
-    if (closer) closer.closest("dialog")?.close();
-    if (target instanceof HTMLDialogElement) target.close();
-  });
-</script>
+</template>

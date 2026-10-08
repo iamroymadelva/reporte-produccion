@@ -20,6 +20,11 @@ function viteRuntimeConfig(astroCommand) {
     "astro/compiler-runtime",
     "astro/virtual-modules/middleware.js",
     "exceljs",
+    "lucide-react",
+    "radix-ui",
+    "class-variance-authority",
+    "clsx",
+    "tailwind-merge",
     "react",
     "react/jsx-runtime",
     "react/jsx-dev-runtime",
@@ -42,13 +47,15 @@ function viteRuntimeConfig(astroCommand) {
     {
       name: "vite-command-cache",
       config(_config, { command }) {
-        const cacheCommand = astroCommand === "build" ? "build" : command;
+        const cacheCommand = astroCommand === "build" ? "build" : astroCommand === "sync" ? "sync" : command;
 
         return {
           cacheDir:
             cacheCommand === "build"
               ? "node_modules/.vite/build"
-              : "node_modules/.vite/dev",
+              : cacheCommand === "sync"
+                ? "node_modules/.vite/sync"
+                : "node_modules/.vite/dev",
           resolve:
             command === "serve"
               ? {
@@ -108,5 +115,9 @@ export default defineConfig({
   integrations: [viteRuntimeIntegration(), react()],
   vite: {
     plugins: [tailwindcss()],
+    resolve: { dedupe: ["react", "react-dom"] },
+    optimizeDeps: {
+      include: ["@astrojs/react/client.js", "react", "react-dom/client", "react/jsx-runtime", "react/jsx-dev-runtime", "radix-ui", "lucide-react", "class-variance-authority"],
+    },
   },
 });

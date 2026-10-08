@@ -1,0 +1,51 @@
+BEGIN
+CREATE EXTENSION
+SET
+ plan 
+------
+ 1..7
+(1 row)
+
+SET
+INSERT 0 1005
+SET
+                           is                           
+--------------------------------------------------------
+ ok 1 - La consulta exacta incluye más de 1000 reportes
+(1 row)
+
+                  is                  
+--------------------------------------
+ ok 2 - La primera página contiene 25
+(1 row)
+
+                    is                     
+-------------------------------------------
+ ok 3 - La página 41 contiene el remanente
+(1 row)
+
+                                      ok                                      
+------------------------------------------------------------------------------
+ ok 4 - Recorrer 41 páginas conserva todos los identificadores sin duplicados
+(1 row)
+
+                             is                             
+------------------------------------------------------------
+ ok 5 - Filtro del KPI de hoy coincide con total de listado
+(1 row)
+
+                         is                         
+----------------------------------------------------
+ ok 6 - Filtro del otro día excluye reportes de hoy
+(1 row)
+
+                            ok                             
+-----------------------------------------------------------
+ ok 7 - Exportar en lotes de 1000 recupera todas las filas
+(1 row)
+
+ finish 
+--------
+(0 rows)
+
+ROLLBACK

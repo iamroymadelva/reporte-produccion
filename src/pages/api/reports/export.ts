@@ -5,7 +5,6 @@ import { applyReportFilters, parseReportFilters } from "../../../lib/report-filt
 import { createSupabaseServerClient } from "../../../lib/supabase/server";
 import { statusLabels } from "../../../lib/types";
 
-const MAX_REPORTS = 1000;
 const MAX_STOPS = 10000;
 const MAX_RESPONSE_BYTES = 4 * 1024 * 1024;
 const QUERY_CHUNK = 100;
@@ -44,20 +43,20 @@ export const GET: APIRoute = async ({ request, cookies, locals }) => {
     shift_catalog:shifts(name, start_time, end_time), machine:machines(code, name),
     dosifier_type:dosifier_types(code, name)${activeStopSelect}
   `;
-  let reportQuery = supabase
-    .from("production_reports")
-    .select(reportSelect, { count: "exact" })
-    .order("created_at", { ascending: false })
-    .limit(MAX_REPORTS);
-  reportQuery = applyReportFilters(reportQuery, filters, filters.activeStop ? "active_stops" : "report_stop_events");
-  const reportResult = await reportQuery;
-
-  if (reportResult.error) return spanishResponse("No fue posible consultar los reportes para exportar.", 500);
-  if ((reportResult.count ?? 0) > MAX_REPORTS) {
-    return spanishResponse(`La exportación supera el límite de ${MAX_REPORTS} reportes. Selecciona un período más corto.`, 422);
+  const reports: any[] = [];
+  for (let from = 0; ; from += PAGE_SIZE) {
+    let reportQuery = supabase.from("production_reports")
+      .select(reportSelect)
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: false })
+      .range(from, from + PAGE_SIZE - 1);
+    reportQuery = applyReportFilters(reportQuery, filters, filters.activeStop ? "active_stops" : "report_stop_events");
+    const reportResult = await reportQuery;
+    if (reportResult.error) return spanishResponse("No fue posible consultar los reportes para exportar.", 500);
+    const reportPage = reportResult.data ?? [];
+    reports.push(...reportPage);
+    if (reportPage.length < PAGE_SIZE) break;
   }
-
-  const reports = (reportResult.data ?? []) as any[];
   const reportIds = reports.map((report) => report.id);
   const metrics: any[] = [];
   const stops: any[] = [];

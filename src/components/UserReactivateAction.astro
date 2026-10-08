@@ -31,7 +31,7 @@ const dialogId = `reactivate-user-${userId.replace(/[^a-zA-Z0-9_-]/g, "-")}`;
   <span>Reactivar usuario</span>
 </button>
 
-<dialog id={dialogId} class="user-reactivate-modal" data-user-reactivate-modal aria-labelledby={`${dialogId}-title`}>
+<template id={dialogId} data-admin-dialog-template data-dialog-title="Reactivar usuario" data-dialog-size="large">
   <form class="user-reactivate-modal__surface" method="POST" action={`/api/admin/users/${userId}`}>
     <input type="hidden" name="intent" value="reactivate" />
     <header class="user-reactivate-modal__header">
@@ -63,7 +63,7 @@ const dialogId = `reactivate-user-${userId.replace(/[^a-zA-Z0-9_-]/g, "-")}`;
       <button class="button-primary" type="submit">Reactivar usuario</button>
     </footer>
   </form>
-</dialog>
+</template>
 
 <style>
   .user-reactivate-modal {
@@ -110,18 +110,3 @@ const dialogId = `reactivate-user-${userId.replace(/[^a-zA-Z0-9_-]/g, "-")}`;
     .user-reactivate-modal__footer > button { width: 100%; padding-inline: 0.75rem; }
   }
 </style>
-
-<script>
-  document.querySelectorAll<HTMLDialogElement>("[data-user-reactivate-modal]").forEach((dialog) => {
-    if (dialog.dataset.ready === "true") return;
-    dialog.dataset.ready = "true";
-    const opener = document.querySelector<HTMLElement>(`[data-user-reactivate-open="${CSS.escape(dialog.id)}"]`);
-    opener?.addEventListener("click", () => {
-      if (!dialog.open) dialog.showModal();
-      dialog.querySelector<HTMLInputElement>("input[type='checkbox']")?.focus();
-    });
-    dialog.querySelectorAll<HTMLElement>("[data-user-reactivate-close]").forEach((button) => button.addEventListener("click", () => dialog.close()));
-    dialog.addEventListener("click", (event) => { if (event.target === dialog) dialog.close(); });
-    dialog.addEventListener("close", () => opener?.focus());
-  });
-</script>

@@ -7,11 +7,12 @@ import AdminStatusToggle from "../../components/AdminStatusToggle.astro";
 import DestructiveAction from "../../components/DestructiveAction.astro";
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import { createSupabaseServerClient } from "../../lib/supabase/server";
+import { readAllPages } from "../../lib/supabase/read-all-pages";
 const auth = Astro.locals.auth!;
 const supabase = createSupabaseServerClient(Astro.request, Astro.cookies);
-const { data } = await supabase.from("stop_categories").select("id, code, name, description, active, numeric_code").order("numeric_code").order("code");
+const { data, error: readError } = await readAllPages((start, end) => supabase.from("stop_categories").select("id, code, name, description, active, numeric_code").order("numeric_code").order("code").order("id").range(start, end));
 const categories = (data ?? []) as any[];
-const error = Astro.url.searchParams.get("error");
+const error = Astro.url.searchParams.get("error") ?? (readError ? "No fue posible cargar todas las categorías." : null);
 const ok = Astro.url.searchParams.get("ok");
 const preview = (value: string) => value.length > 90 ? `${value.slice(0, 90).trim()}…` : value;
 ---

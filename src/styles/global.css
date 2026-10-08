@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "tw-animate-css";
 @import "@fontsource/fira-sans/latin-400.css";
 @import "@fontsource/fira-sans/latin-500.css";
 @import "@fontsource/fira-sans/latin-600.css";
@@ -27,6 +28,68 @@
   --color-accent-400: #fbbf24;
   --color-accent-500: #f59e0b;
   --color-accent-600: #d97706;
+}
+
+:root {
+  color-scheme: light;
+  --background: #f8fafc;
+  --foreground: #0f172a;
+  --card: #ffffff;
+  --card-foreground: #0f172a;
+  --popover: #ffffff;
+  --popover-foreground: #0f172a;
+  --primary: #1e40af;
+  --primary-foreground: #ffffff;
+  --secondary: #dbeafe;
+  --secondary-foreground: #172554;
+  --muted: #f1f5f9;
+  --muted-foreground: #475569;
+  --accent: #fbbf24;
+  --accent-foreground: #0f172a;
+  --destructive: #b91c1c;
+  --border: #e2e8f0;
+  --input: #cbd5e1;
+  --ring: #2563eb;
+  --radius: 0.75rem;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+}
+
+.skip-link { position: fixed; z-index: 100; left: 1rem; top: -4rem; border-radius: .5rem; background: white; padding: .75rem 1rem; color: #172554; font-weight: 700; box-shadow: 0 4px 16px #0003; }
+.skip-link:focus { top: 1rem; }
+.app-sidebar { position: fixed; z-index: 35; inset: 0 auto 0 0; width: 16.5rem; }
+.app-header { position: sticky; z-index: 30; top: 0; display: flex; min-height: 4.5rem; align-items: center; justify-content: space-between; gap: .75rem; border-bottom: 1px solid #e2e8f0; background: #fff; padding: .625rem 1rem; }
+.app-content { min-width: 0; }
+.app-nav-link { display: flex; min-height: 2.75rem; align-items: center; gap: .75rem; border-radius: .625rem; padding: .5rem .75rem; color: #dbeafe; font-size: .875rem; font-weight: 600; transition: background-color .15s; }
+.app-nav-link:hover, .app-nav-link:focus-visible { background: #ffffff1a; color: white; }
+.app-nav-link--active { background: #ffffff21; color: white; box-shadow: inset 3px 0 #fbbf24; }
+.app-nav-sub { min-height: 2.5rem; font-weight: 500; }
+@media (min-width: 1024px) {
+  body.has-app-shell { padding-left: 16.5rem; }
+  body[data-shell-collapsed="true"].has-app-shell { padding-left: 4.5rem; }
+  body[data-shell-collapsed="true"] .app-sidebar { width: 4.5rem; }
 }
 
 @layer base {

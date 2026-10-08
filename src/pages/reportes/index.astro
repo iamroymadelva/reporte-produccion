@@ -10,36 +10,43 @@ const auth = Astro.locals.auth!;
 const supabase = createSupabaseServerClient(Astro.request, Astro.cookies);
 const administrativeList = auth.profile.role === "ADMINISTRATOR" || auth.profile.role === "VIEWER";
 const reportSelection = "id, folio, report_date, production_order, product_name, shift, status, created_by, created_at, machine:machines(id, code, name), product:products(id, name), shift_catalog:shifts(id, name, start_time, end_time), operator:profiles!production_reports_created_by_fkey(full_name, role), report_stop_events(id, ended_at, duration_seconds, cancelled_at)";
-const { data: reportRows, error: reportError } = await supabase
-  .from("production_reports")
-  .select(reportSelection)
-  .order("created_at", { ascending: false });
-
-const reports = (reportRows ?? []) as any[];
-const drafts = reports.filter((report) => report.status === "DRAFT" && report.created_by === auth.user.id);
+const PAGE_SIZE = 25;
+const requestedPage = Number(Astro.url.searchParams.get("page") ?? "1");
+const page = Number.isSafeInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1;
+const { data: draftRows, error: draftError } = auth.profile.role === "OPERATOR"
+  ? await supabase.from("production_reports").select(reportSelection).eq("status", "DRAFT").eq("created_by", auth.user.id).order("created_at", { ascending: false }).order("id", { ascending: false })
+  : { data: [], error: null };
+const drafts = (draftRows ?? []) as any[];
 const filters = parseReportFilters(Astro.url.searchParams);
 const activeFilterLabel = filters.activeStop
   ? "Parada activa"
   : filters.status
     ? statusLabels[filters.status]
     : null;
-const hasDisplayFilters = Boolean(filters.period || filters.status || filters.activeStop);
-let visibleReports = filters.error ? [] : reports;
+let visibleReports: any[] = [];
 let visibleReportError: string | null = null;
-
-if (!filters.error && hasDisplayFilters) {
+let reportTotal = 0;
+if (!filters.error) {
   const visibleSelection = filters.activeStop
     ? `${reportSelection}, active_stop:report_stop_events!inner(id, ended_at)`
     : reportSelection;
   let visibleQuery = supabase
     .from("production_reports")
-    .select(visibleSelection)
-    .order("created_at", { ascending: false });
+    .select(visibleSelection, { count: "exact" })
+    .order("created_at", { ascending: false })
+    .order("id", { ascending: false });
   visibleQuery = applyReportFilters(visibleQuery, filters, filters.activeStop ? "active_stop" : "report_stop_events");
-  const visibleResult = await visibleQuery;
+  const visibleResult = await visibleQuery.range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
   visibleReports = (visibleResult.data ?? []) as any[];
+  reportTotal = visibleResult.count ?? 0;
   visibleReportError = visibleResult.error ? "No fue posible aplicar los filtros de reportes." : null;
 }
+const pageCount = Math.max(1, Math.ceil(reportTotal / PAGE_SIZE));
+const pageHref = (target: number) => {
+  const params = reportFilterParams(filters);
+  if (target > 1) params.set("page", String(target));
+  return `/reportes${params.size ? `?${params.toString()}` : ""}`;
+};
 let assignedMachines: any[] = [];
 
 if (auth.profile.role === "OPERATOR") {
@@ -51,7 +58,7 @@ if (auth.profile.role === "OPERATOR") {
   assignedMachines = (data ?? []).filter((assignment: any) => assignment.machine?.active);
 }
 
-const error = Astro.url.searchParams.get("error") ?? filters.error ?? visibleReportError ?? reportError?.message;
+const error = Astro.url.searchParams.get("error") ?? filters.error ?? visibleReportError ?? draftError?.message;
 const ok = Astro.url.searchParams.get("ok");
 const today = getBogotaDateKey();
 const currentMonth = today.slice(0, 7);
@@ -170,7 +177,7 @@ const shiftLabel = (report: any) => {
         <div>
           <h2 class="text-xl font-bold">{auth.profile.role === "OPERATOR" ? "Mis reportes" : "Reportes disponibles"}</h2>
           <p class="mt-1 text-sm text-slate-500">
-            Mostrando {visibleReports.length} {visibleReports.length === 1 ? "reporte" : "reportes"}{filterSummary ? ` · ${filterSummary}` : ""}
+            Mostrando {visibleReports.length ? (page - 1) * PAGE_SIZE + 1 : 0}–{Math.min(page * PAGE_SIZE, reportTotal)} de {reportTotal} {reportTotal === 1 ? "reporte" : "reportes"}{filterSummary ? ` · ${filterSummary}` : ""}
           </p>
         </div>
         <div class="flex flex-wrap items-center gap-3">
@@ -254,6 +261,13 @@ const shiftLabel = (report: any) => {
           </tbody>
         </table>
       </div>
+      {pageCount > 1 && (
+        <nav class="flex flex-wrap items-center justify-between gap-3 border-t px-4 py-3" aria-label="Páginas de reportes">
+          <a class:list={["button-secondary", page <= 1 && "pointer-events-none opacity-50"]} href={pageHref(Math.max(1, page - 1))} aria-disabled={page <= 1 ? "true" : undefined}>Anterior</a>
+          <span class="text-sm font-medium text-slate-600">Página {page} de {pageCount}</span>
+          <a class:list={["button-secondary", page >= pageCount && "pointer-events-none opacity-50"]} href={pageHref(Math.min(pageCount, page + 1))} aria-disabled={page >= pageCount ? "true" : undefined}>Siguiente</a>
+        </nav>
+      )}
     </section>
   </main>
 </BaseLayout>

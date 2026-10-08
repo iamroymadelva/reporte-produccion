@@ -23,7 +23,7 @@ const { id, title, action, submitLabel, mode, recordId, size = "default" } = Ast
   </button>
 )}
 
-<dialog id={id} class:list={["admin-record-modal", size === "large" && "admin-record-modal--large"]} data-admin-record-modal aria-labelledby={`${id}-title`}>
+<template id={id} data-admin-dialog-template data-dialog-title={title} data-dialog-size={size}>
   <form class="admin-record-modal__surface" method="POST" action={action}>
     {recordId && <input type="hidden" name="id" value={recordId} />}
     <header class="admin-record-modal__header">
@@ -38,7 +38,7 @@ const { id, title, action, submitLabel, mode, recordId, size = "default" } = Ast
       <button class="button-primary" type="submit">{submitLabel}</button>
     </footer>
   </form>
-</dialog>
+</template>
 
 <style>
   .admin-record-modal {
@@ -137,29 +137,3 @@ const { id, title, action, submitLabel, mode, recordId, size = "default" } = Ast
     .admin-record-modal__footer > button { width: 100%; padding-inline: 0.75rem; }
   }
 </style>
-
-<script>
-  document.querySelectorAll<HTMLDialogElement>("[data-admin-record-modal]").forEach((dialog) => {
-    if (dialog.dataset.adminModalReady === "true") return;
-    dialog.dataset.adminModalReady = "true";
-    const opener = document.querySelector<HTMLElement>(`[data-admin-modal-open="${CSS.escape(dialog.id)}"]`);
-
-    opener?.addEventListener("click", () => {
-      document.querySelectorAll<HTMLDialogElement>("[data-admin-record-modal][open]").forEach((openDialog) => {
-        if (openDialog !== dialog) openDialog.close();
-      });
-      if (!dialog.open) dialog.showModal();
-      dialog.querySelector<HTMLElement>("input:not([type='hidden']), select, textarea")?.focus();
-    });
-
-    dialog.querySelectorAll<HTMLElement>("[data-admin-modal-close]").forEach((closer) => {
-      closer.addEventListener("click", () => dialog.close());
-    });
-
-    dialog.addEventListener("click", (event) => {
-      if (event.target === dialog) dialog.close();
-    });
-
-    dialog.addEventListener("close", () => opener?.focus());
-  });
-</script>

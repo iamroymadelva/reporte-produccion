@@ -6,13 +6,14 @@ import DestructiveAction from "../../components/DestructiveAction.astro";
 import UserReactivateAction from "../../components/UserReactivateAction.astro";
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import { createSupabaseAdminClient, createSupabaseServerClient } from "../../lib/supabase/server";
+import { readAllPages } from "../../lib/supabase/read-all-pages";
 import { roleLabels, type AppRole } from "../../lib/types";
 const auth = Astro.locals.auth!;
 const supabase = createSupabaseServerClient(Astro.request, Astro.cookies);
-const [{ data: profilesData }, { data: machinesData }, { data: assignmentsData }] = await Promise.all([
-  supabase.from("profiles").select("id, full_name, role, job_title, active, removed_at, removed_by").order("full_name"),
-  supabase.from("machines").select("id, code, name, active").eq("active", true).order("code").order("name"),
-  supabase.from("operator_machine_assignments").select("operator_id, machine_id, active"),
+const [{ data: profilesData, error: profilesError }, { data: machinesData, error: machinesError }, { data: assignmentsData, error: assignmentsError }] = await Promise.all([
+  readAllPages((start, end) => supabase.from("profiles").select("id, full_name, role, job_title, active, removed_at, removed_by").order("full_name").order("id").range(start, end)),
+  readAllPages((start, end) => supabase.from("machines").select("id, code, name, active").eq("active", true).order("code").order("name").order("id").range(start, end)),
+  readAllPages((start, end) => supabase.from("operator_machine_assignments").select("operator_id, machine_id, active").order("operator_id").order("machine_id").range(start, end)),
 ]);
 let authUsers: any[] = [];
 let configurationError = "";
@@ -32,7 +33,7 @@ const profiles = (profilesData ?? []) as any[];
 const machines = (machinesData ?? []) as any[];
 const assignments = (assignmentsData ?? []) as any[];
 const emailById = new Map(authUsers.map((user) => [user.id, user.email]));
-const error = Astro.url.searchParams.get("error") ?? configurationError;
+const error = Astro.url.searchParams.get("error") || configurationError || ((profilesError || machinesError || assignmentsError) ? "No fue posible cargar todos los usuarios y asignaciones." : null);
 const ok = Astro.url.searchParams.get("ok");
 ---
 

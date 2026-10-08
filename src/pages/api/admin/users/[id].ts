@@ -62,101 +62,21 @@ export const POST: APIRoute = async ({ request, params, redirect, locals }) => {
       machineIds = activeMachines!.map(({ id }) => id);
     }
 
-    const { data: previousAssignments, error: assignmentsReadError } = await admin
-      .from("operator_machine_assignments")
-      .select("machine_id, active")
-      .eq("operator_id", params.id);
-    if (assignmentsReadError) {
-      return redirect(redirectWithMessage("/administracion/usuarios", "error", "No fue posible consultar las asignaciones existentes del usuario."), 303);
-    }
-
     const { error: unbanError } = await admin.auth.admin.updateUserById(params.id, { ban_duration: "none" });
     if (unbanError) {
       return redirect(redirectWithMessage("/administracion/usuarios", "error", "No fue posible restaurar el acceso del usuario."), 303);
     }
 
-    let failedStep = "assignments-disable";
-    try {
-      const { error: disableError } = await admin.from("operator_machine_assignments").update({ active: false }).eq("operator_id", params.id);
-      if (disableError) throw disableError;
-
-      if (profile.role === "OPERATOR" && machineIds.length > 0) {
-        failedStep = "assignments-activate";
-        const { error: assignmentError } = await admin.from("operator_machine_assignments").upsert(
-          machineIds.map((machineId) => ({
-            operator_id: params.id,
-            machine_id: machineId,
-            active: true,
-            created_by: locals.auth!.user.id,
-          })),
-          { onConflict: "operator_id,machine_id" },
-        );
-        if (assignmentError) throw assignmentError;
-      }
-
-      failedStep = "profile";
-      const { error: profileError } = await admin
-        .from("profiles")
-        .update({ active: true, removed_at: null, removed_by: null })
-        .eq("id", params.id);
-      if (profileError) throw profileError;
-
-      failedStep = "audit";
-      const { error: auditError } = await admin.from("administrative_audit_log").insert({
-        action: "REACTIVATE_USER",
-        entity_type: "profiles",
-        entity_id: params.id,
-        entity_label: profile.full_name,
-        performed_by: locals.auth.user.id,
-        details: { activated_machine_ids: machineIds, activated_assignment_count: machineIds.length },
-      });
-      if (auditError) throw auditError;
-    } catch (databaseError) {
-      const compensationFailures: string[] = [];
-
-      const { error: disableCompensationError } = await admin
-        .from("operator_machine_assignments")
-        .update({ active: false })
-        .eq("operator_id", params.id);
-      if (disableCompensationError) compensationFailures.push("assignments-disable");
-
-      const previousAssignmentIds = new Set((previousAssignments ?? []).map(({ machine_id }) => machine_id));
-      const newlyCreatedAssignmentIds = machineIds.filter((machineId) => !previousAssignmentIds.has(machineId));
-      if (newlyCreatedAssignmentIds.length > 0) {
-        const { error: assignmentsDeleteError } = await admin
-          .from("operator_machine_assignments")
-          .delete()
-          .eq("operator_id", params.id)
-          .in("machine_id", newlyCreatedAssignmentIds);
-        if (assignmentsDeleteError) compensationFailures.push("assignments-delete-new");
-      }
-
-      const previouslyActive = (previousAssignments ?? []).filter(({ active }) => active);
-      if (previouslyActive.length > 0) {
-        const { error: assignmentsCompensationError } = await admin.from("operator_machine_assignments").upsert(
-          previouslyActive.map(({ machine_id }) => ({ operator_id: params.id, machine_id, active: true })),
-          { onConflict: "operator_id,machine_id" },
-        );
-        if (assignmentsCompensationError) compensationFailures.push("assignments-restore");
-      }
-
-      const { error: profileCompensationError } = await admin
-        .from("profiles")
-        .update({ active: false, removed_at: profile.removed_at, removed_by: profile.removed_by })
-        .eq("id", params.id);
-      if (profileCompensationError) compensationFailures.push("profile");
-
+    const { error: updateError } = await admin.rpc("replace_operator_assignments", {
+      p_operator_id: params.id,
+      p_machine_ids: machineIds,
+      p_actor_id: locals.auth!.user.id,
+      p_profile: { active: true, removed_at: null, removed_by: null, audit_action: "REACTIVATE_USER" },
+    });
+    if (updateError) {
       const { error: banCompensationError } = await admin.auth.admin.updateUserById(params.id, { ban_duration: "876000h" });
-      if (banCompensationError) compensationFailures.push("auth-ban");
-
-      console.error("[USER_REACTIVATION_FAILURE]", {
-        failedStep,
-        errorName: databaseError instanceof Error ? databaseError.name : "UnknownError",
-        compensationFailures,
-      });
-
-      const message = compensationFailures.length > 0
-        ? "No fue posible reactivar el usuario y se requiere verificar su estado antes de reintentar."
+      const message = banCompensationError
+        ? "No fue posible reactivar el usuario y se requiere verificar su acceso antes de reintentar."
         : "No fue posible reactivar el usuario. Los cambios fueron revertidos.";
       return redirect(redirectWithMessage("/administracion/usuarios", "error", message), 303);
     }
@@ -169,42 +89,18 @@ export const POST: APIRoute = async ({ request, params, redirect, locals }) => {
     }
     try {
       const admin = createSupabaseAdminClient();
-      const { data: activeAssignments, error: readError } = await admin
-        .from("operator_machine_assignments")
-        .select("machine_id")
-        .eq("operator_id", params.id)
-        .eq("active", true);
-      if (readError) throw readError;
-
       const { error: banError } = await admin.auth.admin.updateUserById(params.id, { ban_duration: "876000h" });
       if (banError) throw banError;
 
-      try {
-        const { error: disableError } = await admin.from("operator_machine_assignments").update({ active: false }).eq("operator_id", params.id);
-        if (disableError) throw disableError;
-        const { error: profileError } = await admin.from("profiles").update({
-          active: false,
-          removed_at: new Date().toISOString(),
-          removed_by: locals.auth!.user.id,
-        }).eq("id", params.id);
-        if (profileError) throw profileError;
-        const { error: auditError } = await admin.from("administrative_audit_log").insert({
-          action: "REMOVE_USER",
-          entity_type: "profiles",
-          entity_id: params.id,
-          performed_by: locals.auth!.user.id,
-          details: { disabled_assignment_count: activeAssignments?.length ?? 0 },
-        });
-        if (auditError) throw auditError;
-      } catch (databaseError) {
+      const { error: updateError } = await admin.rpc("replace_operator_assignments", {
+        p_operator_id: params.id,
+        p_machine_ids: [],
+        p_actor_id: locals.auth!.user.id,
+        p_profile: { active: false, removed_at: new Date().toISOString(), removed_by: locals.auth!.user.id, audit_action: "REMOVE_USER" },
+      });
+      if (updateError) {
         await admin.auth.admin.updateUserById(params.id, { ban_duration: "none" });
-        if (activeAssignments?.length) {
-          await admin.from("operator_machine_assignments").upsert(
-            activeAssignments.map(({ machine_id }) => ({ operator_id: params.id, machine_id, active: true })),
-            { onConflict: "operator_id,machine_id" },
-          );
-        }
-        throw databaseError;
+        throw updateError;
       }
 
       return redirect(redirectWithMessage("/administracion/usuarios", "ok", "Usuario retirado y acceso revocado."), 303);
@@ -251,22 +147,13 @@ export const POST: APIRoute = async ({ request, params, redirect, locals }) => {
   }
 
   try {
-    const { error: profileError } = await admin.from("profiles").update({ full_name: fullName, job_title: jobTitle, role, active }).eq("id", params.id);
-    if (profileError) throw profileError;
-
-    const { error: disableError } = await admin.from("operator_machine_assignments").update({ active: false }).eq("operator_id", params.id);
-    if (disableError) throw disableError;
-
-    if (role === "OPERATOR" && machineIds.length > 0) {
-      const assignments = machineIds.map((machineId) => ({
-        operator_id: params.id,
-        machine_id: machineId,
-        active: true,
-        created_by: locals.auth!.user.id,
-      }));
-      const { error: assignmentError } = await admin.from("operator_machine_assignments").upsert(assignments, { onConflict: "operator_id,machine_id" });
-      if (assignmentError) throw assignmentError;
-    }
+    const { error: updateError } = await admin.rpc("replace_operator_assignments", {
+      p_operator_id: params.id,
+      p_machine_ids: role === "OPERATOR" && active ? [...new Set(machineIds)] : [],
+      p_actor_id: locals.auth!.user.id,
+      p_profile: { full_name: fullName, job_title: jobTitle, role, active },
+    });
+    if (updateError) throw updateError;
 
     return redirect(redirectWithMessage("/administracion/usuarios", "ok", "Usuario actualizado."), 303);
   } catch {
