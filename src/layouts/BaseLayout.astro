@@ -30,6 +30,30 @@ const pathname = Astro.url.pathname;
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon-180.png" />
+    <script is:inline>
+      (function () {
+        var root = document.documentElement;
+        var media = window.matchMedia("(prefers-color-scheme: dark)");
+        function stored() {
+          try {
+            var v = localStorage.getItem("theme");
+            if (v === "light" || v === "dark" || v === "system") return v;
+          } catch (e) {}
+          return "system";
+        }
+        function apply() {
+          var t = stored();
+          var dark = t === "dark" || (t === "system" && media.matches);
+          root.classList.toggle("dark", dark);
+          var meta = document.querySelector('meta[name="theme-color"]');
+          if (meta) meta.setAttribute("content", dark ? "#0a1023" : "#172554");
+        }
+        apply();
+        var listener = function () { if (stored() === "system") apply(); };
+        if (media.addEventListener) media.addEventListener("change", listener);
+        else if (media.addListener) media.addListener(listener);
+      })();
+    </script>
     <title>{title}</title>
   </head>
   <body class={profile ? "has-app-shell" : undefined}>
