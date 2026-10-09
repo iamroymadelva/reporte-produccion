@@ -1,8 +1,10 @@
 ---
 import "../styles/global.css";
+import { ClientRouter } from "astro:transitions";
 import ConnectionStatus from "../components/ConnectionStatus.astro";
-import AppShell from "../components/AppShell";
+import AppShell from "../components/shell/AppShell";
 import AdminDialogHost from "../components/AdminDialogHost";
+import FlashToast from "../components/FlashToast";
 import type { Profile } from "../lib/types";
 
 interface Props {
@@ -13,6 +15,10 @@ interface Props {
 
 const { title, description, profile = null } = Astro.props;
 const pathname = Astro.url.pathname;
+// El primitive Sidebar persiste su estado en la cookie `sidebar_state`; el SSR la lee para no saltar al hidratar.
+const defaultOpen = Astro.cookies.get("sidebar_state")?.value !== "false";
+const flashOk = Astro.url.searchParams.get("ok");
+const flashError = Astro.url.searchParams.get("error");
 ---
 
 <!doctype html>
@@ -52,22 +58,51 @@ const pathname = Astro.url.pathname;
         var listener = function () { if (stored() === "system") apply(); };
         if (media.addEventListener) media.addEventListener("change", listener);
         else if (media.addListener) media.addListener(listener);
+        // ClientRouter reemplaza los atributos de <html>: conserva la clase "dark" y el theme-color.
+        document.addEventListener("astro:before-swap", function (event) {
+          event.newDocument.documentElement.classList.toggle("dark", root.classList.contains("dark"));
+        });
+        document.addEventListener("astro:after-swap", apply);
       })();
     </script>
     <title>{title}</title>
+    <ClientRouter />
   </head>
-  <body class={profile ? "has-app-shell" : undefined}>
+  <body data-shell={profile ? "" : undefined}>
     {profile && <>
       <a class="skip-link" href="#main-content">Saltar al contenido</a>
-      <AppShell profile={profile} pathname={pathname} client:load />
+      <AppShell profile={profile} pathname={pathname} defaultOpen={defaultOpen} client:load transition:persist="app-shell" />
     </>}
-    <div id="main-content" class={profile ? "app-content" : undefined} tabindex="-1">
+    <div id="main-content" tabindex="-1">
       <ConnectionStatus />
       <slot />
     </div>
-    {profile?.role === "ADMINISTRATOR" && <AdminDialogHost client:load />}
+    {profile?.role === "ADMINISTRATOR" && <AdminDialogHost client:load transition:persist="admin-dialog-host" />}
+    {profile && <FlashToast ok={flashOk} error={flashError} client:load />}
   </body>
 </html>
+
+<style is:global>
+  /* El shell (sidebar, barra superior, barra inferior) es fijo: el contenido reserva el espacio aquí.
+     Las páginas con elementos sticky deben usar top-14 para no quedar bajo la barra superior. */
+  html { scroll-padding-top: 4.5rem; }
+  body[data-shell] #main-content {
+    min-width: 0;
+    padding-top: calc(3.5rem + env(safe-area-inset-top));
+    padding-bottom: calc(4rem + env(safe-area-inset-bottom));
+  }
+  @media (min-width: 1024px) {
+    body[data-shell] #main-content {
+      padding-bottom: 0;
+      padding-left: 16rem;
+      transition: padding-left 200ms linear;
+    }
+    body[data-shell]:has([data-slot="sidebar"][data-state="collapsed"]) #main-content { padding-left: 3rem; }
+  }
+  @media print {
+    body[data-shell] #main-content { padding: 0; }
+  }
+</style>
 
 <script>
   import {
@@ -76,13 +111,69 @@ const pathname = Astro.url.pathname;
     showConnectivityNotice,
   } from "../lib/connectivity";
 
+  // Este módulo se ejecuta UNA sola vez (ClientRouter no re-ejecuta scripts empaquetados),
+  // por lo que los listeners globales de abajo no se duplican al navegar.
+  const UNSAVED_MESSAGE = "Hay cambios sin guardar. ¿Salir de todas formas?";
+  const hasUnsavedChanges = () => document.querySelector('[data-unsaved-changes="true"]') !== null;
+  let lastConfirmedLeave = 0;
+  const recentlyConfirmed = () => Date.now() - lastConfirmedLeave < 1_500;
+
+  // Cancelación limpia para clics en enlaces (antes de que ClientRouter navegue).
+  document.addEventListener("click", (event) => {
+    if (event.defaultPrevented || !hasUnsavedChanges()) return;
+    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    const target = event.target;
+    const link = target instanceof Element ? target.closest<HTMLAnchorElement>("a[href]") : null;
+    if (!link || link.hasAttribute("download") || (link.target && link.target !== "_self")) return;
+    const url = new URL(link.href, location.href);
+    if (url.origin !== location.origin) return; // lo cubre beforeunload
+    if (url.pathname === location.pathname && url.search === location.search) return;
+    if (confirm(UNSAVED_MESSAGE)) lastConfirmedLeave = Date.now();
+    else { event.preventDefault(); event.stopImmediatePropagation(); }
+  }, true);
+
+  // Red de seguridad para cualquier otra navegación (p. ej. atrás/adelante).
+  // Nota: Astro responde a preventDefault() con una navegación completa; el aviso nativo de
+  // beforeunload (abajo) actúa entonces como segunda barrera.
+  document.addEventListener("astro:before-preparation", (event) => {
+    const navigation = event as Event & { to: URL };
+    // Descargas y endpoints API: navegación completa, nunca vía ClientRouter.
+    if (navigation.to.pathname.startsWith("/api/")) { event.preventDefault(); return; }
+    if (!hasUnsavedChanges() || recentlyConfirmed()) return;
+    if (confirm(UNSAVED_MESSAGE)) lastConfirmedLeave = Date.now();
+    else event.preventDefault();
+  });
+
+  window.addEventListener("beforeunload", (event) => {
+    // Si el usuario acaba de confirmar con confirm() (enlaces data-astro-reload, /api/...), no preguntar dos veces.
+    if (!hasUnsavedChanges() || recentlyConfirmed()) return;
+    event.preventDefault();
+    event.returnValue = "";
+  });
+
+  // Evita que el prefetch por hover dispare descargas o endpoints API.
+  const markApiLinks = () => {
+    document.querySelectorAll<HTMLAnchorElement>('a[href^="/api/"]').forEach((link) => link.setAttribute("data-astro-prefetch", "false"));
+  };
+  document.addEventListener("astro:page-load", markApiLinks);
+  markApiLinks();
+
   const guardedForms = new WeakSet<HTMLFormElement>();
   const checkingForms = new WeakSet<HTMLFormElement>();
 
   document.addEventListener("submit", (event) => {
     const submitEvent = event as SubmitEvent;
     const form = submitEvent.target;
-    if (!(form instanceof HTMLFormElement) || form.method.toUpperCase() !== "POST") return;
+    if (!(form instanceof HTMLFormElement)) return;
+    if (form.method.toUpperCase() !== "POST") {
+      if (!event.defaultPrevented && hasUnsavedChanges()) {
+        if (confirm(UNSAVED_MESSAGE)) lastConfirmedLeave = Date.now();
+        else { event.preventDefault(); event.stopImmediatePropagation(); }
+      }
+      return;
+    }
+    // Los POST se envían siempre con recarga completa (redirect del servidor), sin ClientRouter.
+    form.setAttribute("data-astro-reload", "");
     if (guardedForms.has(form)) {
       guardedForms.delete(form);
       return;
@@ -126,6 +217,13 @@ const pathname = Astro.url.pathname;
       if (!allowed) {
         showConnectivityNotice(MUTATION_REQUIRES_CONNECTION);
         return;
+      }
+
+      // Si el formulario ya no está en el documento (p. ej. estaba dentro de un menú que se cerró durante
+      // la comprobación de red), requestSubmit()/submit() no hacen nada: se reinserta, oculto, en <body>.
+      if (!form.isConnected) {
+        form.hidden = true;
+        document.body.append(form);
       }
 
       guardedForms.add(form);

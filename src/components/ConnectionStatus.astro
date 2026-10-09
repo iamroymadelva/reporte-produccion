@@ -10,7 +10,10 @@
   <button type="button" data-version-update-button>Actualizar</button>
 </div>
 
-<div class="connection-notice" data-connectivity-notice hidden role="alert"></div>
+<div class="connection-notice" data-connectivity-notice hidden role="alert">
+  <span data-connectivity-notice-text></span>
+  <button type="button" data-connectivity-notice-close>Cerrar</button>
+</div>
 
 <script>
   import {
@@ -19,19 +22,42 @@
     subscribeConnectivityNotices,
   } from "../lib/connectivity";
 
-  const status = document.querySelector<HTMLElement>("[data-connection-status]");
-  const title = status?.querySelector<HTMLElement>("[data-connection-title]");
-  const message = status?.querySelector<HTMLElement>("[data-connection-message]");
-  const notice = document.querySelector<HTMLElement>("[data-connectivity-notice]");
+  // Este módulo se ejecuta una sola vez. Con ClientRouter los elementos del banner se reemplazan
+  // en cada navegación, así que el estado vive aquí y se vuelve a pintar en `astro:page-load`.
+  type StatusState = { tone: string; heading: string; detail: string };
+  let statusState: StatusState | null = null;
+  let noticeText: string | null = null;
+  let updateVisible = false;
   let recoveryTimer: number | undefined;
-  let noticeTimer: number | undefined;
+  let waitingRegistration: ServiceWorkerRegistration | null = null;
+  let activatingUpdate = false;
+  let reloadingForUpdate = false;
+
+  const paint = () => {
+    const status = document.querySelector<HTMLElement>("[data-connection-status]");
+    const title = status?.querySelector<HTMLElement>("[data-connection-title]");
+    const message = status?.querySelector<HTMLElement>("[data-connection-message]");
+    if (status && title && message) {
+      if (statusState) {
+        status.dataset.tone = statusState.tone;
+        title.textContent = statusState.heading;
+        message.textContent = statusState.detail;
+      }
+      status.hidden = !statusState;
+    }
+    const notice = document.querySelector<HTMLElement>("[data-connectivity-notice]");
+    if (notice) {
+      const text = notice.querySelector<HTMLElement>("[data-connectivity-notice-text]");
+      if (noticeText && text) text.textContent = noticeText;
+      notice.hidden = !noticeText;
+    }
+    const banner = document.querySelector<HTMLElement>("[data-version-update]");
+    if (banner) banner.hidden = !updateVisible;
+  };
 
   const showStatus = (tone: string, heading: string, detail: string) => {
-    if (!status || !title || !message) return;
-    status.dataset.tone = tone;
-    title.textContent = heading;
-    message.textContent = detail;
-    status.hidden = false;
+    statusState = { tone, heading, detail };
+    paint();
   };
 
   initializeConnectivity();
@@ -39,11 +65,12 @@
     if (recoveryTimer) window.clearTimeout(recoveryTimer);
     if (restored) {
       showStatus("restored", "Conexión restablecida", "Ya puedes volver a usar las funciones en línea.");
-      recoveryTimer = window.setTimeout(() => { if (status) status.hidden = true; }, 3_000);
+      recoveryTimer = window.setTimeout(() => { statusState = null; paint(); }, 3_000);
       return;
     }
     if (state === "online") {
-      if (status) status.hidden = true;
+      statusState = null;
+      paint();
       return;
     }
     if (state === "checking") {
@@ -58,23 +85,18 @@
   });
 
   subscribeConnectivityNotices((text) => {
-    if (!notice) return;
-    if (noticeTimer) window.clearTimeout(noticeTimer);
-    notice.textContent = text;
-    notice.hidden = false;
-    noticeTimer = window.setTimeout(() => { notice.hidden = true; }, 6_000);
+    // Persistente: se cierra solo con el botón "Cerrar" (no se autocierra).
+    noticeText = text;
+    paint();
   });
 
-  const updateBanner = document.querySelector<HTMLElement>("[data-version-update]");
-  const updateButton = document.querySelector<HTMLButtonElement>("[data-version-update-button]");
-  let waitingRegistration: ServiceWorkerRegistration | null = null;
-  let activatingUpdate = false;
-  let reloadingForUpdate = false;
+  document.addEventListener("astro:page-load", paint);
 
   const showUpdate = (registration: ServiceWorkerRegistration) => {
     if (!registration.waiting || !navigator.serviceWorker.controller) return;
     waitingRegistration = registration;
-    if (updateBanner) updateBanner.hidden = false;
+    updateVisible = true;
+    paint();
   };
 
   if ("serviceWorker" in navigator) {
@@ -84,7 +106,7 @@
       window.location.reload();
     });
 
-    window.addEventListener("load", () => {
+    const register = () => {
       void navigator.serviceWorker.register("/sw.js", { scope: "/", updateViaCache: "none" }).then((registration) => {
         showUpdate(registration);
         registration.addEventListener("updatefound", () => {
@@ -96,11 +118,22 @@
       }).catch(() => {
         // PWA installation remains an enhancement; connectivity UI still works if registration fails.
       });
-    }, { once: true });
+    };
+    if (document.readyState === "complete") register();
+    else window.addEventListener("load", register, { once: true });
   }
 
-  updateButton?.addEventListener("click", () => {
-    updateButton.disabled = true;
+  // Delegado: el botón se reemplaza en cada navegación.
+  document.addEventListener("click", (event) => {
+    const target = event.target;
+    if (target instanceof Element && target.closest("[data-connectivity-notice-close]")) {
+      noticeText = null;
+      paint();
+      return;
+    }
+    const button = target instanceof Element ? target.closest<HTMLButtonElement>("[data-version-update-button]") : null;
+    if (!button) return;
+    button.disabled = true;
     activatingUpdate = true;
     waitingRegistration?.waiting?.postMessage({ type: "SKIP_WAITING" });
   });

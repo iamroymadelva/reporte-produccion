@@ -6,4 +6,4 @@ const auth = Astro.locals.auth!;
 const supabase = createSupabaseServerClient(Astro.request, Astro.cookies);
 const { data, error: readError } = await readAllPages((start, end) => supabase.from("products").select("id, code, name, active").order("name").order("code").order("id").range(start, end));
 ---
-<CatalogAdminPage profile={auth.profile} title="Productos frecuentes" description="Valores sugeridos al escribir un Producto en el reporte." catalog="products" items={data as any[]} error={Astro.url.searchParams.get("error") ?? (readError ? "No fue posible cargar todos los productos." : null)} ok={Astro.url.searchParams.get("ok")} />
+<CatalogAdminPage profile={auth.profile} title="Productos frecuentes" description="Valores sugeridos al escribir un Producto en el reporte." catalog="products" items={data as any[]} error={readError ? "No fue posible cargar todos los productos." : null} />

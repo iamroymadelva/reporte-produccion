@@ -39,12 +39,14 @@ componente debe usar valores hexadecimales sueltos ni la paleta `emerald` como c
 | `brand-900` | `#1E3A8A` | Hover de primario, títulos de marca |
 | `brand-950` | `#172554` | Barra de navegación, `theme-color` |
 
-### Acento (`accent`, ámbar de señalización)
+### Acento / CTA (`--cta`, ámbar de señalización)
 
 | Token | Hex | Uso |
 | --- | --- | --- |
-| `accent-400` | `#FBBF24` | Indicador de navegación activa sobre `brand-950` |
-| `accent-500` | `#F59E0B` | CTA de creación (`.button-accent`) con texto `slate-950` (8.3:1) |
+| `--cta` (oscuro) / `accent-400` | `#FBBF24` | CTA en modo oscuro; indicador de navegación activa (`--sidebar-primary`) |
+| `--cta` (claro) / `accent-500` | `#F59E0B` | CTA de creación (`<Button variant="accent">`, `bg-cta text-cta-foreground`) con texto `#0F172A` (8.3:1) |
+
+> `--accent` / `--accent-foreground` son **neutros de interacción** (semántica shadcn: hover/foco en menús, select, skeleton, ghost): `#F1F5F9`/`#0F172A` en claro, `#1E293B`/`#F8FAFC` en oscuro. El ámbar de marca vive en `--cta` y `--sidebar-primary`, no en `accent`.
 
 > El ámbar **nunca** lleva texto blanco (contraste 2.1:1). Siempre texto `slate-950`.
 
@@ -104,7 +106,7 @@ Fonts: la app es PWA con soporte sin conexión y el service worker cachea `/_ast
 | Clase | Descripción |
 | --- | --- |
 | `.button-primary` | Fondo `brand-800`, texto blanco, alto 48px |
-| `.button-accent` | Fondo `accent-500`, texto `slate-950`. **Un solo uso por vista** (crear reporte) |
+| `<Button variant="accent">` | Fondo `--cta`, texto `--cta-foreground`. **Un solo uso por vista** (crear reporte) |
 | `.button-secondary` | Blanco, borde `slate-300`; estado activo con `aria-current`/`.is-active` |
 | `.button-danger` | Fondo `red-700`, texto blanco |
 | `.field-label` / `.field-control` | Etiqueta siempre visible; foco `brand-600` con anillo `brand-100` |

@@ -16,6 +16,17 @@ const Toaster = ({ ...props }: ToasterProps) => {
     <Sonner
       theme={resolvedTheme}
       className="toaster group"
+      containerAriaLabel="Notificaciones"
+      toastOptions={{
+        closeButtonAriaLabel: "Cerrar notificación",
+        classNames: {
+          toast: "!bg-card !text-card-foreground !border-border",
+          success: "!border-success/40 !text-success-text",
+          error: "!border-destructive/40 !text-destructive-text",
+          warning: "!border-warning/40 !text-warning-text",
+          info: "!border-info/40 !text-info-text",
+        },
+      }}
       icons={{
         success: <CircleCheckIcon className="size-4" />,
         info: <InfoIcon className="size-4" />,

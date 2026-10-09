@@ -1,24 +1,31 @@
 <script>
-  document.querySelectorAll<HTMLElement>("[data-search-scope]").forEach((scope) => {
-    const input = scope.querySelector<HTMLInputElement>("[data-search-input]");
-    if (!input) return;
-    const rows = [...scope.querySelectorAll<HTMLElement>("[data-search-row]")];
-    const status = document.createElement("p");
-    status.className = "mt-2 text-sm text-slate-600";
-    status.setAttribute("role", "status");
-    status.setAttribute("aria-live", "polite");
-    input.insertAdjacentElement("afterend", status);
-    const update = () => {
-      const visible = rows.filter((row) => !row.hidden).length;
-      status.textContent = visible === 0 ? "No hay coincidencias." : `${visible} ${visible === 1 ? "resultado" : "resultados"}.`;
-    };
-    update();
-    input.addEventListener("input", () => {
-      const query = input.value.trim().toLocaleLowerCase("es-CO");
-      rows.forEach((row) => {
-        row.hidden = Boolean(query) && !String(row.dataset.searchText ?? row.textContent ?? "").toLocaleLowerCase("es-CO").includes(query);
-      });
+  // Con ClientRouter este módulo corre una vez: se inicializa cada página en `astro:page-load`.
+  const initSearch = () => {
+    document.querySelectorAll<HTMLElement>("[data-search-scope]").forEach((scope) => {
+      if (scope.dataset.searchReady === "true") return;
+      const input = scope.querySelector<HTMLInputElement>("[data-search-input]");
+      if (!input) return;
+      scope.dataset.searchReady = "true";
+      const rows = [...scope.querySelectorAll<HTMLElement>("[data-search-row]")];
+      const status = document.createElement("p");
+      status.className = "mt-2 text-sm text-muted-foreground";
+      status.setAttribute("role", "status");
+      status.setAttribute("aria-live", "polite");
+      input.insertAdjacentElement("afterend", status);
+      const update = () => {
+        const visible = rows.filter((row) => !row.hidden).length;
+        status.textContent = visible === 0 ? "No hay coincidencias." : `${visible} ${visible === 1 ? "resultado" : "resultados"}.`;
+      };
       update();
+      input.addEventListener("input", () => {
+        const query = input.value.trim().toLocaleLowerCase("es-CO");
+        rows.forEach((row) => {
+          row.hidden = Boolean(query) && !String(row.dataset.searchText ?? row.textContent ?? "").toLocaleLowerCase("es-CO").includes(query);
+        });
+        update();
+      });
     });
-  });
+  };
+  document.addEventListener("astro:page-load", initSearch);
+  initSearch();
 </script>

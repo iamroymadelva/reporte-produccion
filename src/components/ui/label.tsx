@@ -10,7 +10,7 @@ function Label({
     <LabelPrimitive.Root
       data-slot="label"
       className={cn(
-        "flex items-center gap-2 text-sm leading-none font-medium select-none group-data-[disabled=true]:pointer-events-none group-data-[disabled=true]:opacity-50 peer-disabled:cursor-not-allowed peer-disabled:opacity-50",
+        "block text-sm leading-normal font-normal text-foreground select-none group-data-[disabled=true]:pointer-events-none group-data-[disabled=true]:opacity-50 peer-disabled:cursor-not-allowed peer-disabled:opacity-50",
         className
       )}
       {...props}
@@ -18,4 +18,17 @@ function Label({
   )
 }
 
-export { Label }
+/**
+ * Rótulo visible de un campo. Conserva la clase `field-label` (los tests y la maquetación
+ * la usan para localizar y ordenar las etiquetas). Va dentro de un <Label> que envuelve al control.
+ */
+function FieldLabel({ className, ...props }: React.ComponentProps<"span">) {
+  return (
+    <span
+      className={cn("field-label mb-2 block text-sm font-semibold text-foreground", className)}
+      {...props}
+    />
+  )
+}
+
+export { Label, FieldLabel }

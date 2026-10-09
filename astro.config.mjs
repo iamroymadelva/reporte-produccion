@@ -22,6 +22,7 @@ function viteRuntimeConfig(astroCommand) {
     "exceljs",
     "lucide-react",
     "radix-ui",
+    "sonner",
     "class-variance-authority",
     "clsx",
     "tailwind-merge",
@@ -110,6 +111,7 @@ function viteRuntimeIntegration() {
 }
 
 export default defineConfig({
+  prefetch: { prefetchAll: true, defaultStrategy: "hover" },
   output: "server",
   adapter: vercel(),
   integrations: [viteRuntimeIntegration(), react()],
@@ -117,7 +119,7 @@ export default defineConfig({
     plugins: [tailwindcss()],
     resolve: { dedupe: ["react", "react-dom"] },
     optimizeDeps: {
-      include: ["@astrojs/react/client.js", "react", "react-dom/client", "react/jsx-runtime", "react/jsx-dev-runtime", "radix-ui", "lucide-react", "class-variance-authority"],
+      include: ["@astrojs/react/client.js", "react", "react-dom/client", "react/jsx-runtime", "react/jsx-dev-runtime", "radix-ui", "lucide-react", "class-variance-authority", "sonner"],
     },
   },
 });

@@ -1,6 +1,12 @@
 ---
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import OfflineDraftNotice from "../../components/OfflineDraftNotice";
+import PageHeader from "../../components/PageHeader.astro";
+import StatusBadge from "../../components/StatusBadge";
+import StopIndicator from "../../components/StopIndicator";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Card } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 import ReportEditor from "../../components/ReportEditor";
 import StopManager from "../../components/StopManager";
 import StopEventsTable from "../../components/StopEventsTable";
@@ -9,7 +15,8 @@ import { describeAuditRows, type AuditCatalogs, type ReportAuditRow } from "../.
 import { STOP_EVENT_SELECTION, isActiveStop } from "../../lib/stop-events";
 import { createSupabaseServerClient } from "../../lib/supabase/server";
 import { formatDateTime, formatDuration, formatNumber, formatPercent } from "../../lib/format";
-import { roleLabels, statusLabels } from "../../lib/types";
+import { hasActiveStop } from "../../lib/report-status";
+import { roleLabels } from "../../lib/types";
 
 const auth = Astro.locals.auth!;
 const isOperator = auth.profile.role === "OPERATOR";
@@ -42,11 +49,6 @@ const categories = (categoriesResult.data ?? []) as any[];
 const isOwnerDraft = auth.profile.role === "OPERATOR" && report.created_by === auth.user.id && report.status === "DRAFT";
 const adminCorrection = auth.profile.role === "ADMINISTRATOR";
 const editable = isOwnerDraft || adminCorrection;
-const statusClass = report.status === "DRAFT"
-  ? "bg-amber-100 text-amber-800"
-  : report.status === "CANCELLED"
-    ? "bg-red-100 text-red-800"
-    : "bg-emerald-100 text-emerald-800";
 const shiftLabel = (shift: any) => {
   if (!shift) return report.shift || "—";
   const range = `${String(shift.start_time).slice(0, 5)} - ${String(shift.end_time).slice(0, 5)}`;
@@ -57,7 +59,7 @@ let openDrafts: any[] = [];
 if (auth.profile.role === "OPERATOR") {
   const { data } = await supabase
     .from("production_reports")
-    .select("id, machine:machines(code, name), report_stop_events(id, ended_at)")
+    .select("id, machine:machines(code, name), report_stop_events(id, ended_at, cancelled_at)")
     .eq("created_by", auth.user.id)
     .eq("status", "DRAFT")
     .order("created_at");
@@ -95,51 +97,48 @@ const auditEntries = describeAuditRows(audit, { catalogs: auditCatalogs, stops }
 <BaseLayout title={report.folio} description="Detalle del reporte de producción" profile={auth.profile}>
   <main class="mx-auto max-w-7xl space-y-6 px-4 py-6 sm:px-6 lg:py-8">
     {openDrafts.length > 0 && (
-      <nav class="flex gap-2 overflow-x-auto rounded-xl border bg-white p-2" aria-label="Reportes abiertos por máquina">
-        {openDrafts.map((draft) => {
-          const hasOpenStop = draft.report_stop_events?.some((stop: any) => !stop.ended_at);
-          return (
-            <a class={`min-w-44 rounded-xl px-4 py-3 ${draft.id === id ? "bg-brand-700 text-white" : "bg-slate-50 text-slate-800"}`} href={`/reportes/${draft.id}`}>
-              <span class="block font-bold">{draft.machine?.code} · {draft.machine?.name}</span>
-              <span data-stop-report-id={draft.id} data-current-report={draft.id === id ? "true" : "false"} class={`mt-1 block text-xs font-semibold ${draft.id === id ? "text-brand-100" : hasOpenStop ? "text-red-700" : "text-emerald-700"}`}>
-                {hasOpenStop ? "● Parada abierta" : "● En operación"}
-              </span>
-            </a>
-          );
-        })}
+      <nav class="flex gap-2 overflow-x-auto rounded-xl border bg-card p-2" aria-label="Reportes abiertos por máquina">
+        {openDrafts.map((draft) => (
+          <a
+            class={cn("min-w-44 rounded-xl px-4 py-3 outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50", draft.id === id ? "bg-primary text-primary-foreground" : "bg-muted text-foreground hover:bg-muted/70")}
+            href={`/reportes/${draft.id}`}
+            aria-current={draft.id === id ? "page" : undefined}
+          >
+            <span class="block font-bold">{draft.machine?.code} · {draft.machine?.name}</span>
+            <StopIndicator className="mt-1" reportId={draft.id} current={draft.id === id} active={hasActiveStop(draft)} variant="inline" />
+          </a>
+        ))}
       </nav>
     )}
 
-    <header class="flex flex-wrap items-start justify-between gap-4">
-      <div>
-        <a class="link text-sm" href="/reportes">← Volver a reportes</a>
-        <p class="mt-2 eyebrow">Folio del reporte</p>
-        <h1 class="data-mono mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">{report.folio}</h1>
-        <p class="mt-2 text-lg font-semibold text-slate-800">{report.machine?.code} · {report.machine?.name}</p>
-        <p class="mt-1 text-slate-600">Operario: {report.creator_full_name}</p>
-      </div>
-      <span class={`rounded-full px-4 py-2 font-bold ${statusClass}`}>
-        {statusLabels[report.status as keyof typeof statusLabels]}
-      </span>
-    </header>
+    <PageHeader
+      eyebrow="Folio del reporte"
+      title={report.folio}
+      titleClass="font-mono tabular-nums"
+      back={{ href: "/reportes", label: "Volver a reportes" }}
+    >
+      <p class="text-lg font-semibold text-foreground">{report.machine?.code} · {report.machine?.name}</p>
+      <p class="mt-1 text-muted-foreground">Operario: {report.creator_full_name}</p>
+      <Fragment slot="actions"><StatusBadge status={report.status} /></Fragment>
+    </PageHeader>
 
     {(auth.profile.role === "ADMINISTRATOR" || auth.profile.role === "VIEWER") && (
-      <section class="panel grid gap-4 sm:grid-cols-3" aria-label="Responsable del reporte">
-        <div><p class="text-sm text-slate-500">Creador del reporte</p><p class="font-bold">{report.creator_full_name}</p></div>
-        <div><p class="text-sm text-slate-500">Cargo al crear el reporte</p><p class="font-bold">{report.creator_job_title || "—"}</p></div>
-        <div><p class="text-sm text-slate-500">Rol al crear el reporte</p><p class="font-bold">{roleLabels[report.creator_role as keyof typeof roleLabels]}</p></div>
-      </section>
+      <Card className="grid gap-4 p-5 sm:grid-cols-3" aria-label="Responsable del reporte">
+        <div><p class="text-sm text-muted-foreground">Creador del reporte</p><p class="font-bold">{report.creator_full_name}</p></div>
+        <div><p class="text-sm text-muted-foreground">Cargo al crear el reporte</p><p class="font-bold">{report.creator_job_title || "—"}</p></div>
+        <div><p class="text-sm text-muted-foreground">Rol al crear el reporte</p><p class="font-bold">{roleLabels[report.creator_role as keyof typeof roleLabels]}</p></div>
+      </Card>
     )}
 
     {report.status === "CANCELLED" && (
-      <section class="panel border-red-200 bg-red-50">
-        <h2 class="text-xl font-bold text-red-900">Reporte cancelado</h2>
+      <Card className="gap-0 border-destructive/30 bg-destructive/10 p-5">
+        <h2 class="text-xl font-bold text-destructive">Reporte cancelado</h2>
         <dl class="mt-4 grid gap-4 sm:grid-cols-3">
-          <div class="sm:col-span-3"><dt class="text-sm text-red-700">Motivo de cancelación</dt><dd class="font-semibold text-red-950">{report.cancellation_reason}</dd></div>
-          <div><dt class="text-sm text-red-700">Usuario que canceló</dt><dd class="font-semibold text-red-950">{report.cancelled_by_profile?.full_name || "—"}</dd></div>
-          <div><dt class="text-sm text-red-700">Fecha y hora de cancelación</dt><dd class="font-semibold text-red-950">{formatDateTime(report.cancelled_at)}</dd></div>
+          <div class="sm:col-span-3"><dt class="text-sm text-muted-foreground">Motivo de cancelación</dt><dd class="font-semibold text-foreground">{report.cancellation_reason}</dd></div>
+          <div><dt class="text-sm text-muted-foreground">Usuario que canceló</dt><dd class="font-semibold text-foreground">{report.cancelled_by_profile?.full_name || "—"}</dd></div>
+          <div><dt class="text-sm text-muted-foreground">Fecha y hora de cancelación</dt><dd class="font-semibold text-foreground">{formatDateTime(report.cancelled_at)}</dd></div>
         </dl>
-      </section>
+      </Card>
     )}
 
     {auth.profile.role === "OPERATOR" && !isOwnerDraft && (
@@ -152,10 +151,10 @@ const auditEntries = describeAuditRows(audit, { catalogs: auditCatalogs, stops }
     )}
 
     {!isOperator && <section class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-      <article class="panel"><p class="text-sm text-slate-500">Unidades teóricas/hora</p><p class="mt-2 text-2xl font-bold">{formatNumber(metrics.theoretical_units_per_hour)}</p></article>
-      <article class="panel"><p class="text-sm text-slate-500">Tiempo total de parada</p><p class="mt-2 text-2xl font-bold">{formatDuration(metrics.total_downtime_seconds)}</p></article>
-      <article class="panel"><p class="text-sm text-slate-500">Rendimiento teórico</p><p class="mt-2 text-2xl font-bold">{formatPercent(metrics.theoretical_performance)}</p></article>
-      <article class="panel"><p class="text-sm text-slate-500">Rendimiento neto</p><p class="mt-2 text-2xl font-bold">{formatPercent(metrics.net_performance)}</p></article>
+      <Card className="gap-0 p-5"><p class="text-sm text-muted-foreground">Unidades teóricas/hora</p><p class="mt-2 font-mono text-2xl font-bold tabular-nums">{formatNumber(metrics.theoretical_units_per_hour)}</p></Card>
+      <Card className="gap-0 p-5"><p class="text-sm text-muted-foreground">Tiempo total de parada</p><p class="mt-2 font-mono text-2xl font-bold tabular-nums">{formatDuration(metrics.total_downtime_seconds)}</p></Card>
+      <Card className="gap-0 p-5"><p class="text-sm text-muted-foreground">Rendimiento teórico</p><p class="mt-2 font-mono text-2xl font-bold tabular-nums">{formatPercent(metrics.theoretical_performance)}</p></Card>
+      <Card className="gap-0 p-5"><p class="text-sm text-muted-foreground">Rendimiento neto</p><p class="mt-2 font-mono text-2xl font-bold tabular-nums">{formatPercent(metrics.net_performance)}</p></Card>
     </section>}
 
     {isOwnerDraft && (
@@ -182,85 +181,100 @@ const auditEntries = describeAuditRows(audit, { catalogs: auditCatalogs, stops }
         machineLabel={isOwnerDraft ? `${report.machine?.code} · ${report.machine?.name}` : undefined}
       />
     ) : (
-      <section class="panel">
+      <Card className="gap-0 p-5">
         <h2 class="text-xl font-bold">Datos del reporte</h2>
         <dl class="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {isOperator && <>
-            <div><dt class="text-sm text-slate-500">Máquina</dt><dd class="font-semibold">{report.machine?.code} · {report.machine?.name}</dd></div>
-            <div><dt class="text-sm text-slate-500">Operario responsable</dt><dd class="font-semibold">{report.creator_full_name}</dd></div>
+            <div><dt class="text-sm text-muted-foreground">Máquina</dt><dd class="font-semibold">{report.machine?.code} · {report.machine?.name}</dd></div>
+            <div><dt class="text-sm text-muted-foreground">Operario responsable</dt><dd class="font-semibold">{report.creator_full_name}</dd></div>
           </>}
-          <div><dt class="text-sm text-slate-500">Fecha</dt><dd class="font-semibold">{report.report_date || "—"}</dd></div>
-          <div><dt class="text-sm text-slate-500">Producto</dt><dd class="font-semibold">{report.product_name || report.product?.name || "—"}</dd></div>
-          <div><dt class="text-sm text-slate-500">O.P.</dt><dd class="font-semibold">{report.production_order || "—"}</dd></div>
-          <div><dt class="text-sm text-slate-500">Área / Línea</dt><dd class="font-semibold">{report.line?.name || "—"}</dd></div>
-          <div><dt class="text-sm text-slate-500">Cliente</dt><dd class="font-semibold">{report.client_name || report.client?.name || "—"}</dd></div>
-          <div><dt class="text-sm text-slate-500">Lote</dt><dd class="font-semibold">{report.lot || "—"}</dd></div>
-          <div><dt class="text-sm text-slate-500">Turno</dt><dd class="font-semibold">{shiftLabel(report.shift_catalog)}</dd></div>
-          <div><dt class="text-sm text-slate-500">Peso (gr)</dt><dd class="font-semibold">{formatNumber(report.weight)}</dd></div>
-          <div><dt class="text-sm text-slate-500">G/min</dt><dd class="font-semibold">{formatNumber(report.g_min)}</dd></div>
-          <div><dt class="text-sm text-slate-500">Tipo de dosificador</dt><dd class="font-semibold">{report.dosifier_type?.name || "—"}</dd></div>
-          <div><dt class="text-sm text-slate-500">Hora inicio</dt><dd class="font-semibold">{formatDateTime(report.started_at)}</dd></div>
-          <div><dt class="text-sm text-slate-500">Hora finalización</dt><dd class="font-semibold">{formatDateTime(report.ended_at)}</dd></div>
-          <div><dt class="text-sm text-slate-500">Horas programadas</dt><dd class="font-semibold">{formatNumber(report.programmed_hours)}</dd></div>
-          <div><dt class="text-sm text-slate-500">Unidades producidas</dt><dd class="font-semibold">{formatNumber(report.units_produced, 0)}</dd></div>
-          <div><dt class="text-sm text-slate-500">Desperdicio</dt><dd class="font-semibold">{formatNumber(report.waste)}</dd></div>
-          <div class="sm:col-span-2 lg:col-span-3"><dt class="text-sm text-slate-500">Observaciones</dt><dd class="font-semibold">{report.observations || "—"}</dd></div>
+          <div><dt class="text-sm text-muted-foreground">Fecha</dt><dd class="font-semibold">{report.report_date || "—"}</dd></div>
+          <div><dt class="text-sm text-muted-foreground">Producto</dt><dd class="font-semibold">{report.product_name || report.product?.name || "—"}</dd></div>
+          <div><dt class="text-sm text-muted-foreground">O.P.</dt><dd class="font-semibold">{report.production_order || "—"}</dd></div>
+          <div><dt class="text-sm text-muted-foreground">Área / Línea</dt><dd class="font-semibold">{report.line?.name || "—"}</dd></div>
+          <div><dt class="text-sm text-muted-foreground">Cliente</dt><dd class="font-semibold">{report.client_name || report.client?.name || "—"}</dd></div>
+          <div><dt class="text-sm text-muted-foreground">Lote</dt><dd class="font-semibold">{report.lot || "—"}</dd></div>
+          <div><dt class="text-sm text-muted-foreground">Turno</dt><dd class="font-semibold">{shiftLabel(report.shift_catalog)}</dd></div>
+          <div><dt class="text-sm text-muted-foreground">Peso (gr)</dt><dd class="font-mono font-semibold tabular-nums">{formatNumber(report.weight)}</dd></div>
+          <div><dt class="text-sm text-muted-foreground">G/min</dt><dd class="font-mono font-semibold tabular-nums">{formatNumber(report.g_min)}</dd></div>
+          <div><dt class="text-sm text-muted-foreground">Tipo de dosificador</dt><dd class="font-semibold">{report.dosifier_type?.name || "—"}</dd></div>
+          <div><dt class="text-sm text-muted-foreground">Hora inicio</dt><dd class="font-semibold">{formatDateTime(report.started_at)}</dd></div>
+          <div><dt class="text-sm text-muted-foreground">Hora finalización</dt><dd class="font-semibold">{formatDateTime(report.ended_at)}</dd></div>
+          <div><dt class="text-sm text-muted-foreground">Horas programadas</dt><dd class="font-mono font-semibold tabular-nums">{formatNumber(report.programmed_hours)}</dd></div>
+          <div><dt class="text-sm text-muted-foreground">Unidades producidas</dt><dd class="font-mono font-semibold tabular-nums">{formatNumber(report.units_produced, 0)}</dd></div>
+          <div><dt class="text-sm text-muted-foreground">Desperdicio</dt><dd class="font-mono font-semibold tabular-nums">{formatNumber(report.waste)}</dd></div>
+          <div class="sm:col-span-2 lg:col-span-3"><dt class="text-sm text-muted-foreground">Observaciones</dt><dd class="font-semibold">{report.observations || "—"}</dd></div>
         </dl>
-      </section>
+      </Card>
     )}
 
     {!isOwnerDraft && (
-      <section class="panel">
+      <Card className="gap-0 p-5">
         <h2 class="text-xl font-bold">Paradas registradas</h2>
         {isOperator && <div class="mt-4"><StopSummary stops={stops} /></div>}
         <div class="mt-4"><StopEventsTable client:load stops={stops} chronologicalOnly={isOperator} /></div>
-      </section>
+      </Card>
     )}
 
     {(auth.profile.role === "ADMINISTRATOR" || auth.profile.role === "VIEWER") && (
-      <section class="panel" aria-labelledby="report-audit-title">
+      <Card className="gap-0 p-5" aria-labelledby="report-audit-title">
         <h2 id="report-audit-title" class="text-xl font-bold">Auditoría de correcciones</h2>
         {auditError ? (
-          <p class="mt-4 rounded-xl bg-red-50 p-4 text-sm font-semibold text-red-800" role="alert">{auditError}</p>
+          <Alert variant="destructive" className="mt-4"><AlertDescription>{auditError}</AlertDescription></Alert>
         ) : (
           <div class="mt-4 space-y-3">
             {auditEntries.map((entry) => (
-              <article class="rounded-xl bg-slate-50 p-4 text-sm">
+              <article class="rounded-xl bg-muted/50 p-4 text-sm">
                 <div class="flex flex-wrap items-start justify-between gap-2">
-                  <h3 class="font-bold text-slate-900">{entry.title}{entry.stopNumber ? ` · Parada #${entry.stopNumber}` : ""}</h3>
-                  <time class="text-slate-500" datetime={entry.changedAt}>{formatDateTime(entry.changedAt)}</time>
+                  <h3 class="font-bold text-foreground">{entry.title}{entry.stopNumber ? ` · Parada #${entry.stopNumber}` : ""}</h3>
+                  <time class="text-muted-foreground" datetime={entry.changedAt}>{formatDateTime(entry.changedAt)}</time>
                 </div>
-                <p class="mt-1 text-slate-600"><span class="font-semibold text-slate-700">Actor:</span> {entry.actor}</p>
+                <p class="mt-1 text-muted-foreground"><span class="font-semibold text-foreground">Actor:</span> {entry.actor}</p>
                 <div class="mt-3 space-y-3">
                   {entry.details.map((detail) => (
-                    <div class="grid gap-2 border-t border-slate-200 pt-3 min-[420px]:grid-cols-2">
-                      <p class="font-semibold text-slate-700 min-[420px]:col-span-2">{detail.label}</p>
-                      {detail.previous !== undefined && <dl><dt class="text-xs uppercase tracking-wide text-slate-500">Valor anterior</dt><dd class="mt-1 break-words text-slate-900">{detail.previous}</dd></dl>}
-                      {detail.next !== undefined && <dl><dt class="text-xs uppercase tracking-wide text-slate-500">Valor nuevo</dt><dd class="mt-1 break-words text-slate-900">{detail.next}</dd></dl>}
+                    <div class="grid gap-2 border-t border-border pt-3 min-[420px]:grid-cols-2">
+                      <p class="font-semibold text-foreground min-[420px]:col-span-2">{detail.label}</p>
+                      {detail.previous !== undefined && <dl><dt class="text-xs uppercase tracking-wide text-muted-foreground">Valor anterior</dt><dd class="mt-1 break-words text-foreground">{detail.previous}</dd></dl>}
+                      {detail.next !== undefined && <dl><dt class="text-xs uppercase tracking-wide text-muted-foreground">Valor nuevo</dt><dd class="mt-1 break-words text-foreground">{detail.next}</dd></dl>}
                     </div>
                   ))}
                 </div>
               </article>
             ))}
-            {auditEntries.length === 0 && <p class="text-sm text-slate-500">No hay correcciones registradas.</p>}
+            {auditEntries.length === 0 && <p class="text-sm text-muted-foreground">No hay correcciones registradas.</p>}
           </div>
         )}
-      </section>
+      </Card>
     )}
   </main>
 </BaseLayout>
 
 <script>
   import { REPORT_STOPS_CHANGED } from "../../lib/stop-events";
-  window.addEventListener(REPORT_STOPS_CHANGED, (event) => {
-    const { reportId, active } = (event as CustomEvent<{ reportId: string; active: boolean }>).detail;
-    for (const badge of document.querySelectorAll<HTMLElement>("[data-stop-report-id]")) {
-      if (badge.dataset.stopReportId !== reportId) continue;
-      badge.textContent = active ? "● Parada abierta" : "● En operación";
-      if (badge.dataset.currentReport !== "true") {
-        badge.classList.toggle("text-red-700", active);
-        badge.classList.toggle("text-emerald-700", !active);
-      }
+  import { STOP_ACTIVE_LABEL, STOP_IDLE_LABEL } from "../../lib/report-status";
+
+  type StopsChangedDetail = { reportId: string; active: boolean };
+  type StopsWindow = Window & { __reportStopsListenerBound?: boolean };
+
+  function onStopsChanged(event: Event) {
+    const { reportId, active } = (event as CustomEvent<StopsChangedDetail>).detail;
+    for (const indicator of document.querySelectorAll<HTMLElement>("[data-stop-report-id]")) {
+      if (indicator.dataset.stopReportId !== reportId) continue;
+      indicator.dataset.active = String(active);
+      const label = indicator.querySelector<HTMLElement>("[data-stop-label]");
+      if (label) label.textContent = active ? STOP_ACTIVE_LABEL : STOP_IDLE_LABEL;
     }
-  });
+  }
+
+  // El listener es global (window): se registra una sola vez aunque ClientRouter vuelva a
+  // disparar astro:page-load en cada navegación.
+  function bindStopsListener() {
+    const target = window as StopsWindow;
+    if (target.__reportStopsListenerBound) return;
+    target.__reportStopsListenerBound = true;
+    window.addEventListener(REPORT_STOPS_CHANGED, onStopsChanged);
+  }
+
+  document.addEventListener("astro:page-load", bindStopsListener);
+  bindStopsListener();
 </script>

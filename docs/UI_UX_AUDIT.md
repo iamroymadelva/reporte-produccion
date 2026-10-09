@@ -180,20 +180,20 @@ Directivas de hidratación: solo `client:load` (7 usos). No se usa `client:idle`
 
 | ID | Prioridad | Hallazgo | Corrección | Estado |
 | --- | --- | --- | --- | --- |
-| UX-01 | Alta | 5 tests de `operator-ui` fallan: buscan `<dialog>` y los modales son Radix | Usar selectores por rol (`[role="alertdialog"]`) | Pendiente |
-| UX-02 | Alta | Shell sin la primitiva `Sidebar`: sin tooltips en modo ícono, salto de layout al hidratar, sin atajo ni barra inferior | `shell/*` con la primitiva shadcn, cookie, `BottomNav` | Pendiente |
-| UX-03 | Alta | Overlays sin animación (`tw-animate-css` no importado) | Importar y verificar las transiciones de Dialog, Popover, Sheet y Dropdown | Pendiente |
-| UX-04 | Alta | Tres sistemas para el mismo componente (CSS propio, shadcn, inline) | Migrar a `ui/*`; eliminar `.button-*`, `.field-*`, `.app-nav-*` | Pendiente |
-| UX-05 | Media | 5 ternarios de estado + 6 `hasOpenStop` inconsistentes con `isActiveStop` | `StatusBadge`, `StopIndicator`, `lib/report-status.ts` | Pendiente |
-| UX-06 | Media | 3 variantes de encabezado de página | `PageHeader.astro` | Pendiente |
-| UX-07 | Media | Los errores se autocierran a los 6 s | Toast de error persistente con cierre manual | Pendiente |
-| UX-08 | Media | Doble botón de cierre en los diálogos de administración; "Close" en inglés | `showCloseButton={false}` en el host; texto en español | Pendiente |
-| UX-09 | Media | Sin modo oscuro | Tokens `.dark` + toggle en `NavUser`, sin parpadeo | Pendiente |
-| UX-10 | Media | Tokens duplicados y hex sueltos | Un solo juego de variables shadcn; `brand-*` como alias | Pendiente |
-| UX-11 | Media | La campana no muestra estado de carga | `Skeleton` + `ScrollArea` | Pendiente |
-| UX-12 | Baja | SVG inline en 7 archivos e íconos propios duplicados | `lucide-react` | Pendiente |
-| UX-13 | Baja | `<style>` muertos en 2 modales y `<style>` de KPI | Eliminar; `ui/card` | Pendiente |
-| UX-14 | Baja | Navegación MPA sin precarga | `prefetch` + `ClientRouter` (alternativa: solo `prefetch`) | Pendiente |
+| UX-01 | Alta | 5 tests de `operator-ui` fallan: buscan `<dialog>` y los modales son Radix | Usar selectores por rol (`[role="alertdialog"]`) | Resuelto ([QA](UI_UX_QA.md)) |
+| UX-02 | Alta | Shell sin la primitiva `Sidebar`: sin tooltips en modo ícono, salto de layout al hidratar, sin atajo ni barra inferior | `shell/*` con la primitiva shadcn, cookie, `BottomNav` | Resuelto ([QA](UI_UX_QA.md)) |
+| UX-03 | Alta | Overlays sin animación (`tw-animate-css` no importado) | Importar y verificar las transiciones de Dialog, Popover, Sheet y Dropdown | Resuelto ([QA](UI_UX_QA.md)) |
+| UX-04 | Alta | Tres sistemas para el mismo componente (CSS propio, shadcn, inline) | Migrar a `ui/*`; eliminar `.button-*`, `.field-*`, `.app-nav-*` | Resuelto ([QA](UI_UX_QA.md)) |
+| UX-05 | Media | 5 ternarios de estado + 6 `hasOpenStop` inconsistentes con `isActiveStop` | `StatusBadge`, `StopIndicator`, `lib/report-status.ts` | Resuelto ([QA](UI_UX_QA.md)) |
+| UX-06 | Media | 3 variantes de encabezado de página | `PageHeader.astro` | Resuelto ([QA](UI_UX_QA.md)) |
+| UX-07 | Media | Los errores se autocierran a los 6 s | Toast de error persistente con cierre manual | Resuelto ([QA](UI_UX_QA.md)) |
+| UX-08 | Media | Doble botón de cierre en los diálogos de administración; "Close" en inglés | `showCloseButton={false}` en el host; texto en español | Resuelto ([QA](UI_UX_QA.md)) |
+| UX-09 | Media | Sin modo oscuro | Tokens `.dark` + toggle en `NavUser`, sin parpadeo | Resuelto ([QA](UI_UX_QA.md)) |
+| UX-10 | Media | Tokens duplicados y hex sueltos | Un solo juego de variables shadcn; `brand-*` como alias | Resuelto ([QA](UI_UX_QA.md)) |
+| UX-11 | Media | La campana no muestra estado de carga | `Skeleton` + `ScrollArea` | Resuelto ([QA](UI_UX_QA.md)) |
+| UX-12 | Baja | SVG inline en 7 archivos e íconos propios duplicados | `lucide-react` | Resuelto ([QA](UI_UX_QA.md)) |
+| UX-13 | Baja | `<style>` muertos en 2 modales y `<style>` de KPI | Eliminar; `ui/card` | Resuelto ([QA](UI_UX_QA.md)) |
+| UX-14 | Baja | Navegación MPA sin precarga | `prefetch` + `ClientRouter` (alternativa: solo `prefetch`) | Resuelto ([QA](UI_UX_QA.md)) |
 | UX-15 | Baja | `ReportEditor.tsx` de 950 líneas | Fuera de alcance de este ciclo: solo se normalizan clases visuales; se divide en otro ciclo | Diferido |
 
 Hallazgos de datos heredados del borrador anterior (conteos exactos del dashboard, paginación de

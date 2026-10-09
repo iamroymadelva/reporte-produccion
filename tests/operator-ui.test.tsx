@@ -13,9 +13,11 @@ Object.assign(globalThis, {
   HTMLElement: browser.HTMLElement, HTMLInputElement: browser.HTMLInputElement,
   Event: browser.Event, CustomEvent: browser.CustomEvent, indexedDB,
   IS_REACT_ACT_ENVIRONMENT: true,
+  // Radix UI (AlertDialog, FocusScope, Presence) necesita estas APIs del navegador.
+  Node: browser.Node, Element: browser.Element, KeyboardEvent: browser.KeyboardEvent,
+  MutationObserver: browser.MutationObserver, getComputedStyle: browser.getComputedStyle.bind(browser),
+  ResizeObserver: class { observe() {} unobserve() {} disconnect() {} },
 });
-browser.HTMLDialogElement.prototype.showModal = function () { this.open = true; };
-browser.HTMLDialogElement.prototype.close = function () { this.open = false; this.dispatchEvent(new browser.Event("close")); };
 browser.HTMLElement.prototype.scrollIntoView = function () {};
 
 // Import after installing the DOM so React enables its browser event handling.
@@ -34,6 +36,8 @@ let container: HTMLDivElement;
 let requests: Array<{ url: string; init: RequestInit }>;
 let respond: (url: string, init: RequestInit) => Response | Promise<Response>;
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
+// Los diálogos de confirmación son AlertDialog de Radix (role="alertdialog"), no <dialog> nativos.
+const DIALOG = "[role=\"alertdialog\"]";
 const text = () => document.body.textContent ?? "";
 const buttons = (label: string, scope: ParentNode = document) => [...scope.querySelectorAll<HTMLButtonElement>("button")].filter((b) => b.textContent === label);
 const click = async (button: HTMLButtonElement) => { expect(button).toBeDefined(); await act(async () => { button.click(); await new Promise((resolve) => setTimeout(resolve, 20)); }); };
@@ -133,13 +137,13 @@ describe("Operator interactions", () => {
   test("submission needs explicit confirmation and cancellation does nothing", async () => {
     await mount(<ReportEditor {...props} />);
     await click(buttons("Enviar reporte")[0]);
-    expect(document.querySelector("dialog")?.textContent).toContain("¿Enviar reporte?");
+    expect(document.querySelector(DIALOG)?.textContent).toContain("¿Enviar reporte?");
     expect(requests.length).toBe(0);
-    await click(buttons("Cancelar", document.querySelector("dialog")!)[0]);
-    expect(document.querySelector("dialog")).toBeNull();
+    await click(buttons("Cancelar", document.querySelector(DIALOG)!)[0]);
+    expect(document.querySelector(DIALOG)).toBeNull();
     expect(requests.length).toBe(0);
     await click(buttons("Enviar reporte")[0]);
-    await click(buttons("Enviar reporte", document.querySelector("dialog")!)[0]);
+    await click(buttons("Enviar reporte", document.querySelector(DIALOG)!)[0]);
     expect(requests.map(({ url }) => url)).toEqual(["/api/reports/test", "/api/reports/test/submit"]);
   });
   test("active stop blocks submission with Spanish guidance", async () => {
@@ -163,12 +167,12 @@ describe("Operator interactions", () => {
     expect(buttons("Iniciar parada")[0].disabled).toBe(true);
     await change("select", "aseo");
     await click(buttons("Iniciar parada")[0]);
-    expect(document.querySelector("dialog")?.textContent).toContain("Aseo");
-    await click(buttons("Cancelar", document.querySelector("dialog")!)[0]);
+    expect(document.querySelector(DIALOG)?.textContent).toContain("Aseo");
+    await click(buttons("Cancelar", document.querySelector(DIALOG)!)[0]);
     expect(requests.length).toBe(0);
     respond = () => json({ stop: active });
     await click(buttons("Iniciar parada")[0]);
-    await click(buttons("Iniciar parada", document.querySelector("dialog")!)[0]);
+    await click(buttons("Iniciar parada", document.querySelector(DIALOG)!)[0]);
     expect(requests.length).toBe(1);
     expect(text()).toContain("Número de paradas: 0");
     expect(text()).toContain("00:06:");
@@ -177,22 +181,22 @@ describe("Operator interactions", () => {
     await mount(<StopManager reportId="test" stops={[active]} categories={categories} />);
     await change("select", "correctivo");
     await click(buttons("Cambiar categoría")[0]);
-    expect(document.querySelector("dialog")?.textContent).toContain("El contador continuará sin reiniciarse");
-    await click(buttons("Cancelar", document.querySelector("dialog")!)[0]);
+    expect(document.querySelector(DIALOG)?.textContent).toContain("El contador continuará sin reiniciarse");
+    await click(buttons("Cancelar", document.querySelector(DIALOG)!)[0]);
     expect(requests.length).toBe(0);
     respond = () => json({ stop: { ...active, stop_category: categories[1] } });
     await click(buttons("Cambiar categoría")[0]);
-    await click(buttons("Cambiar categoría", document.querySelector("dialog")!)[0]);
+    await click(buttons("Cambiar categoría", document.querySelector(DIALOG)!)[0]);
     expect(text()).toContain("00:06:");
     expect(JSON.parse(String(requests[0].init.body))).toEqual({ stop_category_id: "correctivo" });
     await click(buttons("Detener")[0]);
-    expect(document.querySelector("dialog")?.textContent).toContain("Correctivo");
-    expect(document.querySelector("dialog")?.textContent).toContain("Tiempo transcurrido");
-    await click(buttons("Cancelar", document.querySelector("dialog")!)[0]);
+    expect(document.querySelector(DIALOG)?.textContent).toContain("Correctivo");
+    expect(document.querySelector(DIALOG)?.textContent).toContain("Tiempo transcurrido");
+    await click(buttons("Cancelar", document.querySelector(DIALOG)!)[0]);
     expect(buttons("Detener").length).toBe(1);
     respond = () => json({ stop: { ...active, stop_category: categories[1], ended_at: new Date().toISOString(), duration_seconds: 360 } });
     await click(buttons("Detener")[0]);
-    await click(buttons("Detener parada", document.querySelector("dialog")!)[0]);
+    await click(buttons("Detener parada", document.querySelector(DIALOG)!)[0]);
     expect(text()).toContain("Número de paradas: 1");
     expect(text()).toContain("Tiempo total de parada: 00:06:00");
     expect(buttons("Detener").length).toBe(0);
@@ -229,16 +233,16 @@ describe("Operator interactions", () => {
     await change("section:last-of-type select", "aseo");
     respond = () => json({ stop: active });
     await click(buttons("Iniciar parada")[0]);
-    await click(buttons("Iniciar parada", document.querySelector("dialog")!)[0]);
+    await click(buttons("Iniciar parada", document.querySelector(DIALOG)!)[0]);
     await click(buttons("Enviar reporte")[0]);
     expect(text()).toContain("Detén o cancela la parada primero");
     expect(document.querySelector('[data-report-field="lot"]')).toBe(lot);
     respond = () => json({ stop: { ...active, ended_at: new Date().toISOString(), duration_seconds: 360 } });
     await click(buttons("Detener")[0]);
-    await click(buttons("Detener parada", document.querySelector("dialog")!)[0]);
+    await click(buttons("Detener parada", document.querySelector(DIALOG)!)[0]);
     await click(buttons("Enviar reporte")[0]);
-    expect(document.querySelector("dialog")?.textContent).toContain("¿Enviar reporte?");
-    await click(buttons("Cancelar", document.querySelector("dialog")!)[0]);
+    expect(document.querySelector(DIALOG)?.textContent).toContain("¿Enviar reporte?");
+    await click(buttons("Cancelar", document.querySelector(DIALOG)!)[0]);
   });
   test("offline draft remains editable, persists in IndexedDB and requires manual save on reconnect", async () => {
     const id = "offline-ui";

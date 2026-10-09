@@ -14,22 +14,6 @@
   --font-sans: "Fira Sans", "Segoe UI", system-ui, sans-serif;
   --font-mono: "Fira Code", ui-monospace, "Cascadia Mono", monospace;
 
-  --color-brand-50: #eff6ff;
-  --color-brand-100: #dbeafe;
-  --color-brand-200: #bfdbfe;
-  --color-brand-300: #93c5fd;
-  --color-brand-400: #60a5fa;
-  --color-brand-500: #3b82f6;
-  --color-brand-600: #2563eb;
-  --color-brand-700: #1d4ed8;
-  --color-brand-800: #1e40af;
-  --color-brand-900: #1e3a8a;
-  --color-brand-950: #172554;
-
-  --color-accent-300: #fcd34d;
-  --color-accent-400: #fbbf24;
-  --color-accent-500: #f59e0b;
-  --color-accent-600: #d97706;
 }
 
 :root {
@@ -46,8 +30,10 @@
   --secondary-foreground: #1e3a8a;
   --muted: #f1f5f9;
   --muted-foreground: #475569;
-  --accent: #f59e0b;
+  --accent: #f1f5f9;
   --accent-foreground: #0f172a;
+  --cta: #f59e0b;
+  --cta-foreground: #0f172a;
   --destructive: #b91c1c;
   --destructive-foreground: #ffffff;
   --border: #e2e8f0;
@@ -61,6 +47,20 @@
   --warning-foreground: #ffffff;
   --info: #1d4ed8;
   --info-foreground: #ffffff;
+
+  /* Tokens de texto sobre fondos tintados (color al 10-15%). Ratios WCAG sobre el fondo tintado
+     al 15% (peor caso), sobre --card / --background:
+     claro: warning-text #92400e 5.77/5.53, success-text #065f46 6.20/5.95, info-text #1e40af 6.89/6.61,
+            destructive-text #991b1b 6.43/6.16, stop-text #9a3412 5.87/5.63
+     oscuro: warning-text #fcd34d 8.81/9.70, success-text #6ee7b7 8.47/9.33, info-text #bfdbfe 8.85/9.79,
+             destructive-text #fca5a5 7.41/8.11, stop-text #fdba74 8.04/8.81 */
+  --success-text: #065f46;
+  --warning-text: #92400e;
+  --info-text: #1e40af;
+  --destructive-text: #991b1b;
+  --stop: #c2410c;
+  --stop-foreground: #ffffff;
+  --stop-text: #9a3412;
 
   --chart-1: #1e40af;
   --chart-2: #f59e0b;
@@ -92,8 +92,10 @@
   --secondary-foreground: #dbeafe;
   --muted: #1e293b;
   --muted-foreground: #94a3b8;
-  --accent: #fbbf24;
-  --accent-foreground: #0f172a;
+  --accent: #1e293b;
+  --accent-foreground: #f8fafc;
+  --cta: #fbbf24;
+  --cta-foreground: #0f172a;
   --destructive: #f87171;
   --destructive-foreground: #0b1220;
   --border: #1e293b;
@@ -106,6 +108,14 @@
   --warning-foreground: #1c1917;
   --info: #93c5fd;
   --info-foreground: #0b1220;
+
+  --success-text: #6ee7b7;
+  --warning-text: #fcd34d;
+  --info-text: #bfdbfe;
+  --destructive-text: #fca5a5;
+  --stop: #fb923c;
+  --stop-foreground: #0b1220;
+  --stop-text: #fdba74;
 
   --chart-1: #60a5fa;
   --chart-2: #fbbf24;
@@ -138,6 +148,8 @@
   --color-muted-foreground: var(--muted-foreground);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
+  --color-cta: var(--cta);
+  --color-cta-foreground: var(--cta-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-border: var(--border);
@@ -149,6 +161,13 @@
   --color-warning-foreground: var(--warning-foreground);
   --color-info: var(--info);
   --color-info-foreground: var(--info-foreground);
+  --color-success-text: var(--success-text);
+  --color-warning-text: var(--warning-text);
+  --color-info-text: var(--info-text);
+  --color-destructive-text: var(--destructive-text);
+  --color-stop: var(--stop);
+  --color-stop-foreground: var(--stop-foreground);
+  --color-stop-text: var(--stop-text);
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
   --color-chart-3: var(--chart-3);
@@ -171,19 +190,6 @@
 .skip-link { position: fixed; z-index: 100; left: 1rem; top: -4rem; border-radius: .5rem; background: var(--card); padding: .75rem 1rem; color: var(--primary); font-weight: 700; box-shadow: 0 4px 16px rgb(0 0 0 / 0.2); }
 .skip-link:focus { top: 1rem; }
 
-/* Legacy shell: se elimina en fase 3 */
-.app-sidebar { position: fixed; z-index: 35; inset: 0 auto 0 0; width: 16.5rem; background: var(--sidebar); color: var(--sidebar-foreground); }
-.app-header { position: sticky; z-index: 30; top: 0; display: flex; min-height: 4.5rem; align-items: center; justify-content: space-between; gap: .75rem; border-bottom: 1px solid var(--border); background: var(--card); padding: .625rem 1rem; }
-.app-content { min-width: 0; }
-.app-nav-link { display: flex; min-height: 2.75rem; align-items: center; gap: .75rem; border-radius: .625rem; padding: .5rem .75rem; color: var(--sidebar-foreground); font-size: .875rem; font-weight: 600; transition: background-color .15s; }
-.app-nav-link:hover, .app-nav-link:focus-visible { background: var(--sidebar-accent); color: var(--sidebar-accent-foreground); }
-.app-nav-link--active { background: var(--sidebar-accent); color: var(--sidebar-accent-foreground); box-shadow: inset 3px 0 var(--sidebar-primary); }
-.app-nav-sub { min-height: 2.5rem; font-weight: 500; }
-@media (min-width: 1024px) {
-  body.has-app-shell { padding-left: 16.5rem; }
-  body[data-shell-collapsed="true"].has-app-shell { padding-left: 4.5rem; }
-  body[data-shell-collapsed="true"] .app-sidebar { width: 4.5rem; }
-}
 
 @layer base {
   * {
@@ -241,68 +247,6 @@
 }
 
 @layer components {
-  .touch-button {
-    @apply inline-flex min-h-12 items-center justify-center rounded-lg px-5 py-3 text-base font-semibold transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50;
-  }
-
-  .button-primary {
-    @apply inline-flex min-h-12 items-center justify-center gap-2 rounded-lg bg-primary px-5 py-3 text-base font-semibold text-primary-foreground shadow-sm transition-colors duration-150 hover:bg-primary/90 active:bg-primary/80 disabled:cursor-not-allowed disabled:opacity-50;
-  }
-
-  .button-accent {
-    @apply inline-flex min-h-12 items-center justify-center gap-2 rounded-lg bg-accent px-5 py-3 text-base font-semibold text-accent-foreground shadow-sm transition-colors duration-150 hover:bg-accent/90 active:bg-accent/80 disabled:cursor-not-allowed disabled:opacity-50;
-  }
-
-  .button-secondary {
-    @apply inline-flex min-h-12 items-center justify-center gap-2 rounded-lg border border-input bg-card px-5 py-3 text-base font-semibold text-card-foreground transition-colors duration-150 hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50;
-  }
-
-  .button-secondary.is-active,
-  .button-secondary[aria-current="page"],
-  .button-secondary[aria-pressed="true"] {
-    @apply border-primary bg-secondary text-secondary-foreground;
-  }
-
-  .button-danger {
-    @apply inline-flex min-h-12 items-center justify-center gap-2 rounded-lg bg-destructive px-5 py-3 text-base font-semibold text-destructive-foreground shadow-sm transition-colors duration-150 hover:bg-destructive/90 disabled:cursor-not-allowed disabled:opacity-50;
-  }
-
-  .field-label {
-    @apply mb-2 block text-sm font-semibold text-foreground;
-  }
-
-  .field-control {
-    @apply min-h-12 w-full rounded-lg border border-input bg-card px-4 py-3 text-base text-foreground outline-none transition-colors duration-150 placeholder:text-muted-foreground hover:border-ring/60 focus:border-ring focus:ring-3 focus:ring-ring/25 disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground;
-  }
-
-  .panel {
-    @apply rounded-xl border border-border bg-card p-5 text-card-foreground shadow-sm;
-  }
-
-  .eyebrow {
-    @apply text-xs font-semibold uppercase tracking-wider text-primary;
-  }
-
-  .page-title {
-    @apply mt-1 text-2xl font-bold tracking-tight text-foreground sm:text-3xl;
-  }
-
-  .link {
-    @apply font-semibold text-primary underline-offset-4 transition-colors duration-150 hover:text-primary/80 hover:underline;
-  }
-
-  .data-mono {
-    @apply font-mono tabular-nums;
-  }
-
-  .mobile-card-list {
-    @apply divide-y divide-border;
-  }
-
-  .mobile-data-card {
-    @apply space-y-3 p-4;
-  }
-
   .admin-action-text {
     display: none;
   }
@@ -357,6 +301,21 @@
   .connection-notice {
     @apply fixed right-4 z-50 max-w-[min(28rem,calc(100vw-2rem))] rounded-lg bg-destructive px-4 py-3 text-sm font-semibold text-destructive-foreground shadow-xl;
     bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+
+  .connection-notice:not([hidden]) {
+    @apply flex items-start gap-3;
+  }
+
+  .connection-notice button {
+    @apply -my-1 ml-auto inline-flex min-h-9 shrink-0 items-center rounded-md border border-current/40 px-3 text-xs font-semibold hover:bg-white/10;
+  }
+
+  /* En móvil con shell, la BottomNav (h-16, z-40) ocupa la parte inferior: el aviso queda por encima. */
+  @media (max-width: 1023px) {
+    body[data-shell] .connection-notice {
+      bottom: calc(4rem + env(safe-area-inset-bottom) + 0.5rem);
+    }
   }
 }
 

@@ -1,8 +1,16 @@
 ---
+import { ArrowRight } from "lucide-react";
 import BaseLayout from "../layouts/BaseLayout.astro";
+import PageHeader from "../components/PageHeader.astro";
+import StatusBadge from "../components/StatusBadge";
+import StopIndicator from "../components/StopIndicator";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { buttonVariants } from "@/components/ui/button";
+import { Card, CardDescription, CardHeader } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatDateTime, getBogotaDateKey } from "../lib/format";
+import { hasActiveStop } from "../lib/report-status";
 import { createSupabaseServerClient } from "../lib/supabase/server";
-import { statusLabels, type ReportStatus } from "../lib/types";
 
 const auth = Astro.locals.auth!;
 const isOperator = auth.profile.role === "OPERATOR";
@@ -25,7 +33,7 @@ const today = getBogotaDateKey();
 const supabase = createSupabaseServerClient(Astro.request, Astro.cookies);
 const [reportsResult, draftCount, submittedCount, cancelledCount, activeStopCount] = await Promise.all([
   supabase.from("production_reports")
-    .select("id, folio, report_date, production_order, status, creator_full_name, created_at, machine:machines(id, code, name), report_stop_events(id, ended_at)")
+    .select("id, folio, report_date, production_order, status, creator_full_name, created_at, machine:machines(id, code, name), report_stop_events(id, ended_at, cancelled_at)")
     .eq("report_date", today).order("created_at", { ascending: false }).order("id", { ascending: false }).limit(10),
   supabase.from("production_reports").select("id", { count: "exact", head: true }).eq("report_date", today).eq("status", "DRAFT"),
   supabase.from("production_reports").select("id", { count: "exact", head: true }).eq("report_date", today).eq("status", "SUBMITTED"),
@@ -45,194 +53,95 @@ const reportCounts = [draftCount, submittedCount, cancelledCount, activeStopCoun
     };
 const hasError = Boolean(reportsResult.error || !reportCounts);
 const todayQuery = `period=day&date=${encodeURIComponent(today)}`;
+const kpis = [
+  { key: "DRAFT", show: !isViewer, label: kpiLabels.DRAFT, href: `/reportes?${todayQuery}&status=DRAFT`, title: "Ver reportes en curso de hoy", border: "border-l-warning" },
+  { key: "SUBMITTED", show: true, label: isViewer ? "Reportes enviados hoy" : kpiLabels.SUBMITTED, href: `/reportes?${todayQuery}&status=SUBMITTED`, title: "Ver reportes enviados hoy", border: "border-l-success" },
+  { key: "CANCELLED", show: !isViewer, label: kpiLabels.CANCELLED, href: `/reportes?${todayQuery}&status=CANCELLED`, title: "Ver reportes cancelados hoy", border: "border-l-destructive" },
+  { key: "ACTIVE_STOP", show: !isViewer, label: kpiLabels.ACTIVE_STOP, href: `/reportes?${todayQuery}&stop=active`, title: "Ver reportes en parada hoy", border: "border-l-stop" },
+] as const;
 ---
 
 <BaseLayout title="Dashboard" description="Resumen operativo de producción" profile={auth.profile}>
   <main class="mx-auto max-w-7xl space-y-6 px-4 py-6 sm:px-6 lg:py-8">
-    <header>
-      <p class="eyebrow">Resumen de hoy</p>
-      <h1 class="page-title">Dashboard</h1>
-      <p class="mt-2 text-slate-600">Estado operativo de los reportes de producción del día.</p>
-    </header>
+    <PageHeader eyebrow="Resumen de hoy" title="Dashboard" description="Estado operativo de los reportes de producción del día." />
 
     {hasError && (
-      <p class="rounded-xl bg-red-50 p-4 font-medium text-red-800">
-        No fue posible cargar todos los datos del dashboard. Intenta nuevamente.
-      </p>
+      <Alert variant="destructive">
+        <AlertDescription>No fue posible cargar todos los datos del dashboard. Intenta nuevamente.</AlertDescription>
+      </Alert>
     )}
 
     <section class="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4" aria-label="Indicadores de hoy">
-      {!isViewer && (
-        <article class="panel kpi-card p-4 sm:p-5 kpi-card-draft">
-          <a class="kpi-link" href={`/reportes?${todayQuery}&status=DRAFT`} title="Ver reportes en curso de hoy">
-            <span>{kpiLabels.DRAFT}</span>
-            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M5 12h14M13 6l6 6-6 6"></path>
-            </svg>
+      {kpis.filter((kpi) => kpi.show).map((kpi) => (
+        <Card className={`group relative gap-3 border-l-4 p-4 transition-shadow hover:shadow-md sm:p-5 ${kpi.border}`}>
+          <a class="flex items-start justify-between gap-2 text-sm font-semibold text-muted-foreground transition-colors hover:text-primary after:absolute after:inset-0 after:rounded-xl after:content-['']" href={kpi.href} title={kpi.title}>
+            <span>{kpi.label}</span>
+            <ArrowRight className="size-[1.125rem] shrink-0 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
           </a>
-          <p class="data-mono mt-3 text-3xl font-semibold text-slate-900">{reportCounts?.DRAFT ?? "—"}</p>
-        </article>
-      )}
-      <article class="panel kpi-card p-4 sm:p-5 kpi-card-submitted">
-        <a class="kpi-link" href={`/reportes?${todayQuery}&status=SUBMITTED`} title="Ver reportes enviados hoy">
-          <span>{isViewer ? "Reportes enviados hoy" : kpiLabels.SUBMITTED}</span>
-          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M5 12h14M13 6l6 6-6 6"></path>
-          </svg>
-        </a>
-        <p class="data-mono mt-3 text-3xl font-semibold text-slate-900">{reportCounts?.SUBMITTED ?? "—"}</p>
-      </article>
-      {!isViewer && (
-        <article class="panel kpi-card p-4 sm:p-5 kpi-card-cancelled">
-          <a class="kpi-link" href={`/reportes?${todayQuery}&status=CANCELLED`} title="Ver reportes cancelados hoy">
-            <span>{kpiLabels.CANCELLED}</span>
-            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M5 12h14M13 6l6 6-6 6"></path>
-            </svg>
-          </a>
-          <p class="data-mono mt-3 text-3xl font-semibold text-slate-900">{reportCounts?.CANCELLED ?? "—"}</p>
-        </article>
-      )}
-      {!isViewer && (
-        <article class="panel kpi-card p-4 sm:p-5 kpi-card-stop">
-          <a class="kpi-link" href={`/reportes?${todayQuery}&stop=active`} title="Ver reportes en parada hoy">
-            <span>{kpiLabels.ACTIVE_STOP}</span>
-            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M5 12h14M13 6l6 6-6 6"></path>
-            </svg>
-          </a>
-          <p class="data-mono mt-3 text-3xl font-semibold text-slate-900">{reportCounts?.ACTIVE_STOP ?? "—"}</p>
-        </article>
-      )}
+          <p class="font-mono text-3xl font-semibold tabular-nums text-foreground">{reportCounts?.[kpi.key] ?? "—"}</p>
+        </Card>
+      ))}
     </section>
 
-    <section class="panel overflow-hidden p-0">
-      <div class="flex flex-wrap items-center justify-between gap-3 border-b p-5">
+    <Card className="gap-0 overflow-hidden py-0">
+      <CardHeader className="flex flex-wrap items-center justify-between gap-3 border-b p-5">
         <div>
           <h2 class="text-xl font-bold">{isOperator ? "Mis reportes recientes" : "Reportes recientes"}</h2>
-          <p class="mt-1 text-sm text-slate-500">Últimos reportes con fecha operativa de hoy.</p>
+          <CardDescription className="mt-1">Últimos reportes con fecha operativa de hoy.</CardDescription>
         </div>
-        <a class="link" href="/reportes">Ver todos</a>
-      </div>
+        <a class={buttonVariants({ variant: "link" })} href="/reportes">Ver todos</a>
+      </CardHeader>
 
       {reportsResult.error ? (
-        <p class="p-8 text-center text-slate-500">No fue posible cargar los reportes recientes.</p>
+        <p class="p-8 text-center text-muted-foreground">No fue posible cargar los reportes recientes.</p>
       ) : recentReports.length === 0 ? (
-        <p class="p-8 text-center text-slate-500">No hay reportes de producción para hoy.</p>
+        <p class="p-8 text-center text-muted-foreground">No hay reportes de producción para hoy.</p>
       ) : (
         <>
-        <div class="mobile-card-list md:hidden">
-          {recentReports.map((report) => {
-            const hasOpenStop = report.report_stop_events?.some((stop: any) => !stop.ended_at);
-            return (
-              <article class="mobile-data-card">
-                <div class="flex items-start justify-between gap-3">
-                  <a class="link data-mono min-w-0 break-words" href={`/reportes/${report.id}`}>{report.folio}</a>
-                  <span class={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${report.status === "DRAFT" ? "bg-amber-100 text-amber-800" : report.status === "CANCELLED" ? "bg-red-100 text-red-800" : "bg-emerald-100 text-emerald-800"}`}>
-                    {statusLabels[report.status as ReportStatus]}
-                  </span>
-                </div>
-                <dl class="grid gap-2 text-sm">
-                  <div><dt class="text-slate-500">Fecha / hora</dt><dd>{formatDateTime(report.created_at)}</dd></div>
-                  <div><dt class="text-slate-500">Máquina</dt><dd class="font-semibold">{report.machine ? `${report.machine.code} · ${report.machine.name}` : "—"}</dd></div>
-                  <div><dt class="text-slate-500">Operario</dt><dd>{report.creator_full_name || "—"}</dd></div>
-                </dl>
-                {hasOpenStop && <p class="font-bold text-orange-700">● Parada activa</p>}
-              </article>
-            );
-          })}
+        <div class="divide-y divide-border md:hidden">
+          {recentReports.map((report) => (
+            <article class="space-y-3 p-4">
+              <div class="flex items-start justify-between gap-3">
+                <a class="min-w-0 break-words font-mono font-semibold tabular-nums text-primary underline-offset-4 hover:underline" href={`/reportes/${report.id}`}>{report.folio}</a>
+                <StatusBadge status={report.status} />
+              </div>
+              <dl class="grid gap-2 text-sm">
+                <div><dt class="text-muted-foreground">Fecha / hora</dt><dd>{formatDateTime(report.created_at)}</dd></div>
+                <div><dt class="text-muted-foreground">Máquina</dt><dd class="font-semibold">{report.machine ? `${report.machine.code} · ${report.machine.name}` : "—"}</dd></div>
+                <div><dt class="text-muted-foreground">Operario</dt><dd>{report.creator_full_name || "—"}</dd></div>
+              </dl>
+              {hasActiveStop(report) && <StopIndicator active variant="inline" className="text-sm" />}
+            </article>
+          ))}
         </div>
-        <div class="hidden overflow-x-auto md:block" role="region" aria-label="Reportes recientes" tabindex="0">
-          <table class="w-full min-w-[640px] text-left text-sm md:min-w-[900px]">
-            <thead class="bg-slate-50 text-slate-600">
-              <tr>
-                <th class="p-4">Folio</th>
-                <th class="p-4">Fecha / hora</th>
-                <th class="p-4">Máquina</th>
-                <th class="hidden p-4 md:table-cell">O.P.</th>
-                <th class="hidden p-4 md:table-cell">Operario</th>
-                <th class="p-4">Estado</th>
-                <th class="p-4">Parada</th>
-              </tr>
-            </thead>
-            <tbody>
-              {recentReports.map((report) => {
-                const hasOpenStop = report.report_stop_events?.some((stop: any) => !stop.ended_at);
-                return (
-                  <tr class="border-t">
-                    <td class="p-4">
-                      <a class="link data-mono" href={`/reportes/${report.id}`}>{report.folio}</a>
-                    </td>
-                    <td class="p-4 text-slate-600">{formatDateTime(report.created_at)}</td>
-                    <td class="p-4 font-semibold">{report.machine ? `${report.machine.code} · ${report.machine.name}` : "—"}</td>
-                    <td class="hidden p-4 md:table-cell">{report.production_order || "—"}</td>
-                    <td class="hidden p-4 md:table-cell">{report.creator_full_name || "—"}</td>
-                    <td class="p-4">
-                      <span class={`rounded-full px-3 py-1 font-semibold ${report.status === "DRAFT" ? "bg-amber-100 text-amber-800" : report.status === "CANCELLED" ? "bg-red-100 text-red-800" : "bg-emerald-100 text-emerald-800"}`}>
-                        {statusLabels[report.status as ReportStatus]}
-                      </span>
-                    </td>
-                    <td class="p-4">
-                      {hasOpenStop ? <span class="rounded-full bg-orange-100 px-3 py-1 font-semibold text-orange-800">Activa</span> : "—"}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+        <Table className="min-w-[640px] md:min-w-[900px]" container={{ role: "region", "aria-label": "Reportes recientes", tabIndex: 0, className: "hidden md:block" }}>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Folio</TableHead>
+              <TableHead>Fecha / hora</TableHead>
+              <TableHead>Máquina</TableHead>
+              <TableHead>O.P.</TableHead>
+              <TableHead>Operario</TableHead>
+              <TableHead>Estado</TableHead>
+              <TableHead>Parada</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {recentReports.map((report) => (
+              <TableRow>
+                <TableCell><a class="font-mono font-semibold tabular-nums text-primary underline-offset-4 hover:underline" href={`/reportes/${report.id}`}>{report.folio}</a></TableCell>
+                <TableCell className="text-muted-foreground">{formatDateTime(report.created_at)}</TableCell>
+                <TableCell className="font-semibold">{report.machine ? `${report.machine.code} · ${report.machine.name}` : "—"}</TableCell>
+                <TableCell>{report.production_order || "—"}</TableCell>
+                <TableCell>{report.creator_full_name || "—"}</TableCell>
+                <TableCell><StatusBadge status={report.status} /></TableCell>
+                <TableCell>{hasActiveStop(report) ? <StopIndicator active /> : "—"}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
         </>
       )}
-    </section>
+    </Card>
   </main>
 </BaseLayout>
-
-<style>
-  .kpi-card {
-    position: relative;
-    border-left-width: 4px;
-    transition: border-color 150ms ease, box-shadow 150ms ease;
-  }
-
-  .kpi-card:hover {
-    box-shadow: 0 4px 12px rgb(15 23 42 / 0.08);
-  }
-
-  .kpi-card-draft { border-left-color: var(--color-amber-500); }
-  .kpi-card-submitted { border-left-color: var(--color-emerald-600); }
-  .kpi-card-cancelled { border-left-color: var(--color-red-600); }
-  .kpi-card-stop { border-left-color: var(--color-orange-600); }
-
-  .kpi-link {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 0.5rem;
-    color: var(--color-slate-600);
-    font-size: 0.875rem;
-    font-weight: 600;
-  }
-
-  /* Toda la tarjeta es clicable */
-  .kpi-link::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-  }
-
-  .kpi-link:hover { color: var(--color-brand-800); }
-
-  .kpi-link svg {
-    width: 1.125rem;
-    height: 1.125rem;
-    flex: none;
-    color: var(--color-slate-400);
-    transition: color 150ms ease, transform 150ms ease;
-  }
-
-  .kpi-card:hover .kpi-link svg {
-    color: var(--color-brand-700);
-    transform: translateX(2px);
-  }
-</style>

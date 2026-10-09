@@ -1,4 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { FieldLabel, Label } from "@/components/ui/label";
+import { NativeSelect } from "@/components/ui/native-select";
+import { Textarea } from "@/components/ui/textarea";
 import OfflineDraftNotice from "./OfflineDraftNotice";
 import PlatformModal from "./PlatformModal";
 import { ACTIVE_STOP_SUBMISSION_ERROR, REQUIRED_REPORT_FIELDS, localDateTime, validateReportForSubmission, type ReportFieldErrors } from "../lib/report-validation";
@@ -178,6 +186,8 @@ export default function ReportEditor({
     || reviewReason !== null
     || (offlineFieldEditingEnabled ? restoreChecking : connectionUnavailable);
   const onlineActionDisabled = finalizing || restoreChecking || reviewReason !== null || connectionUnavailable;
+  // Contrato con el shell: data-unsaved-changes="true" bloquea la navegación cliente mientras haya cambios sin guardar.
+  const hasUnsavedChanges = dirty || hasLocalPending || saveState === "storage-error";
 
   const persistRevision = useCallback((targetRevision: number, values: ReportForm) => {
     if (!localPersistenceEnabled || !authenticatedUserId || !serverVersionRef.current) {
@@ -757,32 +767,32 @@ export default function ReportEditor({
   };
 
   const fieldProps = (field: ReportEditableField) => ({
-    className: `field-control scroll-mt-40 ${fieldErrors[field] ? "border-red-500 ring-2 ring-red-200" : ""}`,
+    className: `scroll-mt-40 ${fieldErrors[field] ? "border-destructive ring-2 ring-destructive/20" : ""}`,
     "data-report-field": field,
     "aria-invalid": fieldErrors[field] ? true : undefined,
     "aria-describedby": fieldErrors[field] ? `report-field-${field}-error` : undefined,
     required: canSubmit && requiredFields.has(field),
   });
   const fieldError = (field: ReportEditableField) => fieldErrors[field]
-    ? <p id={`report-field-${field}-error`} className="mt-1 text-sm font-semibold text-red-700">{fieldErrors[field]}</p> : null;
+    ? <p id={`report-field-${field}-error`} className="mt-1 text-sm font-semibold text-destructive">{fieldErrors[field]}</p> : null;
 
   const select = (field: ReportEditableField, label: string, options: Option[]) => (
-    <label>
-      <span className="field-label">{label}</span>
-      <select {...fieldProps(field)} value={form[field]} disabled={fieldsDisabled} onChange={(event) => update(field, event.target.value)}>
+    <Label>
+      <FieldLabel>{label}</FieldLabel>
+      <NativeSelect {...fieldProps(field)} value={form[field]} disabled={fieldsDisabled} onChange={(event) => update(field, event.target.value)}>
         <option value="">Sin seleccionar</option>
         {options.map((option) => <option key={option.id} value={option.id}>{option.code} · {option.name}</option>)}
-      </select>
+      </NativeSelect>
       {fieldError(field)}
-    </label>
+    </Label>
   );
 
   const input = (field: ReportEditableField, label: string, type = "text", extra: Record<string, string | number> = {}) => (
-    <label className="min-w-0">
-      <span className="field-label">{label}</span>
-      <input
+    <Label className="min-w-0">
+      <FieldLabel>{label}</FieldLabel>
+      <Input
         {...fieldProps(field)}
-        className={`field-control scroll-mt-40 ${type === "number" ? "data-mono text-lg" : ""} ${fieldErrors[field] ? "border-red-500 ring-2 ring-red-200" : ""}`}
+        className={`scroll-mt-40 ${type === "number" ? "text-lg" : ""} ${fieldErrors[field] ? "border-destructive ring-2 ring-destructive/20" : ""}`}
         type={type}
         value={form[field]}
         disabled={fieldsDisabled}
@@ -792,20 +802,20 @@ export default function ReportEditor({
         onChange={(event) => update(field, event.target.value)}
         {...extra}
       />
-      {fieldErrors[field] && <p id={`report-field-${field}-error`} className="mt-1 text-sm font-semibold text-red-700">{fieldErrors[field]}</p>}
-    </label>
+      {fieldErrors[field] && <p id={`report-field-${field}-error`} className="mt-1 text-sm font-semibold text-destructive">{fieldErrors[field]}</p>}
+    </Label>
   );
 
   const frequentInput = (field: "client_name" | "product_name", idField: "client_id" | "product_id", label: string, options: Option[]) => (
-    <label><span className="field-label">{label}</span>
-      <input {...fieldProps(field)} list={`${field}-suggestions`} value={form[field]} disabled={fieldsDisabled} onChange={(event) => updateFrequentText(field, idField, event.target.value, options)} />
+    <Label><FieldLabel>{label}</FieldLabel>
+      <Input {...fieldProps(field)} list={`${field}-suggestions`} value={form[field]} disabled={fieldsDisabled} onChange={(event) => updateFrequentText(field, idField, event.target.value, options)} />
       <datalist id={`${field}-suggestions`}>{options.map((option) => <option key={option.id} value={option.name}>{option.code}</option>)}</datalist>
       {fieldError(field)}
-    </label>
+    </Label>
   );
   const timeInput = (field: "started_at" | "ended_at", label: string) => (
     <div>{input(field, label, "datetime-local")}
-      <button className="button-secondary mt-2" type="button" disabled={fieldsDisabled} onClick={() => update(field, localDateTime(new Date().toISOString()))}>Usar hora actual</button>
+      <Button variant="outline" className="mt-2" type="button" disabled={fieldsDisabled} onClick={() => update(field, localDateTime(new Date().toISOString()))}>Usar hora actual</Button>
     </div>
   );
 
@@ -839,22 +849,20 @@ export default function ReportEditor({
         <div
           className="pointer-events-none fixed inset-x-0 z-[100] px-3 sm:px-6"
           style={{ top: "calc(env(safe-area-inset-top, 0px) + 0.75rem)" }}
-          role="alert"
-          aria-live="assertive"
-          aria-atomic="true"
         >
-          <section className="mx-auto max-w-2xl rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-red-950 shadow-xl sm:px-5 sm:py-4">
-            <h2 className="font-bold">Faltan campos obligatorios</h2>
-            <p className="mt-1 text-sm">Completa los campos resaltados antes de enviar el reporte.</p>
-          </section>
+          <Alert variant="destructive" aria-live="assertive" aria-atomic="true" className="mx-auto max-w-2xl bg-card shadow-xl">
+            <AlertTitle>Faltan campos obligatorios</AlertTitle>
+            <AlertDescription>Completa los campos resaltados antes de enviar el reporte.</AlertDescription>
+          </Alert>
         </div>
       )}
       <OfflineDraftNotice visible={reviewReason !== null} finalized={reviewReason === "finalized"} />
-      <section className="panel">
+      <Card asChild className="gap-0 p-5">
+      <section data-unsaved-changes={hasUnsavedChanges && !finalizing ? "true" : "false"}>
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="text-xl font-bold">{adminCorrection ? "Corrección administrativa" : "Datos del reporte"}</h2>
-            <p className="text-sm text-slate-500">
+            <p className="text-sm text-muted-foreground">
               {adminCorrection
                 ? "Los cambios se aplican únicamente al seleccionar Guardar cambios."
                 : connectionUnavailable
@@ -866,44 +874,37 @@ export default function ReportEditor({
                   : "Los cambios se guardan automáticamente."}
             </p>
           </div>
-          <p className={`rounded-full px-3 py-2 text-sm font-semibold ${statusError ? "bg-red-100 text-red-800" : statusReview ? "bg-amber-100 text-amber-900" : "bg-slate-100 text-slate-600"}`} aria-live="polite">
+          <Badge variant={statusError ? "cancelled" : statusReview ? "draft" : "neutral"} className="px-3 py-2 text-sm" aria-live="polite">
             {statusLabel}
-          </p>
+          </Badge>
         </div>
-        {message && <p role="alert" className="mb-5 rounded-xl bg-red-50 p-4 text-sm text-red-800">{message}</p>}
+        {message && <Alert variant="destructive" role="alert" className="mb-5"><AlertDescription>{message}</AlertDescription></Alert>}
         {showReconnectReminder && hasLocalPending && (
-          <section
-            className="mb-5 rounded-xl border border-amber-300 bg-amber-50 p-4 text-amber-950 sm:flex sm:items-center sm:justify-between sm:gap-5"
-            role="status"
-            aria-live="polite"
-            aria-atomic="true"
-          >
-            <div>
-              <h3 className="text-base font-bold">Hay cambios pendientes de guardar</h3>
-              <p className="mt-1 text-sm">
-                Los cambios realizados sin conexión están guardados en este dispositivo. Revisa la información y pulsa Guardar ahora para enviarlos al servidor.
-              </p>
-            </div>
-            <button
-              className="button-primary mt-4 w-full shrink-0 sm:mt-0 sm:w-auto"
-              type="button"
-              aria-label="Guardar ahora los cambios pendientes en el servidor"
-              disabled={restoreChecking || reviewReason !== null || connectionUnavailable}
-              onClick={() => void saveManually()}
-            >
-              Guardar ahora
-            </button>
-          </section>
+          <Alert variant="warning" role="status" aria-live="polite" aria-atomic="true" className="mb-5">
+            <AlertTitle className="text-base">Hay cambios pendientes de guardar</AlertTitle>
+            <AlertDescription>
+              <p>Los cambios realizados sin conexión están guardados en este dispositivo. Revisa la información y pulsa Guardar ahora para enviarlos al servidor.</p>
+              <Button
+                className="mt-3 w-full sm:w-auto"
+                type="button"
+                aria-label="Guardar ahora los cambios pendientes en el servidor"
+                disabled={restoreChecking || reviewReason !== null || connectionUnavailable}
+                onClick={() => void saveManually()}
+              >
+                Guardar ahora
+              </Button>
+            </AlertDescription>
+          </Alert>
         )}
         {saveState === "storage-error" && (dirty || hasLocalPending) && (
-          <button className="button-secondary mb-5" type="button" onClick={() => void persistLatest()}>
+          <Button variant="outline" className="mb-5" type="button" onClick={() => void persistLatest()}>
             Reintentar guardado local
-          </button>
+          </Button>
         )}
         <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
           {canSubmit && <>
-            <label><span className="field-label">Máquina</span><input className="field-control" value={machineLabel ?? ""} readOnly /></label>
-            <label><span className="field-label">Operario responsable</span><input className="field-control" value={String(report.creator_full_name ?? "")} readOnly /></label>
+            <Label><FieldLabel>Máquina</FieldLabel><Input value={machineLabel ?? ""} readOnly /></Label>
+            <Label><FieldLabel>Operario responsable</FieldLabel><Input value={String(report.creator_full_name ?? "")} readOnly /></Label>
           </>}
           {input("report_date", "Fecha", "date")}
           {frequentInput("product_name", "product_id", "Producto", products)}
@@ -911,7 +912,7 @@ export default function ReportEditor({
           {select("line_id", "Área / Línea", lines)}
           {frequentInput("client_name", "client_id", "Cliente", clients)}
           {input("lot", "Lote")}
-          <label><span className="field-label">Turno</span><select {...fieldProps("shift_id")} value={form.shift_id} disabled={fieldsDisabled} onChange={(event) => update("shift_id", event.target.value)}><option value="">Sin seleccionar</option>{shifts.map((shift) => <option key={shift.id} value={shift.id}>{shiftLabel(shift)}</option>)}</select>{fieldError("shift_id")}</label>
+          <Label><FieldLabel>Turno</FieldLabel><NativeSelect {...fieldProps("shift_id")} value={form.shift_id} disabled={fieldsDisabled} onChange={(event) => update("shift_id", event.target.value)}><option value="">Sin seleccionar</option>{shifts.map((shift) => <option key={shift.id} value={shift.id}>{shiftLabel(shift)}</option>)}</NativeSelect>{fieldError("shift_id")}</Label>
           {input("weight", "Peso (gr)", "number", { min: 0, step: "any", inputMode: "decimal" })}
           {input("g_min", "G/min", "number", { min: 0, step: "any", inputMode: "decimal" })}
           {select("dosifier_type_id", "Tipo de dosificador", dosifierTypes)}
@@ -922,16 +923,16 @@ export default function ReportEditor({
           {input("waste", "Desperdicio", "number", { min: 0, step: "any", inputMode: "decimal" })}
           {!canSubmit && input("process_performance", "Rendimiento del proceso (%)", "number", { step: "any", inputMode: "decimal" })}
           {!canSubmit && input("operator_performance", "Rendimiento del Operario (%)", "number", { step: "any", inputMode: "decimal" })}
-          <label className="md:col-span-2 xl:col-span-3"><span className="field-label">Observaciones (opcional)</span><textarea className="field-control min-h-28" value={form.observations} disabled={fieldsDisabled} onChange={(event) => update("observations", event.target.value)} /></label>
+          <Label className="md:col-span-2 xl:col-span-3"><FieldLabel>Observaciones (opcional)</FieldLabel><Textarea className="min-h-28" value={form.observations} disabled={fieldsDisabled} onChange={(event) => update("observations", event.target.value)} /></Label>
         </div>
-        <p className="mt-4 text-sm text-slate-500">Cliente y Producto aceptan texto libre; los valores frecuentes aparecen como sugerencias.</p>
+        <p className="mt-4 text-sm text-muted-foreground">Cliente y Producto aceptan texto libre; los valores frecuentes aparecen como sugerencias.</p>
         <div className="mt-6 flex flex-col gap-5 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-3">
-          {canSubmit ? <button className="button-danger w-full sm:w-auto" type="button" disabled={onlineActionDisabled} onClick={() => { setCancelReason(""); setModal("cancel"); }}>Cancelar reporte</button> : <span />}
+          {canSubmit ? <Button variant="destructive" size="lg" className="w-full sm:w-auto" type="button" disabled={onlineActionDisabled} onClick={() => { setCancelReason(""); setModal("cancel"); }}>Cancelar reporte</Button> : <span />}
           <div className="grid gap-3 sm:flex sm:flex-wrap sm:justify-end">
-            <button className="button-secondary w-full sm:w-auto" type="button" disabled={finalizing || restoreChecking || reviewReason !== null || (connectionUnavailable && !localPersistenceEnabled) || (adminCorrection && (!dirty || saveState === "server-saving"))} onClick={() => void saveManually()}>
+            <Button variant="outline" size="lg" className="w-full sm:w-auto" type="button" disabled={finalizing || restoreChecking || reviewReason !== null || (connectionUnavailable && !localPersistenceEnabled) || (adminCorrection && (!dirty || saveState === "server-saving"))} onClick={() => void saveManually()}>
               {adminCorrection ? "Guardar cambios" : connectionUnavailable && localPersistenceEnabled ? "Guardar en este dispositivo" : "Guardar ahora"}
-            </button>
-            {canSubmit && <button className="button-primary w-full sm:w-auto" type="button" disabled={onlineActionDisabled} onClick={beginSubmit}>Enviar reporte</button>}
+            </Button>
+            {canSubmit && <Button size="lg" className="w-full sm:w-auto" type="button" disabled={onlineActionDisabled} onClick={beginSubmit}>Enviar reporte</Button>}
           </div>
         </div>
         {modal === "submit" && <PlatformModal title="¿Enviar reporte?" cancelLabel="Cancelar" confirmLabel="Enviar reporte" confirmDisabled={onlineActionDisabled} onCancel={() => setModal(null)} onConfirm={() => void submit()}>
@@ -939,12 +940,13 @@ export default function ReportEditor({
         </PlatformModal>}
         {modal === "cancel" && <PlatformModal title="Cancelar reporte" confirmLabel="Confirmar cancelación" destructive confirmDisabled={!cancelReason.trim() || connectionUnavailable} initialFocusRef={cancellationReasonRef} onCancel={() => setModal(null)} onConfirm={() => void cancel()}>
           <p>El reporte quedará en modo de solo lectura y la máquina se liberará para un nuevo reporte.</p>
-          <label className="mt-5 block"><span className="field-label">Motivo de cancelación</span><textarea ref={cancellationReasonRef} className="field-control min-h-28" value={cancelReason} disabled={connectionUnavailable} onChange={(event) => setCancelReason(event.target.value)} required /></label>
+          <Label className="mt-5"><FieldLabel>Motivo de cancelación</FieldLabel><Textarea ref={cancellationReasonRef} className="min-h-28" value={cancelReason} disabled={connectionUnavailable} onChange={(event) => setCancelReason(event.target.value)} required /></Label>
         </PlatformModal>}
         {frequentQuestion && <PlatformModal title={`Guardar ${frequentQuestion.label.toLocaleLowerCase("es-CO")}`} cancelLabel="No guardar" confirmLabel="Guardar como frecuente" confirmDisabled={connectionUnavailable} onCancel={() => answerFrequentQuestion(false)} onConfirm={() => answerFrequentQuestion(true)}>
           <p>“{frequentQuestion.name}” no existe entre los valores frecuentes. ¿Deseas guardarlo para futuros reportes?</p>
         </PlatformModal>}
       </section>
+      </Card>
     </>
   );
 }

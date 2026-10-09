@@ -1,7 +1,19 @@
 ---
 import BaseLayout from "../../layouts/BaseLayout.astro";
+import PageHeader from "../../components/PageHeader.astro";
+import StatusBadge from "../../components/StatusBadge";
+import StopIndicator from "../../components/StopIndicator";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { buttonVariants } from "@/components/ui/button";
+import { Card, CardDescription, CardHeader } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { FieldLabel, Label } from "@/components/ui/label";
+import { NativeSelect } from "@/components/ui/native-select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { createSupabaseServerClient } from "../../lib/supabase/server";
 import { formatDate, getBogotaDateKey } from "../../lib/format";
+import { hasActiveStop } from "../../lib/report-status";
 import { applyReportFilters, parseReportFilters, periodHref, reportFilterParams } from "../../lib/report-filters";
 import { stopDuration, summarizeClosedStops } from "../../lib/stop-events";
 import { roleLabels, statusLabels, type AppRole } from "../../lib/types";
@@ -58,8 +70,8 @@ if (auth.profile.role === "OPERATOR") {
   assignedMachines = (data ?? []).filter((assignment: any) => assignment.machine?.active);
 }
 
-const error = Astro.url.searchParams.get("error") ?? filters.error ?? visibleReportError ?? draftError?.message;
-const ok = Astro.url.searchParams.get("ok");
+// Los resultados de acciones (?ok / ?error) se muestran como toast; aquí solo errores de carga o de filtros.
+const error = filters.error ?? visibleReportError ?? draftError?.message;
 const today = getBogotaDateKey();
 const currentMonth = today.slice(0, 7);
 const exportParams = reportFilterParams(filters);
@@ -76,77 +88,74 @@ const shiftLabel = (report: any) => {
 
 <BaseLayout title="Reportes de producción" description="Gestión de reportes de producción" profile={auth.profile}>
   <main class="mx-auto max-w-7xl space-y-6 px-4 py-6 sm:px-6 lg:py-8">
-    <header class="flex flex-wrap items-end justify-between gap-4">
-      <div>
-        <p class="eyebrow">Operación diaria</p>
-        <h1 class="page-title">Reportes de producción</h1>
-        <p class="mt-2 text-slate-600">
-          {auth.profile.role === "OPERATOR" ? `${drafts.length} de 5 reportes abiertos.` : "Consulta de reportes autorizados."}
-        </p>
-      </div>
-      {auth.profile.role === "ADMINISTRATOR" && <a class="button-secondary" href="/administracion">Administración</a>}
-    </header>
+    <PageHeader
+      eyebrow="Operación diaria"
+      title="Reportes de producción"
+      description={auth.profile.role === "OPERATOR" ? `${drafts.length} de 5 reportes abiertos.` : "Consulta de reportes autorizados."}
+    >
+      <Fragment slot="actions">{auth.profile.role === "ADMINISTRATOR" && <a class={buttonVariants({ variant: "outline", size: "lg" })} href="/administracion">Administración</a>}</Fragment>
+    </PageHeader>
 
-    {error && <p class="rounded-xl bg-red-50 p-4 font-medium text-red-800">{error}</p>}
-    {ok && <p class="rounded-xl bg-emerald-50 p-4 font-medium text-emerald-800">{ok}</p>}
+    {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
 
     {auth.profile.role === "OPERATOR" && drafts.length > 0 && (
       <section aria-label="Cambio rápido de máquina">
-        <h2 class="mb-3 text-sm font-bold uppercase tracking-wider text-slate-500">Máquinas abiertas</h2>
+        <h2 class="mb-3 text-sm font-bold uppercase tracking-wider text-muted-foreground">Máquinas abiertas</h2>
         <div class="flex gap-3 overflow-x-auto pb-2">
-          {drafts.map((report) => {
-            const hasOpenStop = report.report_stop_events?.some((stop: any) => !stop.ended_at);
-            return (
-              <a class="min-w-48 rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:border-brand-500" href={`/reportes/${report.id}`}>
-                <span class="font-bold text-slate-900">{report.machine?.code} · {report.machine?.name}</span>
-                <span class={`mt-2 block text-xs font-bold ${hasOpenStop ? "text-red-700" : "text-emerald-700"}`}>
-                  {hasOpenStop ? "● Parada abierta" : "● En operación"}
-                </span>
-              </a>
-            );
-          })}
+          {drafts.map((report) => (
+            <a class="block min-w-48 rounded-xl outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50" href={`/reportes/${report.id}`}>
+              <Card className="gap-2 p-4 transition-colors hover:border-primary">
+                <span class="font-bold text-foreground">{report.machine?.code} · {report.machine?.name}</span>
+                <StopIndicator active={hasActiveStop(report)} variant="inline" />
+              </Card>
+            </a>
+          ))}
         </div>
       </section>
     )}
 
     {auth.profile.role === "OPERATOR" && (
-      <section class="panel">
+      <Card className="gap-0 p-5">
         <div class="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 class="text-xl font-bold">Abrir reporte de máquina</h2>
-            <p class="mt-1 text-sm text-slate-500">Solo aparecen máquinas activas que tienes asignadas.</p>
+            <CardDescription className="mt-1">Solo aparecen máquinas activas que tienes asignadas.</CardDescription>
           </div>
-          <span class="rounded-full bg-slate-100 px-3 py-2 text-sm font-semibold">{drafts.length}/5 abiertos</span>
+          <Badge variant="neutral" className="px-3 py-2 text-sm">{drafts.length}/5 abiertos</Badge>
         </div>
         <form class="mt-5 grid gap-4 md:grid-cols-[1fr_220px_auto] md:items-end" method="POST" action="/api/reports">
-          <label>
-            <span class="field-label">Máquina</span>
-            <select class="field-control" name="machine_id" required disabled={drafts.length >= 5}>
+          <Label>
+            <FieldLabel>Máquina</FieldLabel>
+            <NativeSelect name="machine_id" required disabled={drafts.length >= 5}>
               <option value="">Selecciona una máquina</option>
               {assignedMachines.map((assignment) => (
                 <option value={assignment.machine.id}>{assignment.machine.code} · {assignment.machine.name}</option>
               ))}
-            </select>
-          </label>
-          <label>
-            <span class="field-label">Fecha</span>
-            <input class="field-control" type="date" name="report_date" value={today} disabled={drafts.length >= 5} />
-          </label>
-          <button class="button-accent w-full md:w-auto" type="submit" disabled={drafts.length >= 5}>Nuevo reporte</button>
+            </NativeSelect>
+          </Label>
+          <Label>
+            <FieldLabel>Fecha</FieldLabel>
+            <Input type="date" name="report_date" value={today} disabled={drafts.length >= 5} />
+          </Label>
+          <button class={buttonVariants({ variant: "accent", size: "lg", className: "w-full md:w-auto" })} type="submit" disabled={drafts.length >= 5}>Nuevo reporte</button>
         </form>
-      </section>
+      </Card>
     )}
 
-    <section class="panel space-y-4" aria-labelledby="period-filter-title">
+    <Card className="gap-4 p-5" aria-labelledby="period-filter-title">
       <div class="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 id="period-filter-title" class="text-lg font-bold">Período</h2>
-          <p class="mt-1 text-sm text-slate-500">Filtra la tabla por la fecha operativa del reporte.</p>
+          <CardDescription className="mt-1">Filtra la tabla por la fecha operativa del reporte.</CardDescription>
         </div>
         <div class="grid w-full grid-cols-3 gap-2 sm:flex sm:w-auto sm:flex-wrap" aria-label="Seleccionar tipo de período">
-          <a class={`button-secondary px-2 ${filters.period === "day" ? "is-active" : ""}`} href={periodHref("day", filters)}>Día</a>
-          <a class={`button-secondary px-2 ${filters.period === "week" ? "is-active" : ""}`} href={periodHref("week", filters)}>Semana</a>
-          <a class={`button-secondary px-2 ${filters.period === "month" ? "is-active" : ""}`} href={periodHref("month", filters)}>Mes</a>
+          {([["day", "Día"], ["week", "Semana"], ["month", "Mes"]] as const).map(([value, label]) => (
+            <a
+              class={buttonVariants({ variant: filters.period === value ? "secondary" : "outline", size: "lg", className: filters.period === value ? "border border-primary px-2" : "px-2" })}
+              href={periodHref(value, filters)}
+              aria-current={filters.period === value ? "page" : undefined}
+            >{label}</a>
+          ))}
         </div>
       </div>
 
@@ -156,118 +165,115 @@ const shiftLabel = (report: any) => {
           {filters.activeStop && <input type="hidden" name="stop" value="active" />}
           {!filters.activeStop && filters.status && <input type="hidden" name="status" value={filters.status} />}
           {filters.period === "month" ? (
-            <label class="min-w-0 flex-1 sm:min-w-56 sm:flex-none">
-              <span class="field-label">Mes</span>
-              <input class="field-control" type="month" name="month" value={filters.month ?? currentMonth} required />
-            </label>
+            <Label className="min-w-0 flex-1 sm:min-w-56 sm:flex-none">
+              <FieldLabel>Mes</FieldLabel>
+              <Input type="month" name="month" value={filters.month ?? currentMonth} required />
+            </Label>
           ) : (
-            <label class="min-w-0 flex-1 sm:min-w-56 sm:flex-none">
-              <span class="field-label">{filters.period === "week" ? "Fecha dentro de la semana" : "Fecha"}</span>
-              <input class="field-control" type="date" name="date" value={filters.date ?? today} required />
-            </label>
+            <Label className="min-w-0 flex-1 sm:min-w-56 sm:flex-none">
+              <FieldLabel>{filters.period === "week" ? "Fecha dentro de la semana" : "Fecha"}</FieldLabel>
+              <Input type="date" name="date" value={filters.date ?? today} required />
+            </Label>
           )}
-          <button class="button-primary w-full sm:w-auto" type="submit">Aplicar</button>
-          <a class="button-secondary w-full sm:w-auto" href={clearPeriodHref}>Limpiar período</a>
+          <button class={buttonVariants({ size: "lg", className: "w-full sm:w-auto" })} type="submit">Aplicar</button>
+          <a class={buttonVariants({ variant: "outline", size: "lg", className: "w-full sm:w-auto" })} href={clearPeriodHref}>Limpiar período</a>
         </form>
       )}
-    </section>
+    </Card>
 
-    <section class="panel overflow-hidden p-0">
-      <div class="flex flex-wrap items-center justify-between gap-3 border-b p-5">
+    <Card className="gap-0 overflow-hidden py-0">
+      <CardHeader className="flex flex-wrap items-center justify-between gap-3 border-b p-5">
         <div>
           <h2 class="text-xl font-bold">{auth.profile.role === "OPERATOR" ? "Mis reportes" : "Reportes disponibles"}</h2>
-          <p class="mt-1 text-sm text-slate-500">
-            Mostrando {visibleReports.length ? (page - 1) * PAGE_SIZE + 1 : 0}–{Math.min(page * PAGE_SIZE, reportTotal)} de {reportTotal} {reportTotal === 1 ? "reporte" : "reportes"}{filterSummary ? ` · ${filterSummary}` : ""}
-          </p>
+          <CardDescription className="mt-1">
+            Mostrando {visibleReports.length ? (page - 1) * PAGE_SIZE + 1 : 0}–{Math.min(page * PAGE_SIZE, reportTotal)}{` de ${reportTotal} ${reportTotal === 1 ? "reporte" : "reportes"}`}{filterSummary ? ` · ${filterSummary}` : ""}
+          </CardDescription>
         </div>
         <div class="flex flex-wrap items-center gap-3">
           {(auth.profile.role === "ADMINISTRATOR" || auth.profile.role === "VIEWER") && !filters.error && (
-            <a class="button-primary" href={exportHref}>Exportar Excel</a>
+            <a class={buttonVariants({ size: "lg" })} href={exportHref}>Exportar Excel</a>
           )}
-          {(activeFilterLabel || filters.period) && <a class="link" href="/reportes">Limpiar filtros</a>}
+          {(activeFilterLabel || filters.period) && <a class={buttonVariants({ variant: "link" })} href="/reportes">Limpiar filtros</a>}
         </div>
-      </div>
-      <div class={`mobile-card-list ${administrativeList ? "lg:hidden" : "md:hidden"}`}>
+      </CardHeader>
+      <div class={`divide-y divide-border ${administrativeList ? "lg:hidden" : "md:hidden"}`}>
         {visibleReports.map((report) => {
-          const hasOpenStop = report.report_stop_events?.some((stop: any) => !stop.ended_at);
           const stopSummary = summarizeClosedStops(report.report_stop_events ?? []);
+          const openStop = hasActiveStop(report);
           return (
-            <article class={administrativeList ? "space-y-2 p-3" : "mobile-data-card"}>
+            <article class={administrativeList ? "space-y-2 p-3" : "space-y-3 p-4"}>
               <div class="flex items-start justify-between gap-3">
-                <p class="data-mono min-w-0 break-words font-semibold text-slate-900">{report.folio}</p>
-                <span class={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${report.status === "DRAFT" ? "bg-amber-100 text-amber-800" : report.status === "CANCELLED" ? "bg-red-100 text-red-800" : "bg-emerald-100 text-emerald-800"}`}>{statusLabels[report.status as keyof typeof statusLabels]}</span>
+                <p class="min-w-0 break-words font-mono font-semibold tabular-nums text-foreground">{report.folio}</p>
+                <StatusBadge status={report.status} />
               </div>
               {administrativeList ? (
                 <>
                   <dl class="grid grid-cols-1 gap-x-4 gap-y-2 text-sm min-[380px]:grid-cols-2">
-                    <div><dt class="text-slate-500">Fecha</dt><dd>{formatDate(report.report_date)}</dd></div>
-                    <div><dt class="text-slate-500">Máquina</dt><dd class="font-semibold">{report.machine?.code} · {report.machine?.name}</dd></div>
-                    <div><dt class="text-slate-500">Operario</dt><dd>{report.operator?.full_name || "—"}</dd></div>
-                    <div><dt class="text-slate-500">Producto</dt><dd>{report.product_name || report.product?.name || "—"}</dd></div>
-                    <div><dt class="text-slate-500">O.P.</dt><dd>{report.production_order || "—"}</dd></div>
-                    <div><dt class="text-slate-500">Turno</dt><dd>{shiftLabel(report)}</dd></div>
+                    <div><dt class="text-muted-foreground">Fecha</dt><dd>{formatDate(report.report_date)}</dd></div>
+                    <div><dt class="text-muted-foreground">Máquina</dt><dd class="font-semibold">{report.machine?.code} · {report.machine?.name}</dd></div>
+                    <div><dt class="text-muted-foreground">Operario</dt><dd>{report.operator?.full_name || "—"}</dd></div>
+                    <div><dt class="text-muted-foreground">Producto</dt><dd>{report.product_name || report.product?.name || "—"}</dd></div>
+                    <div><dt class="text-muted-foreground">O.P.</dt><dd>{report.production_order || "—"}</dd></div>
+                    <div><dt class="text-muted-foreground">Turno</dt><dd>{shiftLabel(report)}</dd></div>
                   </dl>
                   <div class="flex flex-wrap gap-x-5 gap-y-1 text-sm font-semibold">
                     <span>Paradas: {stopSummary.count}</span>
                     <span>Tiempo total: <span class="font-mono tabular-nums">{stopDuration(stopSummary.seconds)}</span></span>
                   </div>
-                  <div class="flex min-h-11 items-center justify-between gap-3 border-t border-slate-100 pt-1">
-                    <span class={hasOpenStop ? "text-sm font-bold text-red-700" : "text-sm text-slate-500"}>{hasOpenStop ? "● Parada abierta" : ""}</span>
-                    <a class="inline-flex min-h-11 items-center rounded-lg px-3 font-bold text-brand-700" href={`/reportes/${report.id}`}>Abrir</a>
+                  <div class="flex min-h-11 items-center justify-between gap-3 border-t border-border pt-1">
+                    <span>{openStop && <StopIndicator active variant="inline" className="text-sm" />}</span>
+                    <a class={buttonVariants({ variant: "ghost", className: "font-bold text-primary hover:text-primary" })} href={`/reportes/${report.id}`}>Abrir</a>
                   </div>
                 </>
               ) : (
                 <>
                   <dl class="grid gap-2 text-sm">
-                    <div><dt class="text-slate-500">Fecha</dt><dd>{formatDate(report.report_date)}</dd></div>
-                    <div><dt class="text-slate-500">Máquina</dt><dd class="font-semibold">{report.machine?.code} · {report.machine?.name}</dd></div>
-                    <div><dt class="text-slate-500">Operario</dt><dd>{report.operator?.full_name || "—"}</dd></div>
-                    {report.production_order && <div><dt class="text-slate-500">O.P.</dt><dd>{report.production_order}</dd></div>}
+                    <div><dt class="text-muted-foreground">Fecha</dt><dd>{formatDate(report.report_date)}</dd></div>
+                    <div><dt class="text-muted-foreground">Máquina</dt><dd class="font-semibold">{report.machine?.code} · {report.machine?.name}</dd></div>
+                    <div><dt class="text-muted-foreground">Operario</dt><dd>{report.operator?.full_name || "—"}</dd></div>
+                    {report.production_order && <div><dt class="text-muted-foreground">O.P.</dt><dd>{report.production_order}</dd></div>}
                   </dl>
                   <div class="flex min-h-11 items-center justify-between gap-3">
-                    <span class={hasOpenStop ? "font-bold text-red-700" : "text-slate-500"}>{hasOpenStop ? "● Parada abierta" : "Sin parada activa"}</span>
-                    <a class="inline-flex min-h-11 items-center rounded-lg px-3 font-bold text-brand-700" href={`/reportes/${report.id}`}>Abrir</a>
+                    {openStop ? <StopIndicator active variant="inline" className="text-sm" /> : <span class="text-muted-foreground">Sin parada activa</span>}
+                    <a class={buttonVariants({ variant: "ghost", className: "font-bold text-primary hover:text-primary" })} href={`/reportes/${report.id}`}>Abrir</a>
                   </div>
                 </>
               )}
             </article>
           );
         })}
-        {visibleReports.length === 0 && <p class="p-8 text-center text-slate-500">No hay reportes disponibles.</p>}
+        {visibleReports.length === 0 && <p class="p-8 text-center text-muted-foreground">No hay reportes disponibles.</p>}
       </div>
-      <div class={`hidden overflow-x-auto ${administrativeList ? "lg:block" : "md:block"}`} role="region" aria-label="Listado de reportes" tabindex="0">
-        <table class="w-full min-w-[760px] text-left text-sm lg:min-w-[960px]">
-          <thead class="bg-slate-50 text-slate-600">
-            <tr><th class="p-4">Folio</th><th class="p-4">Fecha</th><th class="p-4">Máquina</th><th class="hidden p-4 lg:table-cell">O.P.</th><th class="p-4">Operario</th><th class="hidden p-4 lg:table-cell">Rol</th><th class="p-4">Estado</th><th class="p-4">Parada</th><th class="p-4"></th></tr>
-          </thead>
-          <tbody>
-            {visibleReports.map((report) => {
-              const hasOpenStop = report.report_stop_events?.some((stop: any) => !stop.ended_at);
-              return (
-                <tr class="border-t">
-                  <td class="data-mono p-4 font-semibold text-slate-900">{report.folio}</td>
-                  <td class="p-4">{formatDate(report.report_date)}</td>
-                  <td class="p-4 font-semibold">{report.machine?.code} · {report.machine?.name}</td>
-                  <td class="hidden p-4 lg:table-cell">{report.production_order || "—"}</td>
-                  <td class="p-4">{report.operator?.full_name || "—"}</td>
-                  <td class="hidden whitespace-nowrap p-4 lg:table-cell">{report.operator?.role ? roleLabels[report.operator.role as AppRole] ?? "—" : "—"}</td>
-                  <td class="p-4"><span class={`rounded-full px-3 py-1 font-semibold ${report.status === "DRAFT" ? "bg-amber-100 text-amber-800" : report.status === "CANCELLED" ? "bg-red-100 text-red-800" : "bg-emerald-100 text-emerald-800"}`}>{statusLabels[report.status as keyof typeof statusLabels]}</span></td>
-                  <td class="p-4">{hasOpenStop ? <span class="font-bold text-red-700">Abierta</span> : "—"}</td>
-                  <td class="p-4 text-right"><a class="link" href={`/reportes/${report.id}`}>Abrir</a></td>
-                </tr>
-              );
-            })}
-            {visibleReports.length === 0 && <tr><td class="p-8 text-center text-slate-500" colspan="9">No hay reportes disponibles.</td></tr>}
-          </tbody>
-        </table>
-      </div>
+      <Table className="min-w-[760px] lg:min-w-[960px]" container={{ role: "region", "aria-label": "Listado de reportes", tabIndex: 0, className: `hidden ${administrativeList ? "lg:block" : "md:block"}` }}>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Folio</TableHead><TableHead>Fecha</TableHead><TableHead>Máquina</TableHead><TableHead className="hidden lg:table-cell">O.P.</TableHead><TableHead>Operario</TableHead><TableHead className="hidden lg:table-cell">Rol</TableHead><TableHead>Estado</TableHead><TableHead>Parada</TableHead><TableHead><span class="sr-only">Acciones</span></TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {visibleReports.map((report) => (
+            <TableRow>
+              <TableCell className="font-mono font-semibold tabular-nums text-foreground">{report.folio}</TableCell>
+              <TableCell>{formatDate(report.report_date)}</TableCell>
+              <TableCell className="font-semibold">{report.machine?.code} · {report.machine?.name}</TableCell>
+              <TableCell className="hidden lg:table-cell">{report.production_order || "—"}</TableCell>
+              <TableCell>{report.operator?.full_name || "—"}</TableCell>
+              <TableCell className="hidden whitespace-nowrap lg:table-cell">{report.operator?.role ? roleLabels[report.operator.role as AppRole] ?? "—" : "—"}</TableCell>
+              <TableCell><StatusBadge status={report.status} /></TableCell>
+              <TableCell>{hasActiveStop(report) ? <StopIndicator active /> : "—"}</TableCell>
+              <TableCell className="text-right"><a class="font-semibold text-primary underline-offset-4 hover:underline" href={`/reportes/${report.id}`}>Abrir</a></TableCell>
+            </TableRow>
+          ))}
+          {visibleReports.length === 0 && <TableRow><TableCell className="p-8 text-center text-muted-foreground" colSpan={9}>No hay reportes disponibles.</TableCell></TableRow>}
+        </TableBody>
+      </Table>
       {pageCount > 1 && (
         <nav class="flex flex-wrap items-center justify-between gap-3 border-t px-4 py-3" aria-label="Páginas de reportes">
-          <a class:list={["button-secondary", page <= 1 && "pointer-events-none opacity-50"]} href={pageHref(Math.max(1, page - 1))} aria-disabled={page <= 1 ? "true" : undefined}>Anterior</a>
-          <span class="text-sm font-medium text-slate-600">Página {page} de {pageCount}</span>
-          <a class:list={["button-secondary", page >= pageCount && "pointer-events-none opacity-50"]} href={pageHref(Math.min(pageCount, page + 1))} aria-disabled={page >= pageCount ? "true" : undefined}>Siguiente</a>
+          <a class={buttonVariants({ variant: "outline", size: "lg" })} href={pageHref(Math.max(1, page - 1))} aria-disabled={page <= 1 ? "true" : undefined}>Anterior</a>
+          <span class="text-sm font-medium text-muted-foreground">Página {page} de {pageCount}</span>
+          <a class={buttonVariants({ variant: "outline", size: "lg" })} href={pageHref(Math.min(pageCount, page + 1))} aria-disabled={page >= pageCount ? "true" : undefined}>Siguiente</a>
         </nav>
       )}
-    </section>
+    </Card>
   </main>
 </BaseLayout>

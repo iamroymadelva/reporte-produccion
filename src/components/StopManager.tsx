@@ -1,4 +1,11 @@
 import { useEffect, useRef, useState } from "react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { FieldLabel, Label } from "@/components/ui/label";
+import { NativeSelect } from "@/components/ui/native-select";
+import { Textarea } from "@/components/ui/textarea";
+import StopIndicator from "./StopIndicator";
 import StopEventsTable from "./StopEventsTable";
 import PlatformModal from "./PlatformModal";
 import StopSummary from "./StopSummary";
@@ -76,43 +83,44 @@ export default function StopManager({ reportId, stops, categories }: Props) {
   };
 
   const categorySelect = (active: boolean) => (
-    <label>
-      <span className="field-label">{active ? "Cambiar categoría" : "Categoría"}</span>
-      <select className="field-control" value={categoryId} disabled={disabled} onChange={(event) => setCategoryId(event.target.value)}>
+    <Label>
+      <FieldLabel>{active ? "Cambiar categoría" : "Categoría"}</FieldLabel>
+      <NativeSelect value={categoryId} disabled={disabled} onChange={(event) => setCategoryId(event.target.value)}>
         <option value="">Selecciona una categoría</option>
         {categories.map((category) => <option key={category.id} value={category.id}>{category.code} · {category.name}</option>)}
-      </select>
-    </label>
+      </NativeSelect>
+    </Label>
   );
 
   return (
-    <section className="panel">
+    <Card asChild className="gap-0 p-5">
+    <section>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div><h2 className="text-xl font-bold">Paradas de máquina</h2><p className="text-sm text-slate-500">Cada parada se registra de forma independiente.</p></div>
-        {openStop && <span className="rounded-full bg-red-100 px-4 py-2 text-sm font-bold text-red-800">Parada activa</span>}
+        <div><h2 className="text-xl font-bold">Paradas de máquina</h2><p className="text-sm text-muted-foreground">Cada parada se registra de forma independiente.</p></div>
+        {openStop && <StopIndicator active />}
       </div>
-      {error && <p role="alert" className="mt-4 rounded-xl bg-red-50 p-4 text-sm text-red-800">{error}</p>}
-      {connectionUnavailable && <p className="mt-4 rounded-xl bg-amber-50 p-4 text-sm text-amber-900">Iniciar, detener, cancelar o cambiar la categoría de una parada requiere conexión. El contador de una parada activa continúa.</p>}
+      {error && <Alert variant="destructive" role="alert" className="mt-4"><AlertDescription>{error}</AlertDescription></Alert>}
+      {connectionUnavailable && <Alert variant="warning" role="status" className="mt-4"><AlertDescription>Iniciar, detener, cancelar o cambiar la categoría de una parada requiere conexión. El contador de una parada activa continúa.</AlertDescription></Alert>}
       {openStop ? (
-        <div className="mt-5 rounded-xl border-2 border-red-200 bg-red-50 p-5">
-          <p className="font-bold text-red-900">{openStop.stop_category?.code} · {openStop.stop_category?.name}</p>
-          <p className="mt-1 text-sm text-red-800">Inició: {new Date(openStop.started_at).toLocaleString("es-CO")}</p>
-          <p className="mt-3 text-sm font-semibold uppercase tracking-wide text-red-700">Duración en curso</p>
-          <p className="mt-1 font-mono text-3xl font-bold tabular-nums text-red-950">{elapsed}</p>
-          {openStop.description && <p className="mt-2 text-sm text-red-800">{openStop.description}</p>}
+        <div className="mt-5 rounded-xl border-2 border-destructive/30 bg-destructive/10 p-5">
+          <p className="font-bold text-foreground">{openStop.stop_category?.code} · {openStop.stop_category?.name}</p>
+          <p className="mt-1 text-sm text-muted-foreground">Inició: {new Date(openStop.started_at).toLocaleString("es-CO")}</p>
+          <p className="mt-3 text-sm font-semibold uppercase tracking-wide text-destructive">Duración en curso</p>
+          <p className="mt-1 font-mono text-3xl font-bold tabular-nums text-foreground">{elapsed}</p>
+          {openStop.description && <p className="mt-2 text-sm text-muted-foreground">{openStop.description}</p>}
           <div className="mt-5 grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
             {categorySelect(true)}
-            <button className="button-secondary" type="button" disabled={disabled || !categoryId || categoryId === openStop.stop_category?.id} onClick={() => setModal("category")}>Cambiar categoría</button>
+            <Button variant="outline" size="lg" type="button" disabled={disabled || !categoryId || categoryId === openStop.stop_category?.id} onClick={() => setModal("category")}>Cambiar categoría</Button>
           </div>
           <div className="mt-5 flex flex-col gap-3 sm:flex-row">
-            <button className="button-danger" type="button" disabled={disabled} onClick={() => setModal("close")}>Detener</button>
-            <button className="button-secondary" type="button" disabled={disabled} onClick={() => { setCancelReason(""); setModal("cancel"); }}>Cancelar parada</button>
+            <Button variant="destructive" size="lg" type="button" disabled={disabled} onClick={() => setModal("close")}>Detener</Button>
+            <Button variant="outline" size="lg" type="button" disabled={disabled} onClick={() => { setCancelReason(""); setModal("cancel"); }}>Cancelar parada</Button>
           </div>
         </div>
       ) : (
         <div className="mt-5 grid gap-4 md:grid-cols-[1fr_auto] md:items-end">
           {categorySelect(false)}
-          <button className="button-primary" type="button" disabled={disabled || !categoryId} onClick={() => setModal("start")}>Iniciar parada</button>
+          <Button size="lg" type="button" disabled={disabled || !categoryId} onClick={() => setModal("start")}>Iniciar parada</Button>
         </div>
       )}
       <div className="mt-6"><StopSummary stops={events} /></div>
@@ -128,8 +136,9 @@ export default function StopManager({ reportId, stops, categories }: Props) {
       </PlatformModal>}
       {modal === "cancel" && <PlatformModal title="¿Cancelar esta parada?" cancelLabel="Cancelar" confirmLabel="Confirmar cancelación" destructive confirmDisabled={disabled || !cancelReason.trim()} initialFocusRef={cancellationReasonRef} onCancel={() => setModal(null)} onConfirm={() => void performAction("cancel")}>
         <p>Categoría: <strong>{openStop?.stop_category?.name}</strong></p><p>La parada quedará en el historial como Cancelada y no contará en los totales.</p>
-        <label className="mt-5 block"><span className="field-label">Motivo de cancelación</span><textarea ref={cancellationReasonRef} className="field-control min-h-28" value={cancelReason} onChange={(event) => setCancelReason(event.target.value)} required /></label>
+        <Label className="mt-5"><FieldLabel>Motivo de cancelación</FieldLabel><Textarea ref={cancellationReasonRef} className="min-h-28" value={cancelReason} onChange={(event) => setCancelReason(event.target.value)} required /></Label>
       </PlatformModal>}
     </section>
+    </Card>
   );
 }
