@@ -28,7 +28,7 @@ const flashError = Astro.url.searchParams.get("error");
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content={description} />
     <meta name="generator" content={Astro.generator} />
-    <meta name="theme-color" content="#172554" />
+    <meta name="theme-color" content="#ffffff" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
@@ -52,7 +52,7 @@ const flashError = Astro.url.searchParams.get("error");
           var dark = t === "dark" || (t === "system" && media.matches);
           root.classList.toggle("dark", dark);
           var meta = document.querySelector('meta[name="theme-color"]');
-          if (meta) meta.setAttribute("content", dark ? "#0a1023" : "#172554");
+          if (meta) meta.setAttribute("content", dark ? "#0a1023" : "#ffffff");
         }
         apply();
         var listener = function () { if (stored() === "system") apply(); };

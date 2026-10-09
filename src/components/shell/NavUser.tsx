@@ -1,8 +1,8 @@
 import { useRef } from "react";
-import { Bell, ChevronsUpDown, LogOut, Moon } from "lucide-react";
+import { Bell, ChevronsUpDown, LogOut, Moon, Sun } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from "@/components/ui/sidebar";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { SidebarMenu, SidebarMenuItem, useSidebar } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { roleLabels, type Profile } from "@/lib/types";
 import { useTheme } from "@/lib/theme";
@@ -32,11 +32,12 @@ function MenuBody({ profile, onLogout }: { profile: Profile; onLogout: () => voi
     </DropdownMenuLabel>
     <DropdownMenuSeparator />
     <DropdownMenuItem asChild><a href="/notificaciones"><Bell className="size-4" /> Notificaciones</a></DropdownMenuItem>
-    <DropdownMenuCheckboxItem checked={dark} onCheckedChange={(value) => setTheme(value ? "dark" : "light")}>
-      <Moon className="size-4" /> Modo oscuro
-    </DropdownMenuCheckboxItem>
+    <DropdownMenuItem onClick={() => setTheme(dark ? "light" : "dark")}>
+      {dark ? <Sun className="size-4" /> : <Moon className="size-4" />}
+      {dark ? "Modo claro" : "Modo oscuro"}
+    </DropdownMenuItem>
     <DropdownMenuSeparator />
-    <DropdownMenuItem onSelect={(event) => { event.preventDefault(); onLogout(); }}><LogOut className="size-4" /> Cerrar sesión</DropdownMenuItem>
+    <DropdownMenuItem className="text-destructive focus:text-destructive" onSelect={(event) => { event.preventDefault(); onLogout(); }}><LogOut className="size-4 text-destructive" /> Cerrar sesión</DropdownMenuItem>
   </>;
 }
 
@@ -67,14 +68,14 @@ export function NavUser({ profile, variant = "sidebar" }: Props) {
       <LogoutForm formRef={logoutFormRef} />
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <SidebarMenuButton size="lg" className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground" aria-label={`Cuenta de ${profile.full_name}`}>
-            <Avatar className="size-8 rounded-lg"><AvatarFallback className="rounded-lg bg-sidebar-primary text-xs font-semibold text-sidebar-primary-foreground">{initials}</AvatarFallback></Avatar>
-            <div className="grid min-w-0 flex-1 text-left text-sm leading-tight">
-              <span className="truncate font-semibold">{profile.full_name}</span>
-              <span className="truncate text-xs text-sidebar-foreground/70">{roleLabels[profile.role]}</span>
+          <Button type="button" variant="ghost" className="h-auto w-full justify-start gap-3 px-2 py-2 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground data-[state=open]:bg-sidebar-accent group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:p-0" aria-label={`Cuenta de ${profile.full_name}`}>
+            <Avatar className="size-8"><AvatarFallback className="bg-sidebar-accent text-xs font-semibold text-sidebar-accent-foreground">{initials}</AvatarFallback></Avatar>
+            <div className="grid min-w-0 flex-1 text-left leading-tight group-data-[collapsible=icon]:hidden">
+              <span className="truncate text-sm font-medium">{profile.full_name}</span>
+              <span className="truncate text-xs text-muted-foreground">{roleLabels[profile.role]}</span>
             </div>
-            <ChevronsUpDown className="ml-auto size-4" />
-          </SidebarMenuButton>
+            <ChevronsUpDown className="ml-auto size-4 group-data-[collapsible=icon]:hidden" />
+          </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent side={isMobile ? "top" : "right"} align="end" sideOffset={8} className="w-60"><MenuBody profile={profile} onLogout={onLogout} /></DropdownMenuContent>
       </DropdownMenu>

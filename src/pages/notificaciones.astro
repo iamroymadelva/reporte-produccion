@@ -7,8 +7,8 @@ const auth = Astro.locals.auth!;
 ---
 
 <BaseLayout title="Notificaciones" description="Avisos de reportes, paradas y asignaciones" profile={auth.profile}>
-  <main class="mx-auto max-w-4xl space-y-5 px-4 py-6 sm:px-6 lg:py-8">
-    <PageHeader eyebrow="Actividad" title="Notificaciones" description="Novedades relacionadas con tu trabajo y tus reportes." />
+  <main class="mx-auto w-full max-w-7xl space-y-6 px-4 py-4 sm:px-6 sm:py-6">
+    <PageHeader title="Notificaciones" description="Novedades relacionadas con tu trabajo y tus reportes." />
     <NotificationsPanel client:load />
   </main>
 </BaseLayout>

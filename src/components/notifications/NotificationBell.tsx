@@ -2,7 +2,6 @@ import { useState } from "react";
 import { Bell } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { NotificationList } from "./NotificationList";
@@ -17,7 +16,7 @@ export function NotificationBell() {
     <PopoverTrigger asChild>
       <Button type="button" variant="ghost" size="icon" className="relative" aria-label={online ? `Notificaciones, ${count} sin leer` : "Notificaciones sin conexión"}>
         <Bell className="size-5" aria-hidden="true" />
-        {online && count > 0 && <Badge variant="destructive" className="absolute -right-1 -top-1 h-4 min-w-4 px-1 text-[10px] leading-none">{count > 99 ? "99+" : count}</Badge>}
+        {online && count > 0 && <span aria-hidden="true" className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-semibold text-destructive-foreground">{count > 99 ? "99+" : count}</span>}
       </Button>
     </PopoverTrigger>
     <PopoverContent align="end" className="w-[min(24rem,calc(100vw-1rem))] p-0">

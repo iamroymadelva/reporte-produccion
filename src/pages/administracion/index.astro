@@ -18,12 +18,12 @@ const sections = [
 ---
 
 <BaseLayout title="Administración" description="Administración del sistema" profile={auth.profile}>
-  <main class="mx-auto max-w-6xl space-y-7 px-4 py-8 sm:px-6">
-    <PageHeader eyebrow="Configuración" title="Administración" />
+  <main class="mx-auto w-full max-w-7xl space-y-6 px-4 py-4 sm:px-6 sm:py-6">
+    <PageHeader title="Administración" />
     <div class="grid gap-5 md:grid-cols-2">
       {sections.map((section) => (
-        <a class="group block min-h-11 rounded-xl outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50" href={section.href}>
-          <Card className="h-full gap-2 transition-colors group-hover:border-primary">
+        <a class="group block min-h-11 rounded-2xl outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50" href={section.href}>
+          <Card className="rounded-2xl h-full gap-2 transition-colors group-hover:border-primary">
             <CardHeader>
               <div class="flex items-center gap-3">
                 <AdminCategoryIcon type={section.icon} />

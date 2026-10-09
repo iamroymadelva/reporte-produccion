@@ -9,7 +9,7 @@ function Inbox({ filter }: { filter: NotificationFilter }) {
   const { items, count, cursor, error, busy, loaded, online, markRead, markAllRead, retry, loadMore } = useNotifications(filter);
   const loading = busy && !items.length;
 
-  return <section aria-label="Bandeja de notificaciones" className="overflow-hidden rounded-xl border bg-card">
+  return <section aria-label="Bandeja de notificaciones" className="overflow-hidden rounded-2xl border bg-card shadow-sm">
     <div className="flex flex-wrap items-center justify-between gap-2 border-b px-4 py-3">
       <p className="text-sm text-muted-foreground">{online ? `${count} sin leer` : "Sin conexión"}</p>
       {count > 0 && online && <Button variant="ghost" size="sm" type="button" onClick={() => void markAllRead()}>Marcar todas como leídas</Button>}

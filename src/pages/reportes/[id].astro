@@ -95,7 +95,7 @@ const auditEntries = describeAuditRows(audit, { catalogs: auditCatalogs, stops }
 ---
 
 <BaseLayout title={report.folio} description="Detalle del reporte de producción" profile={auth.profile}>
-  <main class="mx-auto max-w-7xl space-y-6 px-4 py-6 sm:px-6 lg:py-8">
+  <main class="mx-auto w-full max-w-7xl space-y-6 px-4 py-4 sm:px-6 sm:py-6">
     {openDrafts.length > 0 && (
       <nav class="flex gap-2 overflow-x-auto rounded-xl border bg-card p-2" aria-label="Reportes abiertos por máquina">
         {openDrafts.map((draft) => (
@@ -112,7 +112,6 @@ const auditEntries = describeAuditRows(audit, { catalogs: auditCatalogs, stops }
     )}
 
     <PageHeader
-      eyebrow="Folio del reporte"
       title={report.folio}
       titleClass="font-mono tabular-nums"
       back={{ href: "/reportes", label: "Volver a reportes" }}
@@ -123,7 +122,7 @@ const auditEntries = describeAuditRows(audit, { catalogs: auditCatalogs, stops }
     </PageHeader>
 
     {(auth.profile.role === "ADMINISTRATOR" || auth.profile.role === "VIEWER") && (
-      <Card className="grid gap-4 p-5 sm:grid-cols-3" aria-label="Responsable del reporte">
+      <Card className="rounded-2xl grid gap-4 p-5 sm:grid-cols-3" aria-label="Responsable del reporte">
         <div><p class="text-sm text-muted-foreground">Creador del reporte</p><p class="font-bold">{report.creator_full_name}</p></div>
         <div><p class="text-sm text-muted-foreground">Cargo al crear el reporte</p><p class="font-bold">{report.creator_job_title || "—"}</p></div>
         <div><p class="text-sm text-muted-foreground">Rol al crear el reporte</p><p class="font-bold">{roleLabels[report.creator_role as keyof typeof roleLabels]}</p></div>
@@ -131,7 +130,7 @@ const auditEntries = describeAuditRows(audit, { catalogs: auditCatalogs, stops }
     )}
 
     {report.status === "CANCELLED" && (
-      <Card className="gap-0 border-destructive/30 bg-destructive/10 p-5">
+      <Card className="rounded-2xl gap-0 border-destructive/30 bg-destructive/10 p-5">
         <h2 class="text-xl font-bold text-destructive">Reporte cancelado</h2>
         <dl class="mt-4 grid gap-4 sm:grid-cols-3">
           <div class="sm:col-span-3"><dt class="text-sm text-muted-foreground">Motivo de cancelación</dt><dd class="font-semibold text-foreground">{report.cancellation_reason}</dd></div>
@@ -151,10 +150,10 @@ const auditEntries = describeAuditRows(audit, { catalogs: auditCatalogs, stops }
     )}
 
     {!isOperator && <section class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-      <Card className="gap-0 p-5"><p class="text-sm text-muted-foreground">Unidades teóricas/hora</p><p class="mt-2 font-mono text-2xl font-bold tabular-nums">{formatNumber(metrics.theoretical_units_per_hour)}</p></Card>
-      <Card className="gap-0 p-5"><p class="text-sm text-muted-foreground">Tiempo total de parada</p><p class="mt-2 font-mono text-2xl font-bold tabular-nums">{formatDuration(metrics.total_downtime_seconds)}</p></Card>
-      <Card className="gap-0 p-5"><p class="text-sm text-muted-foreground">Rendimiento teórico</p><p class="mt-2 font-mono text-2xl font-bold tabular-nums">{formatPercent(metrics.theoretical_performance)}</p></Card>
-      <Card className="gap-0 p-5"><p class="text-sm text-muted-foreground">Rendimiento neto</p><p class="mt-2 font-mono text-2xl font-bold tabular-nums">{formatPercent(metrics.net_performance)}</p></Card>
+      <Card className="rounded-2xl gap-0 p-5"><p class="text-sm text-muted-foreground">Unidades teóricas/hora</p><p class="mt-2 font-mono text-2xl font-bold tabular-nums">{formatNumber(metrics.theoretical_units_per_hour)}</p></Card>
+      <Card className="rounded-2xl gap-0 p-5"><p class="text-sm text-muted-foreground">Tiempo total de parada</p><p class="mt-2 font-mono text-2xl font-bold tabular-nums">{formatDuration(metrics.total_downtime_seconds)}</p></Card>
+      <Card className="rounded-2xl gap-0 p-5"><p class="text-sm text-muted-foreground">Rendimiento teórico</p><p class="mt-2 font-mono text-2xl font-bold tabular-nums">{formatPercent(metrics.theoretical_performance)}</p></Card>
+      <Card className="rounded-2xl gap-0 p-5"><p class="text-sm text-muted-foreground">Rendimiento neto</p><p class="mt-2 font-mono text-2xl font-bold tabular-nums">{formatPercent(metrics.net_performance)}</p></Card>
     </section>}
 
     {isOwnerDraft && (
@@ -181,8 +180,8 @@ const auditEntries = describeAuditRows(audit, { catalogs: auditCatalogs, stops }
         machineLabel={isOwnerDraft ? `${report.machine?.code} · ${report.machine?.name}` : undefined}
       />
     ) : (
-      <Card className="gap-0 p-5">
-        <h2 class="text-xl font-bold">Datos del reporte</h2>
+      <Card className="rounded-2xl gap-0 p-5">
+        <h2 class="text-base font-semibold leading-none">Datos del reporte</h2>
         <dl class="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {isOperator && <>
             <div><dt class="text-sm text-muted-foreground">Máquina</dt><dd class="font-semibold">{report.machine?.code} · {report.machine?.name}</dd></div>
@@ -209,16 +208,16 @@ const auditEntries = describeAuditRows(audit, { catalogs: auditCatalogs, stops }
     )}
 
     {!isOwnerDraft && (
-      <Card className="gap-0 p-5">
-        <h2 class="text-xl font-bold">Paradas registradas</h2>
+      <Card className="rounded-2xl gap-0 p-5">
+        <h2 class="text-base font-semibold leading-none">Paradas registradas</h2>
         {isOperator && <div class="mt-4"><StopSummary stops={stops} /></div>}
         <div class="mt-4"><StopEventsTable client:load stops={stops} chronologicalOnly={isOperator} /></div>
       </Card>
     )}
 
     {(auth.profile.role === "ADMINISTRATOR" || auth.profile.role === "VIEWER") && (
-      <Card className="gap-0 p-5" aria-labelledby="report-audit-title">
-        <h2 id="report-audit-title" class="text-xl font-bold">Auditoría de correcciones</h2>
+      <Card className="rounded-2xl gap-0 p-5" aria-labelledby="report-audit-title">
+        <h2 id="report-audit-title" class="text-base font-semibold leading-none">Auditoría de correcciones</h2>
         {auditError ? (
           <Alert variant="destructive" className="mt-4"><AlertDescription>{auditError}</AlertDescription></Alert>
         ) : (

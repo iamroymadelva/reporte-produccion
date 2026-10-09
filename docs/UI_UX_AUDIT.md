@@ -224,3 +224,25 @@ verifican en QA con `bun run db:test`.
 - QA visual en 375, 768, 1024 y 1440 px, en modo claro y oscuro y con los tres roles; capturas en `docs/qa/after-*`.
 - Hallazgos UX-01 a UX-14 en estado *Resuelto* con evidencia en `UI_UX_QA.md`.
 - Veredicto **GO** del auditor.
+
+---
+
+## 9. Iteración 2 — paridad visual con barstock
+
+Objetivo: copiar el estilo de barstock en todo excepto la paleta (azul/ámbar/semánticos propios).
+
+| Área | Cambio |
+| --- | --- |
+| Tipografía | Fira Sans/Code reemplazadas por Geist / Geist Mono variables autoalojadas (`@fontsource-variable/*`); se eliminan `@fontsource/fira-*` |
+| Tema | Alternar tema como ítem simple del menú de cuenta ("Modo claro" con Sun / "Modo oscuro" con Moon), no checkbox |
+| Sidebar | Claro en modo claro (`#fafafa`, activo `bg-sidebar-accent`), azul marino en oscuro; sin indicadores ámbar; cabecera con Factory + "PLANTA" + nombre; pie con Button ghost + Avatar; "Cerrar sesión" en `text-destructive` |
+| Barra superior / BottomNav | `bg-card/95 backdrop-blur gap-3`; insignia de campana estilo barstock; BottomNav sin barra superior ámbar, activo `text-primary` |
+| Dashboard | KPI `Card rounded-2xl` sin `border-l-4`, ícono lucide desnudo coloreado semánticamente, valor `text-2xl font-bold`, subtítulo "Hoy · ver detalle"; enlace sigue cubriendo la tarjeta |
+| Encabezados | `PageHeader` sin eyebrow (prop eliminada y usos retirados), H1 `text-xl lg:text-3xl`, back link sutil |
+| Páginas | Contenedor `max-w-7xl space-y-6 px-4 py-4 sm:px-6 sm:py-6`; `Card` de páginas con `rounded-2xl`; títulos de sección `text-base font-semibold` |
+| Botones | `rounded-md font-medium`; se conserva 44px/48px de altura táctil (única desviación) |
+| Login y públicas | Réplica de barstock: degradado con tokens `--auth-*`, `shadow-2xl`, logo en cuadro `bg-primary`, `CardHeader/Content/Footer`, placeholders, enlace "¿Olvidaste tu contraseña?" |
+| Contraste | Tokens nuevos con ratios en comentarios de `global.css` (sidebar claro/oscuro >= 7:1; degradado auth solo de fondo bajo Card opaca) |
+
+Desviaciones: la insignia de la campana solo se muestra con notificaciones sin leer (barstock la muestra siempre, también en 0) porque
+una prueba existente (`ui-shell.test.tsx`) fija ese comportamiento; los ítems de menú del sidebar usan `h-8` (tamaño por defecto del primitive).

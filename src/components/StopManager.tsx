@@ -93,7 +93,7 @@ export default function StopManager({ reportId, stops, categories }: Props) {
   );
 
   return (
-    <Card asChild className="gap-0 p-5">
+    <Card asChild className="rounded-2xl gap-0 p-5">
     <section>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div><h2 className="text-xl font-bold">Paradas de máquina</h2><p className="text-sm text-muted-foreground">Cada parada se registra de forma independiente.</p></div>

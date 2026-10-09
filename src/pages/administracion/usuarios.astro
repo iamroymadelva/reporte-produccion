@@ -44,7 +44,7 @@ const error = configurationError || ((profilesError || machinesError || assignme
 ---
 
 <BaseLayout title="Usuarios" description="Administración de usuarios y asignaciones" profile={auth.profile}>
-  <main class="mx-auto max-w-7xl space-y-6 px-4 py-8 sm:px-6" data-search-scope>
+  <main class="mx-auto w-full max-w-7xl space-y-6 px-4 py-4 sm:px-6 sm:py-6" data-search-scope>
     <PageHeader title="Usuarios y asignaciones" back={{ href: "/administracion", label: "Administración" }}>
       <AdminRecordModal slot="actions" id="create-user" title="Nuevo usuario" action="/api/admin/users/invite" submitLabel="Crear usuario" mode="create" size="large">
         <div class="grid gap-4 md:grid-cols-3">
@@ -56,7 +56,7 @@ const error = configurationError || ((profilesError || machinesError || assignme
     </PageHeader>
     {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
     <Label className="block max-w-lg"><FieldLabel>Buscar</FieldLabel><Input type="search" enterKeyHint="search" placeholder="Buscar usuarios" data-search-input /></Label>
-    <Card className="gap-0 overflow-hidden py-0">
+    <Card className="rounded-2xl gap-0 overflow-hidden py-0">
       <Table className="responsive-admin-table responsive-admin-table--wide min-w-[1040px]">
         <TableHeader><TableRow><TableHead>Nombre</TableHead><TableHead>Correo</TableHead><TableHead>Cargo</TableHead><TableHead>Rol</TableHead><TableHead>Máquinas</TableHead><TableHead>Estado</TableHead><TableHead className="text-right">Acción</TableHead></TableRow></TableHeader>
         <TableBody>

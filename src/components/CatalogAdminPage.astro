@@ -29,7 +29,7 @@ const action = `/api/admin/catalogs/${catalog}`;
 ---
 
 <BaseLayout title={title} description={description} profile={profile}>
-  <main class="mx-auto max-w-6xl space-y-6 px-4 py-8 sm:px-6" data-search-scope>
+  <main class="mx-auto w-full max-w-7xl space-y-6 px-4 py-4 sm:px-6 sm:py-6" data-search-scope>
     <PageHeader title={title} description={description} back={{ href: "/administracion", label: "Administración" }}>
       <AdminRecordModal slot="actions" id={`create-${catalog}`} title={`Nuevo: ${title}`} action={action} submitLabel="Crear" mode="create">
         <div class="grid gap-4">
@@ -43,7 +43,7 @@ const action = `/api/admin/catalogs/${catalog}`;
 
     <Label className="block max-w-lg"><FieldLabel>Buscar</FieldLabel><Input type="search" enterKeyHint="search" placeholder={`Buscar en ${title.toLocaleLowerCase("es-CO")}`} data-search-input /></Label>
 
-    <Card className="gap-0 overflow-hidden py-0">
+    <Card className="rounded-2xl gap-0 overflow-hidden py-0">
       <Table className="responsive-admin-table min-w-[680px]">
         <TableHeader><TableRow><TableHead>Código</TableHead><TableHead>Nombre</TableHead><TableHead>Estado</TableHead><TableHead className="text-right">Acción</TableHead></TableRow></TableHeader>
         <TableBody>

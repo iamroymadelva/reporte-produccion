@@ -21,7 +21,7 @@ const error = readError ? "No fue posible cargar todas las máquinas." : null;
 ---
 
 <BaseLayout title="Máquinas" description="Administración de máquinas" profile={auth.profile}>
-  <main class="mx-auto max-w-6xl space-y-6 px-4 py-8 sm:px-6" data-search-scope>
+  <main class="mx-auto w-full max-w-7xl space-y-6 px-4 py-4 sm:px-6 sm:py-6" data-search-scope>
     <PageHeader title="Máquinas" back={{ href: "/administracion", label: "Administración" }}>
       <AdminRecordModal slot="actions" id="create-machine" title="Nueva máquina" action="/api/admin/machines" submitLabel="Crear" mode="create">
         <div class="grid gap-4">
@@ -33,7 +33,7 @@ const error = readError ? "No fue posible cargar todas las máquinas." : null;
     </PageHeader>
     {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
     <Label className="block max-w-lg"><FieldLabel>Buscar</FieldLabel><Input type="search" enterKeyHint="search" placeholder="Buscar máquinas" data-search-input /></Label>
-    <Card className="gap-0 overflow-hidden py-0">
+    <Card className="rounded-2xl gap-0 overflow-hidden py-0">
       <Table className="responsive-admin-table min-w-[760px]">
         <TableHeader><TableRow><TableHead>Código</TableHead><TableHead>Nombre</TableHead><TableHead>Descripción</TableHead><TableHead>Estado</TableHead><TableHead className="text-right">Acción</TableHead></TableRow></TableHeader>
         <TableBody>

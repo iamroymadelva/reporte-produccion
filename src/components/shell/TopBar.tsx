@@ -21,7 +21,7 @@ export function TopBar({ profile, pathname }: { profile: Profile; pathname: stri
   return <header
     data-slot="shell-topbar"
     className={cn(
-      "fixed inset-x-0 top-0 z-30 flex h-14 items-center gap-2 border-b bg-background/95 px-4 backdrop-blur transition-[left] duration-200 ease-linear print:hidden",
+      "fixed inset-x-0 top-0 z-30 flex h-14 items-center gap-3 border-b bg-card/95 px-4 backdrop-blur transition-[left] duration-200 ease-linear print:hidden",
       state === "collapsed" ? "lg:left-(--sidebar-width-icon)" : "lg:left-(--sidebar-width)",
     )}
     style={{ paddingTop: "env(safe-area-inset-top)" }}
@@ -29,8 +29,8 @@ export function TopBar({ profile, pathname }: { profile: Profile; pathname: stri
     <SidebarTrigger className="-ml-1 hidden lg:inline-flex" />
     <Separator orientation="vertical" className="mr-1 hidden data-[orientation=vertical]:h-4 lg:block" />
     <div className="flex min-w-0 items-center gap-2 lg:hidden">
-      <span className="grid size-7 shrink-0 place-items-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground" aria-hidden="true"><Factory className="size-4" /></span>
-      <p className="truncate text-sm font-semibold">{current.label}</p>
+      <Factory className="size-6 shrink-0 text-sidebar-primary" aria-hidden="true" />
+      <p className="truncate text-sm font-bold">{current.label}</p>
     </div>
     <Breadcrumb className="hidden min-w-0 lg:block">
       <BreadcrumbList>
@@ -45,7 +45,7 @@ export function TopBar({ profile, pathname }: { profile: Profile; pathname: stri
         })}
       </BreadcrumbList>
     </Breadcrumb>
-    <div className="ml-auto flex items-center gap-1">
+    <div className="ml-auto flex items-center gap-3">
       <NotificationBell />
       <div className="lg:hidden"><NavUser profile={profile} variant="icon" /></div>
     </div>

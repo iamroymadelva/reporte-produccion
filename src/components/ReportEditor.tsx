@@ -857,7 +857,7 @@ export default function ReportEditor({
         </div>
       )}
       <OfflineDraftNotice visible={reviewReason !== null} finalized={reviewReason === "finalized"} />
-      <Card asChild className="gap-0 p-5">
+      <Card asChild className="rounded-2xl gap-0 p-5">
       <section data-unsaved-changes={hasUnsavedChanges && !finalizing ? "true" : "false"}>
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
           <div>

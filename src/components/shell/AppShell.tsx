@@ -21,9 +21,6 @@ import { NavUser } from "./NavUser";
 import { TopBar } from "./TopBar";
 import { isActivePath, navForRole, type NavGroup } from "./nav-config";
 
-const activeIndicator =
-  "relative data-[active=true]:before:absolute data-[active=true]:before:inset-y-1.5 data-[active=true]:before:left-0 data-[active=true]:before:w-0.5 data-[active=true]:before:rounded-full data-[active=true]:before:bg-sidebar-primary data-[active=true]:[&>svg]:text-sidebar-primary";
-
 function NavItems({ group, pathname }: { group: NavGroup; pathname: string }) {
   const { isMobile, setOpenMobile } = useSidebar();
   return <SidebarMenu>
@@ -31,7 +28,7 @@ function NavItems({ group, pathname }: { group: NavGroup; pathname: string }) {
       const active = isActivePath(pathname, item.href);
       const Icon = item.icon;
       return <SidebarMenuItem key={item.href}>
-        <SidebarMenuButton asChild isActive={active} tooltip={item.title} className={activeIndicator}>
+        <SidebarMenuButton asChild isActive={active} tooltip={item.title}>
           <a href={item.href} aria-current={active ? "page" : undefined} onClick={() => { if (isMobile) setOpenMobile(false); }}>
             <Icon aria-hidden="true" />
             <span>{item.title}</span>
@@ -59,7 +56,7 @@ function NavGroupView({ group, pathname }: { group: NavGroup; pathname: string }
   }
   return <Collapsible open={forcedOpen || open} onOpenChange={setOpen} className="group/collapsible">
     <SidebarGroup>
-      <SidebarGroupLabel asChild className="text-sm hover:bg-sidebar-accent hover:text-sidebar-accent-foreground">
+      <SidebarGroupLabel asChild>
         <CollapsibleTrigger>
           {group.label}
           <ChevronRight className="ml-auto transition-transform group-data-[state=open]/collapsible:rotate-90" aria-hidden="true" />
@@ -96,25 +93,19 @@ export default function AppShell({ profile, pathname: initialPathname, defaultOp
   return <SidebarProvider defaultOpen={defaultOpen} className="contents [&_[data-slot=sidebar-gap]]:hidden">
     <RouteSync onPathname={setPathname} />
     <Sidebar collapsible="icon" className="print:hidden">
-      <SidebarHeader className="border-b border-sidebar-border">
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton size="lg" asChild tooltip="Reporte de Producción">
-              <a href="/dashboard" aria-label="Reporte de Producción, ir al dashboard">
-                <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground"><Factory className="size-5" aria-hidden="true" /></span>
-                <span className="grid min-w-0 flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-semibold">Reporte de Producción</span>
-                  <span className="truncate text-xs text-sidebar-foreground/70">Planta</span>
-                </span>
-              </a>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
+      <SidebarHeader>
+        <a href="/dashboard" aria-label="Reporte de Producción, ir al dashboard" className="flex items-center gap-2 rounded-md px-2 py-1 outline-hidden ring-sidebar-ring focus-visible:ring-2">
+          <Factory className="size-7 shrink-0 text-sidebar-primary" aria-hidden="true" />
+          <span className="min-w-0 group-data-[collapsible=icon]:hidden">
+            <span className="block text-[0.65rem] font-semibold uppercase leading-none tracking-wide text-muted-foreground">Planta</span>
+            <span data-testid="brand-name" className="line-clamp-2 text-base font-bold leading-tight text-sidebar-primary">Reporte de Producción</span>
+          </span>
+        </a>
       </SidebarHeader>
       <SidebarContent>
         {groups.map((group) => <NavGroupView key={group.id} group={group} pathname={pathname} />)}
       </SidebarContent>
-      <SidebarFooter className="border-t border-sidebar-border"><NavUser profile={profile} /></SidebarFooter>
+      <SidebarFooter><NavUser profile={profile} /></SidebarFooter>
       <SidebarRail />
     </Sidebar>
     <TopBar profile={profile} pathname={pathname} />

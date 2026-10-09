@@ -1,12 +1,12 @@
 ---
-import { ArrowRight } from "lucide-react";
+import { CheckCircle2, FileClock, OctagonAlert, XCircle } from "lucide-react";
 import BaseLayout from "../layouts/BaseLayout.astro";
 import PageHeader from "../components/PageHeader.astro";
 import StatusBadge from "../components/StatusBadge";
 import StopIndicator from "../components/StopIndicator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { buttonVariants } from "@/components/ui/button";
-import { Card, CardDescription, CardHeader } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatDateTime, getBogotaDateKey } from "../lib/format";
 import { hasActiveStop } from "../lib/report-status";
@@ -54,16 +54,16 @@ const reportCounts = [draftCount, submittedCount, cancelledCount, activeStopCoun
 const hasError = Boolean(reportsResult.error || !reportCounts);
 const todayQuery = `period=day&date=${encodeURIComponent(today)}`;
 const kpis = [
-  { key: "DRAFT", show: !isViewer, label: kpiLabels.DRAFT, href: `/reportes?${todayQuery}&status=DRAFT`, title: "Ver reportes en curso de hoy", border: "border-l-warning" },
-  { key: "SUBMITTED", show: true, label: isViewer ? "Reportes enviados hoy" : kpiLabels.SUBMITTED, href: `/reportes?${todayQuery}&status=SUBMITTED`, title: "Ver reportes enviados hoy", border: "border-l-success" },
-  { key: "CANCELLED", show: !isViewer, label: kpiLabels.CANCELLED, href: `/reportes?${todayQuery}&status=CANCELLED`, title: "Ver reportes cancelados hoy", border: "border-l-destructive" },
-  { key: "ACTIVE_STOP", show: !isViewer, label: kpiLabels.ACTIVE_STOP, href: `/reportes?${todayQuery}&stop=active`, title: "Ver reportes en parada hoy", border: "border-l-stop" },
+  { key: "DRAFT", show: !isViewer, label: kpiLabels.DRAFT, href: `/reportes?${todayQuery}&status=DRAFT`, title: "Ver reportes en curso de hoy", icon: FileClock, iconClass: "text-warning-text", card: "border-warning/20" },
+  { key: "SUBMITTED", show: true, label: isViewer ? "Reportes enviados hoy" : kpiLabels.SUBMITTED, href: `/reportes?${todayQuery}&status=SUBMITTED`, title: "Ver reportes enviados hoy", icon: CheckCircle2, iconClass: "text-success-text", card: "" },
+  { key: "CANCELLED", show: !isViewer, label: kpiLabels.CANCELLED, href: `/reportes?${todayQuery}&status=CANCELLED`, title: "Ver reportes cancelados hoy", icon: XCircle, iconClass: "text-destructive-text", card: "border-destructive/20" },
+  { key: "ACTIVE_STOP", show: !isViewer, label: kpiLabels.ACTIVE_STOP, href: `/reportes?${todayQuery}&stop=active`, title: "Ver reportes en parada hoy", icon: OctagonAlert, iconClass: "text-stop-text", card: "border-stop/20" },
 ] as const;
 ---
 
 <BaseLayout title="Dashboard" description="Resumen operativo de producción" profile={auth.profile}>
-  <main class="mx-auto max-w-7xl space-y-6 px-4 py-6 sm:px-6 lg:py-8">
-    <PageHeader eyebrow="Resumen de hoy" title="Dashboard" description="Estado operativo de los reportes de producción del día." />
+  <main class="mx-auto w-full max-w-7xl space-y-6 px-4 py-4 sm:px-6 sm:py-6">
+    <PageHeader title="Dashboard" description="Estado operativo de los reportes de producción del día." />
 
     {hasError && (
       <Alert variant="destructive">
@@ -71,23 +71,28 @@ const kpis = [
       </Alert>
     )}
 
-    <section class="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4" aria-label="Indicadores de hoy">
+    <section class="grid grid-cols-2 gap-4 lg:grid-cols-4" aria-label="Indicadores de hoy">
       {kpis.filter((kpi) => kpi.show).map((kpi) => (
-        <Card className={`group relative gap-3 border-l-4 p-4 transition-shadow hover:shadow-md sm:p-5 ${kpi.border}`}>
-          <a class="flex items-start justify-between gap-2 text-sm font-semibold text-muted-foreground transition-colors hover:text-primary after:absolute after:inset-0 after:rounded-xl after:content-['']" href={kpi.href} title={kpi.title}>
-            <span>{kpi.label}</span>
-            <ArrowRight className="size-[1.125rem] shrink-0 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
-          </a>
-          <p class="font-mono text-3xl font-semibold tabular-nums text-foreground">{reportCounts?.[kpi.key] ?? "—"}</p>
+        <Card className={`rounded-2xl relative gap-0 py-4 transition-colors hover:bg-muted/40 ${kpi.card}`}>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium leading-snug">
+              <a class="after:absolute after:inset-0 after:rounded-2xl after:content-[''] focus-visible:outline-none focus-visible:after:ring-[3px] focus-visible:after:ring-ring/50" href={kpi.href} title={kpi.title}>{kpi.label}</a>
+            </CardTitle>
+            <kpi.icon className={`h-4 w-4 shrink-0 ${kpi.iconClass}`} aria-hidden="true" />
+          </CardHeader>
+          <CardContent>
+            <div class="text-2xl font-bold tabular-nums">{reportCounts?.[kpi.key] ?? "—"}</div>
+            <p class="mt-1 text-xs text-muted-foreground">Hoy · ver detalle</p>
+          </CardContent>
         </Card>
       ))}
     </section>
 
-    <Card className="gap-0 overflow-hidden py-0">
-      <CardHeader className="flex flex-wrap items-center justify-between gap-3 border-b p-5">
-        <div>
-          <h2 class="text-xl font-bold">{isOperator ? "Mis reportes recientes" : "Reportes recientes"}</h2>
-          <CardDescription className="mt-1">Últimos reportes con fecha operativa de hoy.</CardDescription>
+    <Card className="rounded-2xl gap-0 overflow-hidden py-0">
+      <CardHeader className="flex flex-wrap items-center justify-between gap-3 border-b py-5">
+        <div class="space-y-1.5">
+          <CardTitle><h2 class="text-base font-semibold leading-none">{isOperator ? "Mis reportes recientes" : "Reportes recientes"}</h2></CardTitle>
+          <CardDescription>Últimos reportes con fecha operativa de hoy.</CardDescription>
         </div>
         <a class={buttonVariants({ variant: "link" })} href="/reportes">Ver todos</a>
       </CardHeader>

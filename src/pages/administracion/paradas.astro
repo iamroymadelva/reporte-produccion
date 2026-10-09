@@ -23,7 +23,7 @@ const preview = (value: string) => value.length > 90 ? `${value.slice(0, 90).tri
 ---
 
 <BaseLayout title="Categorías de parada" description="Administración de categorías de parada" profile={auth.profile}>
-  <main class="mx-auto max-w-7xl space-y-6 px-4 py-8 sm:px-6" data-search-scope>
+  <main class="mx-auto w-full max-w-7xl space-y-6 px-4 py-4 sm:px-6 sm:py-6" data-search-scope>
     <PageHeader title="Categorías de parada" back={{ href: "/administracion", label: "Administración" }}>
       <AdminRecordModal slot="actions" id="create-stop-category" title="Nueva categoría de parada" action="/api/admin/stop-categories" submitLabel="Crear" mode="create">
         <div class="grid gap-4">
@@ -35,7 +35,7 @@ const preview = (value: string) => value.length > 90 ? `${value.slice(0, 90).tri
     </PageHeader>
     {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
     <Label className="block max-w-lg"><FieldLabel>Buscar</FieldLabel><Input type="search" enterKeyHint="search" placeholder="Buscar categorías" data-search-input /></Label>
-    <Card className="gap-0 overflow-hidden py-0">
+    <Card className="rounded-2xl gap-0 overflow-hidden py-0">
       <Table className="responsive-admin-table min-w-[880px]">
         <TableHeader><TableRow><TableHead>Código</TableHead><TableHead>Categoría</TableHead><TableHead>Descripción</TableHead><TableHead>Estado</TableHead><TableHead className="text-right">Acción</TableHead></TableRow></TableHeader>
         <TableBody>

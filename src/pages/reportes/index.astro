@@ -87,9 +87,8 @@ const shiftLabel = (report: any) => {
 ---
 
 <BaseLayout title="Reportes de producción" description="Gestión de reportes de producción" profile={auth.profile}>
-  <main class="mx-auto max-w-7xl space-y-6 px-4 py-6 sm:px-6 lg:py-8">
+  <main class="mx-auto w-full max-w-7xl space-y-6 px-4 py-4 sm:px-6 sm:py-6">
     <PageHeader
-      eyebrow="Operación diaria"
       title="Reportes de producción"
       description={auth.profile.role === "OPERATOR" ? `${drafts.length} de 5 reportes abiertos.` : "Consulta de reportes autorizados."}
     >
@@ -103,8 +102,8 @@ const shiftLabel = (report: any) => {
         <h2 class="mb-3 text-sm font-bold uppercase tracking-wider text-muted-foreground">Máquinas abiertas</h2>
         <div class="flex gap-3 overflow-x-auto pb-2">
           {drafts.map((report) => (
-            <a class="block min-w-48 rounded-xl outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50" href={`/reportes/${report.id}`}>
-              <Card className="gap-2 p-4 transition-colors hover:border-primary">
+            <a class="block min-w-48 rounded-2xl outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50" href={`/reportes/${report.id}`}>
+              <Card className="rounded-2xl gap-2 p-4 transition-colors hover:border-primary">
                 <span class="font-bold text-foreground">{report.machine?.code} · {report.machine?.name}</span>
                 <StopIndicator active={hasActiveStop(report)} variant="inline" />
               </Card>
@@ -115,10 +114,10 @@ const shiftLabel = (report: any) => {
     )}
 
     {auth.profile.role === "OPERATOR" && (
-      <Card className="gap-0 p-5">
+      <Card className="rounded-2xl gap-0 p-5">
         <div class="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 class="text-xl font-bold">Abrir reporte de máquina</h2>
+            <h2 class="text-base font-semibold leading-none">Abrir reporte de máquina</h2>
             <CardDescription className="mt-1">Solo aparecen máquinas activas que tienes asignadas.</CardDescription>
           </div>
           <Badge variant="neutral" className="px-3 py-2 text-sm">{drafts.length}/5 abiertos</Badge>
@@ -142,10 +141,10 @@ const shiftLabel = (report: any) => {
       </Card>
     )}
 
-    <Card className="gap-4 p-5" aria-labelledby="period-filter-title">
+    <Card className="rounded-2xl gap-4 p-5" aria-labelledby="period-filter-title">
       <div class="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 id="period-filter-title" class="text-lg font-bold">Período</h2>
+          <h2 id="period-filter-title" class="text-base font-semibold leading-none">Período</h2>
           <CardDescription className="mt-1">Filtra la tabla por la fecha operativa del reporte.</CardDescription>
         </div>
         <div class="grid w-full grid-cols-3 gap-2 sm:flex sm:w-auto sm:flex-wrap" aria-label="Seleccionar tipo de período">
@@ -181,10 +180,10 @@ const shiftLabel = (report: any) => {
       )}
     </Card>
 
-    <Card className="gap-0 overflow-hidden py-0">
+    <Card className="rounded-2xl gap-0 overflow-hidden py-0">
       <CardHeader className="flex flex-wrap items-center justify-between gap-3 border-b p-5">
         <div>
-          <h2 class="text-xl font-bold">{auth.profile.role === "OPERATOR" ? "Mis reportes" : "Reportes disponibles"}</h2>
+          <h2 class="text-base font-semibold leading-none">{auth.profile.role === "OPERATOR" ? "Mis reportes" : "Reportes disponibles"}</h2>
           <CardDescription className="mt-1">
             Mostrando {visibleReports.length ? (page - 1) * PAGE_SIZE + 1 : 0}–{Math.min(page * PAGE_SIZE, reportTotal)}{` de ${reportTotal} ${reportTotal === 1 ? "reporte" : "reportes"}`}{filterSummary ? ` · ${filterSummary}` : ""}
           </CardDescription>
