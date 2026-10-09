@@ -53,22 +53,20 @@ Sin `NEEDS CLARIFICATION` pendientes: todas las incógnitas se resolvieron en re
 
 *GATE: debe pasar antes de Fase 0 y re-verificarse tras el diseño.*
 
-`.specify/memory/constitution.md` **no está ratificada** (sigue siendo la plantilla). Se aplican
-como gates las reglas vigentes del proyecto: el `CLAUDE.md` global del usuario y las convenciones
-documentadas en `docs/`.
+Evaluado contra `.specify/memory/constitution.md` **v1.0.0** (ratificada 2026-10-09).
 
-| Gate | Fuente | Estado pre-diseño | Estado post-diseño |
-| --- | --- | --- | --- |
-| G1. Flujo Opus planifica → `executor` implementa → revisión → GO/NO-GO explícito; ninguna fase se cierra sin GO | `~/.claude/CLAUDE.md` | ✅ El plan define una puerta GO por fase | ✅ |
-| G2. Evidencia de pruebas, lint y build en cada cierre | `~/.claude/CLAUDE.md` | ✅ Puertas en quickstart.md | ✅ |
-| G3. La autorización vive en el servidor (RLS + triggers) y no solo en la UI | `docs/ARCHITECTURE.md`, `docs/SECURITY_AND_ABUSE.md`, FR-003 | ✅ | ✅ La sync pasa por RPC con RLS (R9) |
-| G4. No cachear HTML ni datos autenticados en Cache Storage | `docs/PWA_OFFLINE.md` | ⚠️ El offline completo necesita UI sin red | ✅ Se resuelve con shells prerenderizados **sin datos** + IndexedDB aislado por usuario (R10) |
-| G5. Historial inalterable y sin borrados físicos de datos con historial | spec FR-027/FR-030 | ✅ | ✅ Se elimina el DELETE de paradas (data-model) |
-| G6. UI en español, `es-CO`, America/Bogota | `docs/ARCHITECTURE.md` | ✅ | ✅ |
+| Principio / sección | Estado pre-diseño | Estado post-diseño |
+| --- | --- | --- |
+| I. Autorización en el servidor | ✅ | ✅ RLS objetivo por rol (data-model); la sync pasa por RPC con RLS (R9); `service_role` solo para Auth Admin y lockout (R1/R2) |
+| II. Trazabilidad e integridad | ⚠️ La auditoría actual es parcial y hay DELETE de paradas | ✅ Auditoría total con motivo, rol y offline (R7); sin DELETE de paradas; hora del dispositivo + llegada (R6) |
+| III. Offline seguro con confirmación | ⚠️ El offline completo necesita UI sin red; hoy hay subida implícita | ✅ Shells prerenderizados **sin datos** + IndexedDB por usuario (R10); outbox idempotente, sin autosave con pendientes (R9); verificador PBKDF2 (R8) |
+| IV. Pruebas como evidencia | ✅ | ✅ pgTAP + bun test por fase; puertas en quickstart.md (R14) |
+| V. Simplicidad sobre el stack | ✅ | ✅ Sin dependencias de runtime nuevas; `ADD VALUE` en migraciones separadas; se descartan CRDT y servicios externos (R9) |
+| Restricciones de plataforma | ✅ | ✅ Realtime vía Supabase, no conexiones largas en Vercel (R11); es-CO / Bogotá / fecha operativa |
+| Flujo de desarrollo | ✅ | ✅ Una puerta GO por fase; `executor` implementa, Opus revisa |
 
-**Resultado**: PASA. No hay violaciones que justificar (Complexity Tracking vacío).
-**Recomendación**: ratificar una constitución con `/speckit-constitution` usando G1–G6 como base
-antes de `/speckit-tasks`, para que los próximos ciclos tengan gates formales.
+**Resultado**: PASA. Los ⚠️ previos al diseño los resuelve el propio diseño; no hay violaciones que
+justificar (Complexity Tracking vacío).
 
 ## Project Structure
 
