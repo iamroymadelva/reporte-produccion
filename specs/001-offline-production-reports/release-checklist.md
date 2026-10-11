@@ -9,8 +9,9 @@ tableta reales**. Estas comprobaciones son obligatorias antes de usar la platafo
 
 - [ ] **No desplegar sin completar la sección E (y B, D, F) en tableta real**: la Phase 8 (inicio de sesión sin conexión) está
   implementada y probada en happy-dom + servidor local, pero falta la prueba en navegador/tableta reales.
-- [ ] **Exportación en Vercel**: confirmar la duración máxima de la función de `/api/reports/export` (no hay `maxDuration` en
-  `vercel.json` ni en `astro.config`): verificar Fluid compute o fijar `maxDuration` (p. ej. 60 s) y medir SC-006 con un mes real.
+- [ ] **Exportación en Vercel**: configuración hecha (`vercel({ maxDuration: 60 })` global en `astro.config.mjs`; el adaptador
+  no admite límite por ruta; ver `docs/DEPLOYMENT.md`). PENDIENTE: medir SC-006 (< 30 s) en Vercel con un mes real y confirmar
+  que el plan soporta 60 s.
 - [ ] Ejecutar `supabase/bootstrap-root.sql` (primer administrador raíz) **antes** de usar la
   plataforma: tras migrar no existe ningún ROOT y los administradores actuales pasan a ser
   coordinadores (ver `docs/DEPLOYMENT.md`).

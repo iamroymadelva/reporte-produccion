@@ -83,6 +83,10 @@ Local template and configuration files do not prove the corresponding Supabase C
 
 The repository uses Astro server output with the official Vercel adapter. Configure the Vercel project to install dependencies with Bun, run `bun run build`, and provide all three environment variables in the required deployment environments. Apply Supabase migrations and complete Cloud Auth configuration before production verification.
 
+### Function duration (Excel export, SC-006)
+
+`astro.config.mjs` sets `vercel({ maxDuration: 60 })`. `@astrojs/vercel` 11.x only supports a global `maxDuration` (applied to the single SSR function through `.vc-config.json`), not per route, so the 60 s limit covers every route including `GET /api/reports/export`. Locally a one-month export took 17.7-25.8 s. The configuration is done, but the measurement on Vercel with a real month (SC-006, < 30 s) is still pending; confirm in the Vercel project settings that the plan/Fluid compute allows 60 s (not verified from the repository).
+
 If Git-based automatic deployment is enabled in the Vercel project, pushes to the configured production branch can trigger deployments. The repository itself does not establish that this integration or branch mapping is enabled.
 
 ## Post-Deployment Verification

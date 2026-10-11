@@ -113,7 +113,8 @@ function viteRuntimeIntegration() {
 export default defineConfig({
   prefetch: { prefetchAll: true, defaultStrategy: "hover" },
   output: "server",
-  adapter: vercel(),
+  // Global (el adaptador no admite maxDuration por ruta): cubre /api/reports/export (SC-006, medido 17,7-25,8 s en local).
+  adapter: vercel({ maxDuration: 60 }),
   integrations: [viteRuntimeIntegration(), react()],
   vite: {
     plugins: [tailwindcss()],

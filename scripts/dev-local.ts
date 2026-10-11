@@ -1,6 +1,7 @@
 // Arranca `astro dev` SIEMPRE contra el Supabase local.
-// Lee solo `.env` (nunca `.env.local`, que apunta a producción) y pasa las variables
-// por el entorno del proceso hijo; Vite da prioridad a las variables de proceso.
+// Bun puede cargar .env.local en process.env del padre; por eso el entorno del hijo se construye
+// SIN ninguna variable *SUPABASE* heredada y solo con las de `.env`; el entorno final se valida
+// y se aborta si alguna apunta a un Supabase remoto.
 import { join } from "node:path";
 
 const LOCAL_HOSTS = new Set(["127.0.0.1", "localhost", "[::1]"]);
@@ -28,11 +29,33 @@ export function isLocalUrl(value: string): boolean {
   }
 }
 
-/** Devuelve los nombres de variables Supabase cuyo valor es una URL no local. */
+/** Devuelve los nombres de variables Supabase cuyo valor apunta a un host no local (con o sin esquema, http/ws). */
 export function findRemoteSupabaseUrls(env: Record<string, string>): string[] {
   return Object.entries(env)
-    .filter(([k, v]) => /SUPABASE/i.test(k) && /^https?:\/\//i.test(v) && !isLocalUrl(v))
+    .filter(([k, v]) => /SUPABASE/i.test(k) && isRemoteValue(v))
     .map(([k]) => k);
+}
+
+function isRemoteValue(value: string): boolean {
+  const v = value.trim();
+  if (!v || v.startsWith("eyJ")) return false; // vacío o JWT (claves)
+  if (/^[a-z][a-z0-9+.-]*:\/\//i.test(v)) return !isLocalUrl(v);
+  if (/^(?:[a-z0-9-]+\.)+[a-z]{2,}(?::\d+)?(?:[/?#]|$)/i.test(v) || /supabase\.(co|in|com)/i.test(v)) {
+    return !isLocalUrl("http://" + v);
+  }
+  return false;
+}
+
+/** Entorno del hijo: nada heredado que coincida /SUPABASE/i, más las variables de .env. */
+export function buildChildEnv(
+  parent: Record<string, string | undefined>,
+  fileEnv: Record<string, string>
+): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(parent)) {
+    if (v !== undefined && !/SUPABASE/i.test(k)) out[k] = v;
+  }
+  return { ...out, ...fileEnv };
 }
 
 async function main() {
@@ -57,16 +80,22 @@ async function main() {
     );
     process.exit(1);
   }
+  const childEnv = buildChildEnv(process.env, env);
+  const finalRemote = findRemoteSupabaseUrls(childEnv);
+  if (finalRemote.length > 0 || !isLocalUrl(childEnv.PUBLIC_SUPABASE_URL ?? "")) {
+    console.error(`ERROR: el entorno final apunta a un Supabase NO local (${finalRemote.join(", ") || "PUBLIC_SUPABASE_URL"}).`);
+    process.exit(1);
+  }
   try {
     await fetch(new URL("/auth/v1/health", url), { signal: AbortSignal.timeout(3000) });
   } catch {
     console.error(`ERROR: Supabase local no responde en ${url}. Ejecuta primero: bun run db:start`);
     process.exit(1);
   }
-  console.log(`[dev-local] Usando Supabase local: ${url} (.env.local ignorado)`);
+  console.log(`[dev-local] Usando Supabase local: ${url} (variables Supabase heredadas del proceso descartadas; solo .env)`);
   const proc = Bun.spawn(["bunx", "astro", "dev", ...process.argv.slice(2)], {
     cwd: root,
-    env: { ...process.env, ...env },
+    env: childEnv,
     stdio: ["inherit", "inherit", "inherit"],
   });
   const stop = () => proc.kill();
