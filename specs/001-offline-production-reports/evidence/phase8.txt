@@ -1,0 +1,349 @@
+# Phase 8 evidence (F4b)
+Sat Oct 10 12:49:10 HPS 2026
+
+=== RED-FIRST (stubs only: offline-auth.ts returns neutral values, OfflineOverview renders 'Cargando…', overview/session-info routes return 501) ===
+(fail) verificador PBKDF2 (FR-006a) > se guarda un verificador de 32 B con sal de 16 B y 600 000 iteraciones; la contraseña no aparece en ninguna parte [1.45ms]
+(fail) verificador PBKDF2 (FR-006a) > la matrícula pendiente tampoco contiene la contraseña y la sal distingue dos inscripciones de la misma clave [6.00ms]
+(fail) verificador PBKDF2 (FR-006a) > medición SC-012: derivar y verificar con 600 000 iteraciones tarda mucho menos de 15 s [0.59ms]
+(fail) habilitación y ventana de 7 días (FR-006) > con la contraseña correcta dentro de la ventana entra con el rol guardado [0.57ms]
+(fail) habilitación y ventana de 7 días (FR-006) > la matrícula pendiente de otro usuario no se confirma con el perfil recibido [0.26ms]
+(fail) habilitación y ventana de 7 días (FR-006) > un nuevo login en línea con otra contraseña reemplaza al verificador anterior [0.27ms]
+(fail) habilitación y ventana de 7 días (FR-006) > cada login en línea renueva enabledUntil [0.34ms]
+(fail) bloqueo local 5 / 15 min (FR-006a, FR-004) > contraseña errónea: mensaje genérico; 5 fallos bloquean 15 min, también a la contraseña correcta, y el bloqueo sobrevive a recargar [0.47ms]
+(fail) bloqueo local 5 / 15 min (FR-006a, FR-004) > un acierto antes del quinto fallo reinicia el contador [0.43ms]
+(fail) bloqueo local 5 / 15 min (FR-006a, FR-004) > la contraseña de otro usuario del mismo dispositivo no abre la sesión de op1 [0.35ms]
+(fail) sesión local limitada al rol guardado (FR-006c) > el inicio de sesión offline crea la sesión local, registra OFFLINE_LOGIN como primera operación y navega por rol [0.46ms]
+(fail) sesión local limitada al rol guardado (FR-006c) > un intento fallido no crea sesión ni operación [0.34ms]
+(fail) sesión local limitada al rol guardado (FR-006c) > sin conexión resolveCurrentUser usa la sesión local (no el último usuario) y cerrar sesión la elimina [4.74ms]
+(fail) sesión local limitada al rol guardado (FR-006c) > una sesión local de rol no operario no abre el turno del operario [2.33ms]
+(fail) sesión local limitada al rol guardado (FR-006c) > dispositivo compartido: B entra sin conexión con SU contraseña y no ve ni sube lo de A [7.16ms]
+(fail) revalidación al reconectar (FR-006b) > al reconectar sin login en línea no se ofrece la subida y confirmAndUpload no llama a la red [93.16ms]
+(fail) revalidación al reconectar (FR-006b) > tras el login en línea (matrícula confirmada) la sesión local se retira y el primer lote lleva OFFLINE_LOGIN [2.64ms]
+(fail) revalidación al reconectar (FR-006b) > OFFLINE_LOGIN es idempotente: reenviarlo no duplica el registro [2.79ms]
+(fail) revalidación al reconectar (FR-006b) > usuario desactivado: sesión local cerrada, cierre de sesión en el servidor, pendientes conservados y nada se sube [89.39ms]
+(fail) revalidación al reconectar (FR-006b) > rol cambiado en el servidor: sesión local cerrada y pendientes conservados [88.56ms]
+(fail) revalidación al reconectar (FR-006b) > una sesión del servidor de OTRO usuario no sirve para subir lo de la sesión local [88.54ms]
+(fail) GET /api/offline/overview > 401 sin sesión; 403 para OPERATOR sin consultar la base de datos [0.50ms]
+(fail) GET /api/offline/overview > ROOT, ADMINISTRATOR y VIEWER reciben KPI, reportes y la hora de descarga, sin cache [0.45ms]
+(fail) /consulta-offline (solo lectura) > sin conexión muestra el último resumen guardado con 'Datos de HH:MM', los KPI y los reportes [2150.20ms]
+(fail) /consulta-offline (solo lectura) > un reporte abre un detalle de solo lectura con sus paradas y cambios [2102.24ms]
+(fail) /consulta-offline (solo lectura) > exportar, corregir, aprobar, cancelar y administrar están deshabilitados y explican 'Requiere conexión' [2081.30ms]
+(fail) /consulta-offline (solo lectura) > sin datos descargados explica que hay que conectarse [2073.52ms]
+(fail) /consulta-offline (solo lectura) > lo guardado por otro usuario del dispositivo no se muestra [2086.19ms]
+(fail) /consulta-offline (solo lectura) > sin sesión local ni conexión pide conexión para entrar [2103.09ms]
+(fail) /consulta-offline (solo lectura) > una sesión local de OPERATOR no puede ver la consulta [2114.94ms]
+(fail) /consulta-offline (solo lectura) > en línea descarga el resumen, lo muestra y lo guarda en el almacén 'overview' del usuario [2093.74ms]
+(fail) /consulta-offline (solo lectura) > en línea un operario no descarga nada [2096.86ms]
+(fail) GET /api/auth/session-info > 401 sin sesión [0.57ms]
+(fail) GET /api/auth/session-info > 403 INACTIVE si la sesión es válida pero el perfil está inactivo [0.37ms]
+(fail) GET /api/auth/session-info > 200 con identidad, rol y ventana offline para un usuario activo; sin cache [0.34ms]
+ 6 pass
+ 35 fail
+Ran 41 tests across 4 files. [19.65s]
+--- T091/T093 impl progress: offline-auth.ts, snapshot.ts (local session identity), sync-client.ts revalidation; tests/offline-auth.test.ts 27 pass
+--- progress: UI/SW/middleware/guard/migration/pgTAP implemented; running gates
+=== pgTAP RED (migration removed, db reset): offline_login_audit.test.sql -> 'Failed test 1,3-10,12,13,18' (OFFLINE_LOGIN unsupported); migration restored
+
+=== SMOKE (bun scripts/smoke-phase8.ts vs astro dev :4399 + Supabase LOCAL; cookie sb-127-auth-token; happy-dom+fake-indexeddb, NO real browser/tablet) ===
+
+=== GATES (final) ===
+--- bun run db:reset
+Applying migration 20261014000100_offline_login_audit.sql...
+Finished supabase db reset on branch redesign/ui-ux.
+{"target":"local","version":"","message":"Reset local database."}
+--- bun run db:test
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/offline_login_audit.test.sql ........... ok
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/sync_cross_user_replay.test.sql ........ ok
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/sync_replay_idempotent.test.sql ........ ok
+All tests successful.
+Files=32, Tests=950, 12 wallclock secs ( 0.50 usr  0.28 sys +  0.86 cusr  0.81 csys =  2.45 CPU)
+Result: PASS
+--- bun test (run 1)
+[SC-012] verifyOffline PBKDF2-SHA-256 600000 it: 353 ms (Bun/happy-dom, escritorio)
+ 364 pass
+ 0 fail
+Ran 364 tests across 31 files. [50.35s]
+--- bun test (run 2)
+[SC-012] verifyOffline PBKDF2-SHA-256 600000 it: 359 ms (Bun/happy-dom, escritorio)
+ 364 pass
+ 0 fail
+Ran 364 tests across 31 files. [46.29s]
+--- bunx astro check
+Result (204 files): 
+- 0 errors
+- 0 warnings
+- 14 hints
+--- bun run build
+13:22:37 [build] ✓ Completed in 1.04s.
+ prerendering static routes 
+13:22:46   ├─ /acceso-offline/index.html13:22:47 [WARN] `Astro.request.headers` was used when rendering the route `src/pages/acceso-offl
+13:22:47   ├─ /consulta-offline/index.html13:22:47 [WARN] `Astro.request.headers` was used when rendering the route `src/pages/consulta-
+13:22:47   ├─ /turno/index.html13:22:47 [WARN] `Astro.request.headers` was used when rendering the route `src/pages/turno.astro'`. `Astr
+13:22:47 ✓ Completed in 1.91s.
+13:22:47 [build] ✓ Completed in 9.81s.
+13:23:18 [build] Server built in 41.94s
+13:23:18 [build] Complete!
+acceso-offline
+consulta-offline
+turno
+16 | };
+17 | async function serve(input: unknown): Promise<Response> {
+18 |   const path = String(input).split("?")[0];
+19 |   const file = /.[a-z0-9]+$/i.test(path) ? join(root, path) : join(root, path, "index.html");
+20 |   if (!existsSync(file)) return new Response("", { status: 404 });
+21 |   const response = new Response(readFileSync(file), { status: 200 });
+                                     ^
+EISDIR: illegal operation on a directory, read
+      fd: 3,
+ syscall: "read",
+   errno: -4068,
+    code: "EISDIR"
+
+      at serve (C:\Users\ACER\Desktop\PROJECTS\empacando\reporte-produccion\scripts\check-sw-install-build.ts:21:33)
+      at precacheShells (file:///C:/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/scripts/check-sw-install-build.ts:37:33)
+      at <anonymous> (file:///C:/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/scripts/check-sw-install-build.ts:72:25)
+
+Bun v1.4.2 (Windows x64)
+--- bun scripts/check-sw-install-build.ts (sw.js v5 install against the REAL build output)
+cacheados: 45 (37 /_astro)
+/turno: 8 referencias /_astro, faltan 0
+/consulta-offline: 7 referencias /_astro, faltan 0
+/acceso-offline: 6 referencias /_astro, faltan 0
+HTML cacheado: /acceso-offline, /consulta-offline, /offline.html, /turno
+SW INSTALL OK contra el build real
+
+=== SMOKE (bun scripts/smoke-phase8.ts vs astro dev :4399 (PID 19544) + Supabase LOCAL; cookie sb-127-auth-token; happy-dom+fake-indexeddb; NO real browser/tablet) ===
+HTTP/1.1 303 See Other
+x-offline-enroll: 1
+set-cookie: sb-127-auth-token=<valor>; Max-Age=34560000; Pat
+OK   op1: tras el login en línea queda el verificador habilitado -> {"role":"OPERATOR","enabledUntil":"2026-10-17T18:24:51.936Z"}
+OK   op1: el registro no contiene la contraseña
+OK   op1: snapshot de trabajo descargado en línea
+OK   coord1: tras el login en línea queda el verificador habilitado -> {"role":"ADMINISTRATOR","enabledUntil":"2026-10-17T18:24:55.079Z"}
+OK   coord1: el registro no contiene la contraseña
+OK   coord1: consulta descargada y guardada (ADMINISTRATOR) -> "ok"
+OK   auditor1: tras el login en línea queda el verificador habilitado -> {"role":"VIEWER","enabledUntil":"2026-10-17T18:24:58.625Z"}
+OK   auditor1: el registro no contiene la contraseña
+OK   auditor1: consulta descargada y guardada (VIEWER) -> "ok"
+OK   no queda matrícula pendiente
+OK   login con usuario inexistente: 303 a /iniciar-sesion?error -> "/iniciar-sesion?error=Usuario+o+contrase%C3%B1a+incorrectos"
+OK   hay matrícula pendiente antes de volver al login
+OK   al volver con ?error se descarta; op9 no queda habilitado
+OK   op9 (nunca habilitado) → 'Necesitas conexión para entrar' -> {"kind":"offline-failed","message":"Necesitas conexión para entrar"}
+OK   coord1 sin conexión entra y va a /consulta-offline -> {"kind":"offline-ok","path":"/consulta-offline"}
+OK   sesión local de coord1 con el rol guardado
+OK   la sesión de coord1 NO abre /turno del operario -> "forbidden"
+OK   coord1 lee su resumen guardado; op1 no tiene el suyo
+OK   cerrar sesión elimina la sesión local
+OK   sin sesión local nadie opera sin conexión
+OK   op1 con contraseña errónea: mensaje genérico -> {"kind":"offline-failed","message":"Usuario o contraseña incorrectos"}
+OK   op1 sin conexión entra y va a /turno -> {"kind":"offline-ok","path":"/turno"}
+OK   resolveCurrentUser sin conexión usa la sesión local de op1 -> "ok"
+OK   cola de op1: OFFLINE_LOGIN primero y luego el turno -> ["OFFLINE_LOGIN","CREATE_REPORT","START_STOP","CLOSE_STOP","ADD_CHANGE","SAVE_REPORT_FIELDS","SUBMIT_REPORT"]
+OK   coord1 vuelve a entrar sin conexión en el mismo dispositivo
+OK   coord1 no ve la cola de op1
+OK   coord1 no puede subir lo de op1 (el servidor rechaza) y nada cambia -> "forbidden"
+OK   al reconectar con sesión local se exige login en línea -> "Ya hay conexión. Inicia sesión en línea con tu contraseña para poder subir tus datos; no se perdió nada."
+OK   confirmAndUpload no sube sin login en línea (ni siquiera con cookie válida) -> "login-required"
+OK   el login en línea retira la sesión local
+OK   la compuerta de login se levanta
+OK   subida completa tras el login en línea -> {"status":"complete","applied":8,"duplicates":0,"conflicts":0,"rejected":0,"remaining":0}
+OK   administrative_audit_log: 2 filas OFFLINE_LOGIN de op1 (dos inicios de sesión sin conexión) -> ["2026-10-10T18:25:00.973+00:00","2026-10-10T18:25:03.831+00:00"]
+OK   coord1 (sin lote que subir) no genera filas a nombre de op1 -> 0
+OK   reporte SUBMITTED, origen offline, de op1 -> {"id":"1abb3717-0756-4efd-893c-1aef134e0bc7","folio":"RPT-2026-000001","status":"SUBMITTED","origin":"offline","lot":"L-F4B","created_by":"10000000-0000-0000-0000-000000000002"}
+OK   sync_operation_log: OFFLINE_LOGIN applied
+OK   outbox de op1 vacía tras subir -> 0
+OK   op1 (sesión en línea) no puede leer /api/offline/overview -> 403
+OK   coord1 ve el reporte en el resumen con paradas y cambios -> {"folio":"RPT-2026-000001","stops":[...],"changes":[{"id":"f70c32cf-d9a7-4aa4-9e6e-00525b523bcd","occurred_at":"2026-10-10T18:00:01.911+00:00","type":"Producto","description":"Cambio de formato (
+OK   op1 trabaja otra vez sin conexión
+OK   (preparación) op1 desactivado en la BD local -> 200
+OK   session-info real de un usuario inactivo → 403 INACTIVE -> 403
+OK   revalidación: sesión cerrada, aviso mostrado -> "Tu usuario ya no está activo o cambió de rol, así que se cerró la sesión. Tus datos siguen guardados en este dispositivo y no se perdieron: pide a un coordinador que te reactive temporalmente para in
+OK   la sesión local se cerró y las cookies del servidor también
+OK   los pendientes de op1 se conservan -> 2
+OK   nada se sube sin sesión válida -> "unauthorized"
+
+SMOKE OK
+--- dev server PID 19544 killed (only mine); DB re-reset after smoke
+
+=== CORRECCIONES NO-GO (round 2) — progreso ===
+[inicio] nada aplicado aún; plan: iteraciones inyectables, signInAt, record_offline_login (única vía, se retira OFFLINE_LOGIN del lote), caducidad de sesión local, fallback nativo, borrado de cookies
+[r2] hecho: offline-auth (iteraciones inyectables, signInAt, sesión 12h/enabledUntil, marcadores), retirado OFFLINE_LOGIN del lote + migración 20261014 + pgTAP viejo; falta: session-info signInAt, migración 20261015, API login-audit, bootstrap, fallback nativo, cookies, tests
+[r2] hecho también: migración 20261015000100_record_offline_login.sql, pgTAP offline_login_audit reescrito, POST /api/offline/login-audit, bootstrap (signInAt + marcadores), login-flow fallback nativo, LogoutGuard borra cookies sb-*, session-info signInAt; ahora: ajustando tests
+[r2] hecho: tests (offline-auth 41, offline-login-ui 9, login-audit-api), smoke actualizado, docs/checklist. Falta: gates finales (db:reset, db:test, bun test x2, astro check, build, smoke)
+[r2] db:reset OK (aplica 20261015000100_record_offline_login.sql), db:test: Files=32 Tests=971 PASS (se añadió record_offline_login al inventario de RPC de viewer_read_only)
+
+=== ROUND 2 GATES ===
+--- bun test x2 / astro check / build (salida real):
+--- bun test run 1
+[SC-012] verifyOffline PBKDF2-SHA-256 600000 it: 450 ms (Bun/happy-dom, escritorio)
+ 376 pass
+ 0 fail
+Ran 376 tests across 32 files. [19.93s]
+--- bun test run 2
+[SC-012] verifyOffline PBKDF2-SHA-256 600000 it: 352 ms (Bun/happy-dom, escritorio)
+ 376 pass
+ 0 fail
+Ran 376 tests across 32 files. [20.38s]
+--- astro check
+Result (207 files): 
+- 0 errors
+- 0 warnings
+- 14 hints
+--- build
+17:23:53 [build] ✓ Completed in 730ms.
+17:24:04 ✓ Completed in 2.30s.
+17:24:04 [build] ✓ Completed in 10.55s.
+17:24:40 [build] Server built in 47.37s
+17:24:40 [build] Complete!
+--- cookie sb-127 flags:
+set-cookie: sb-127-auth-token=<valor>; Max-Age=34560000; Path=/; SameSite=Lax
+--- SMOKE round 2 (dev PID 40576, Supabase local, happy-dom; sin navegador real)
+OK   op1: tras el login en línea queda el verificador habilitado -> {"role":"OPERATOR","enabledUntil":"2026-10-17T22:25:54.557Z"}
+OK   op1: el registro no contiene la contraseña
+OK   op1: snapshot de trabajo descargado en línea
+OK   coord1: tras el login en línea queda el verificador habilitado -> {"role":"ADMINISTRATOR","enabledUntil":"2026-10-17T22:25:55.747Z"}
+OK   coord1: el registro no contiene la contraseña
+OK   coord1: consulta descargada y guardada (ADMINISTRATOR) -> "ok"
+OK   auditor1: tras el login en línea queda el verificador habilitado -> {"role":"VIEWER","enabledUntil":"2026-10-17T22:25:56.666Z"}
+OK   auditor1: el registro no contiene la contraseña
+OK   auditor1: consulta descargada y guardada (VIEWER) -> "ok"
+OK   no queda matrícula pendiente
+OK   login con usuario inexistente: 303 a /iniciar-sesion?error -> "/iniciar-sesion?error=Usuario+o+contrase%C3%B1a+incorrectos"
+OK   hay matrícula pendiente antes de volver al login
+OK   al volver con ?error se descarta; op9 no queda habilitado
+OK   MAJOR-2: sesión previa (last_sign_in_at anterior) descarta la matrícula y no cambia la anterior
+OK   op9 (nunca habilitado) → 'Necesitas conexión para entrar' -> {"kind":"offline-failed","message":"Necesitas conexión para entrar"}
+OK   coord1 sin conexión entra y va a /consulta-offline -> {"kind":"offline-ok","path":"/consulta-offline"}
+OK   sesión local de coord1 con el rol guardado
+OK   la sesión de coord1 NO abre /turno del operario -> "forbidden"
+OK   coord1 lee su resumen guardado; op1 no tiene el suyo
+OK   cerrar sesión elimina la sesión local
+OK   sin sesión local nadie opera sin conexión
+OK   op1 con contraseña errónea: mensaje genérico -> {"kind":"offline-failed","message":"Usuario o contraseña incorrectos"}
+OK   op1 sin conexión entra y va a /turno -> {"kind":"offline-ok","path":"/turno"}
+OK   resolveCurrentUser sin conexión usa la sesión local de op1 -> "ok"
+OK   cola de op1: solo el turno (el inicio de sesión no es una operación; deja un marcador) -> {"ops":["CREATE_REPORT","START_STOP","CLOSE_STOP","ADD_CHANGE","SAVE_REPORT_FIELDS","SUBMIT_REPORT"],"markers":2}
+OK   coord1 vuelve a entrar sin conexión en el mismo dispositivo
+OK   coord1 no ve la cola de op1
+OK   coord1 no puede subir lo de op1 (el servidor rechaza) y nada cambia -> "forbidden"
+OK   al reconectar con sesión local se exige login en línea -> "Ya hay conexión. Inicia sesión en línea con tu contraseña para poder subir tus datos; no se perdió nada."
+OK   confirmAndUpload no sube sin login en línea (ni siquiera con cookie válida) -> "login-required"
+OK   el login en línea retira la sesión local
+OK   la compuerta de login se levanta
+OK   subida completa tras el login en línea -> {"status":"complete","applied":6,"duplicates":0,"conflicts":0,"rejected":0,"remaining":0}
+OK   administrative_audit_log: 2 filas OFFLINE_LOGIN de op1 (dos inicios de sesión sin conexión) -> ["2026-10-10T22:25:58.8+00:00","2026-10-10T22:25:59.692+00:00"]
+OK   (antes del bootstrap de coord1) ninguna fila de otros usuarios a nombre de op1 -> 0
+OK   los marcadores de op1 se enviaron en su login en línea y ya no quedan
+OK   reporte SUBMITTED, origen offline, de op1 -> {"id":"ec7065b5-d5e0-437b-9638-acf84371209e","folio":"RPT-2026-000001","status":"SUBMITTED","origin":"offline","lot":"L-F4B","created_by":"10000000-0000-0000-0000-000000000002"}
+OK   sin doble registro: 2 filas con operation_id distintos
+OK   outbox de op1 vacía tras subir -> 0
+OK   op1 (sesión en línea) no puede leer /api/offline/overview -> 403
+OK   MAJOR-3: coord1 (ADMINISTRATOR) también audita sus 2 inicios de sesión sin conexión -> 2
+OK   coord1 ve el reporte en el resumen con paradas y cambios -> {"folio":"RPT-2026-000001","stops":[{"id":"6f0c44dd-5e66-4c90-b0eb-187ace20c179","started_at":"2026-10-10T21:40:59.166+00:00","ended_at":"2026-10-10T21:45:59.166+00:
+OK   op1 trabaja otra vez sin conexión
+OK   (preparación) op1 desactivado en la BD local -> 200
+OK   session-info real de un usuario inactivo → 403 INACTIVE -> 403
+OK   revalidación: sesión cerrada, aviso mostrado -> "Tu usuario ya no está activo o cambió de rol, así que se cerró la sesión. Tus datos siguen guardados en este dispositivo y no se perdieron: pide a un coordinador que te 
+OK   la sesión local se cerró y las cookies del servidor también
+OK   los pendientes de op1 se conservan -> 1
+OK   nada se sube sin sesión válida -> "unauthorized"
+
+SMOKE OK
+
+--- Dev server PID 40576 killed (solo el mío); BD local re-reseteada tras el smoke.
+=== DESVIACIONES / NOTAS ROUND 2 ===
+1. MAJOR-3: se retira OFFLINE_LOGIN del lote de sincronización (tipo, migración 20261014000100 y pgTAP viejo eliminados; nunca desplegados). Un solo camino: marcador en meta -> POST /api/offline/login-audit -> public.record_offline_login (migración 20261015000100). El registro ocurre en la primera página en línea con session-info del mismo usuario (antes de poder subir, porque la subida exige login en línea), no "en el primer lote" literal de tasks.md T093.
+2. MAJOR-2: opción session-info.signInAt (last_sign_in_at) con tolerancia de reloj de 30 s; con reloj del dispositivo muy atrasado la matrícula no se confirma (el login en línea funciona).
+3. MINOR-4: record_offline_login: duplicate por mismo startedAt; RATE_LIMITED > 20 por usuario/hora; índice único parcial por operation_id.
+4. MINOR-5: LocalSession.enabledUntil + 12 h; getLocalSession(now) la elimina al vencer (la leen todos los shells).
+5. MINOR-6: prepareLogin cae al envío nativo si navigator.onLine y (needs-connection o excepción); con habilitación y clave errónea sigue el mensaje genérico.
+6. MINOR-7: cookies sb-* NO son HttpOnly (set-cookie sin HttpOnly, verificado en el smoke): el logout offline las borra con document.cookie; cierre en servidor sigue pendiente. Documentado en checklist #27.
+7. viewer_read_only.test.sql: se añadió record_offline_login al inventario de RPC ejecutables por authenticated.
+8. bun test baja de ~50 s a ~20 s (iteraciones 1000 en tests; test lento con timeout 30 s verifica 600 000 y SC-012 ~350-450 ms).
+
+=== RONDA 3 (MAJOR-2 reloj del dispositivo) ===
+[r3] hecho: /api/health HEAD devuelve X-Server-Time; beginEnrollment(user,pw,serverTime) guarda serverCreatedAt (sin hora -> no matricula); finalizeEnrollment compara signInAt/serverTime (session-info) contra serverCreatedAt, TTL 10 min en hora del servidor; tests (1)(2)(3) + TTL; pendiente: docs/checklist, gates, smoke
+--- RONDA 3 GATES (salida real):
+--- db:test
+All tests successful.
+Files=32, Tests=971, 12 wallclock secs ( 0.51 usr  0.21 sys +  0.89 cusr  0.69 csys =  2.30 CPU)
+Result: PASS
+--- bun test run 1
+[SC-012] verifyOffline PBKDF2-SHA-256 600000 it: 294 ms (Bun/happy-dom, escritorio)
+ 382 pass
+ 0 fail
+Ran 382 tests across 32 files. [18.25s]
+--- bun test run 2
+[SC-012] verifyOffline PBKDF2-SHA-256 600000 it: 547 ms (Bun/happy-dom, escritorio)
+ 382 pass
+ 0 fail
+Ran 382 tests across 32 files. [17.24s]
+--- astro check
+Result (207 files): [la 1.ª ejecución mostró 1 error ts(2741) por un campo createdAt residual en PendingEnrollment; corregido]
+- 0 warnings
+- 14 hints
+--- build
+17:40:48 [build] ✓ Completed in 960ms.
+17:40:58 ✓ Completed in 2.10s.
+17:40:58 [build] ✓ Completed in 9.65s.
+17:41:31 [build] Server built in 43.84s
+17:41:31 [build] Complete!
+GATES-END
+--- astro check tras la corrección:
+- 0 errors / 0 warnings / 14 hints
+--- SMOKE ronda 3 (dev PID 36164; /api/health HEAD devuelve x-server-time; Supabase local; sin navegador real):
+OK   op1: tras el login en línea queda el verificador habilitado -> {"role":"OPERATOR","enabledUntil":"2026-10-17T22:44:38.619Z"}
+OK   op1: el registro no contiene la contraseña
+OK   op1: snapshot de trabajo descargado en línea
+OK   coord1: tras el login en línea queda el verificador habilitado -> {"role":"ADMINISTRATOR","enabledUntil":"2026-10-17T22:44:39.578Z"}
+OK   coord1: el registro no contiene la contraseña
+OK   coord1: consulta descargada y guardada (ADMINISTRATOR) -> "ok"
+OK   auditor1: tras el login en línea queda el verificador habilitado -> {"role":"VIEWER","enabledUntil":"2026-10-17T22:44:40.480Z"}
+OK   auditor1: el registro no contiene la contraseña
+OK   auditor1: consulta descargada y guardada (VIEWER) -> "ok"
+OK   no queda matrícula pendiente
+OK   login con usuario inexistente: 303 a /iniciar-sesion?error -> "/iniciar-sesion?error=Usuario+o+contrase%C3%B1a+incorrectos"
+OK   hay matrícula pendiente antes de volver al login
+OK   al volver con ?error se descarta; op9 no queda habilitado
+OK   MAJOR-2: sesión previa (last_sign_in_at anterior) descarta la matrícula y no cambia la anterior
+OK   op9 (nunca habilitado) → 'Necesitas conexión para entrar' -> {"kind":"offline-failed","message":"Necesitas conexión para entrar"}
+OK   coord1 sin conexión entra y va a /consulta-offline -> {"kind":"offline-ok","path":"/consulta-offline"}
+OK   sesión local de coord1 con el rol guardado
+OK   la sesión de coord1 NO abre /turno del operario -> "forbidden"
+OK   coord1 lee su resumen guardado; op1 no tiene el suyo
+OK   cerrar sesión elimina la sesión local
+OK   sin sesión local nadie opera sin conexión
+OK   op1 con contraseña errónea: mensaje genérico -> {"kind":"offline-failed","message":"Usuario o contraseña incorrectos"}
+OK   op1 sin conexión entra y va a /turno -> {"kind":"offline-ok","path":"/turno"}
+OK   resolveCurrentUser sin conexión usa la sesión local de op1 -> "ok"
+OK   cola de op1: solo el turno (el inicio de sesión no es una operación; deja un marcador) -> {"ops":["CREATE_REPORT","START_STOP","CLOSE_STOP","ADD_CHANGE","SAVE_REPORT_FIELDS","SUBMIT_REPORT"],"m
+OK   coord1 vuelve a entrar sin conexión en el mismo dispositivo
+OK   coord1 no ve la cola de op1
+OK   coord1 no puede subir lo de op1 (el servidor rechaza) y nada cambia -> "forbidden"
+OK   al reconectar con sesión local se exige login en línea -> "Ya hay conexión. Inicia sesión en línea con tu contraseña para poder subir tus datos; no se perdió nada."
+OK   confirmAndUpload no sube sin login en línea (ni siquiera con cookie válida) -> "login-required"
+OK   el login en línea retira la sesión local
+OK   la compuerta de login se levanta
+OK   subida completa tras el login en línea -> {"status":"complete","applied":6,"duplicates":0,"conflicts":0,"rejected":0,"remaining":0}
+OK   administrative_audit_log: 2 filas OFFLINE_LOGIN de op1 (dos inicios de sesión sin conexión) -> ["2026-10-10T22:44:43.066+00:00","2026-10-10T22:44:44.107+00:00"]
+OK   (antes del bootstrap de coord1) ninguna fila de otros usuarios a nombre de op1 -> 0
+OK   los marcadores de op1 se enviaron en su login en línea y ya no quedan
+OK   reporte SUBMITTED, origen offline, de op1 -> {"id":"76522236-d367-49c0-900e-5a1925152d14","folio":"RPT-2026-000001","status":"SUBMITTED","origin":"offline","lot":"L-F4B","created_by":"10000000-00
+OK   sin doble registro: 2 filas con operation_id distintos
+OK   outbox de op1 vacía tras subir -> 0
+OK   op1 (sesión en línea) no puede leer /api/offline/overview -> 403
+OK   MAJOR-3: coord1 (ADMINISTRATOR) también audita sus 2 inicios de sesión sin conexión -> 2
+OK   coord1 ve el reporte en el resumen con paradas y cambios -> {"folio":"RPT-2026-000001","stops":[{"id":"d7c79785-bb45-4fd5-8074-272f22acaf37","started_at":"2026-10-10T21:59:43.473+00:00","ended_at
+OK   op1 trabaja otra vez sin conexión
+OK   (preparación) op1 desactivado en la BD local -> 200
+OK   session-info real de un usuario inactivo → 403 INACTIVE -> 403
+OK   revalidación: sesión cerrada, aviso mostrado -> "Tu usuario ya no está activo o cambió de rol, así que se cerró la sesión. Tus datos siguen guardados en este dispositivo y no se perdieron:
+OK   la sesión local se cerró y las cookies del servidor también
+OK   los pendientes de op1 se conservan -> 1
+OK   nada se sube sin sesión válida -> "unauthorized"
+
+SMOKE OK
+--- dev PID 36164 matado; BD re-reseteada tras el smoke.
+DESVIACIONES R3: (b) atar a la sesión concreta (session.created_at) NO implementado: limitación documentada en PWA_OFFLINE.md. enabledUntil y caducidad de sesión local siguen usando el reloj del dispositivo (es el único disponible sin conexión). Checklist: #28 reescrito (reloj atrasado), #30 (reloj +5 min), #31 (cookies HttpOnly en producción).
+--- bun test final tras corrección de tipo: 382 pass / 0 fail

@@ -1,0 +1,155 @@
+# Phase 9 evidence (F5 tiempo real)
+Sat Oct 10 17:55:35 HPS 2026
+
+=== RED-FIRST pgTAP (BD sin la migración 20261016000100) ===
+=== RED-FIRST pgTAP (BD sin la migración 20261016000100) ===
+# Failed test 1: "las 5 tablas de reportes están en supabase_realtime"
+# Failed test 4: "existen las dos políticas del canal plant-presence"
+# Failed test 6: "OPERATOR activo puede hacer track en plant-presence"
+# Failed test 13: "ADMINISTRATOR lee la presencia de plant-presence"
+# Failed test 15: "ROOT lee la presencia de plant-presence"
+# Failed test 16: "VIEWER lee la presencia de plant-presence"
+Failed 6/18 subtests 
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/realtime_publication.test.sql (Wstat: 768 (exited 3) Tests: 18 Failed: 6)
+  Failed tests:  1, 4, 6, 13, 15-16
+Result: FAIL
+
+=== GREEN pgTAP realtime_publication tras db:reset con la migración ===
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/realtime_publication.test.sql .. ok
+Files=1, Tests=24,  0 wallclock secs ( 0.08 usr  0.03 sys +  0.02 cusr  0.03 csys =  0.16 CPU)
+Result: PASS
+
+=== Implementación (avance) ===
+Creados: migración 20261016000100_realtime_publication.sql, supabase/tests/realtime_publication.test.sql, src/lib/supabase/browser.ts, src/lib/realtime.ts, src/pages/api/dashboard/summary.ts, src/components/realtime/{useLiveSubscription.ts,LiveStatus,LiveDashboard,LiveReportList,LiveTimeline,PresenceList,useOperatorPresence}.
+Editados: middleware (gate /api/dashboard), report-filters (rowMayMatchReportFilters), dashboard.astro, reportes/index.astro, reportes/[id].astro, OperatorShiftApp (track), tests/role-access, tests/operator-shift-app (presence=false).
+astro check tras integración: 0 errors. Pendiente: tests bun de la fase, smoke con WebSocket real.
+
+=== SMOKE (bun scripts/smoke-phase9.ts vs astro dev :4399 + Supabase LOCAL + Realtime REAL por WebSocket; sin navegador) ===
+OK   logins HTTP correctos (303) -> {"coord1":303,"auditor1":303,"op1":303,"op2":303,"root":303}
+OK   summary sin sesión -> 401 -> 401
+OK   summary op1 (OPERATOR) -> 403 -> 403
+OK   summary op2 (OPERATOR) -> 403 -> 403
+OK   summary coord1 -> 200 sin cache con KPI -> {"status":200,"kpis":{"DRAFT":0,"SUBMITTED":0,"CLOSED":0,"CANCELLED":0,"ACTIVE_STOP":0,"OFF_SHIFT":0,"OPEN_CONFLICTS":0},"operators":2}
+OK   summary auditor1 -> 200 sin cache con KPI -> {"status":200,"kpis":{"DRAFT":0,"SUBMITTED":0,"CLOSED":0,"CANCELLED":0,"ACTIVE_STOP":0,"OFF_SHIFT":0,"OPEN_CONFLICTS":0},"operators":2}
+OK   summary root -> 200 sin cache con KPI -> {"status":200,"kpis":{"DRAFT":0,"SUBMITTED":0,"CLOSED":0,"CANCELLED":0,"ACTIVE_STOP":0,"OFF_SHIFT":0,"OPEN_CONFLICTS":0},"operators":2}
+OK   summary con rango inválido -> 422 -> 422
+OK   /dashboard de coord1 incluye la isla en vivo y la presencia -> {"live":true,"presence":true}
+OK   /reportes de coord1 incluye LiveReportList y el contenedor
+OK   /dashboard de auditor1 incluye la isla en vivo y la presencia -> {"live":true,"presence":true}
+OK   /reportes de auditor1 incluye LiveReportList y el contenedor
+OK   /dashboard del operario NO incluye tablero en vivo ni presencia
+OK   coord1 se une a plant-presence como lector -> "SUBSCRIBED"
+OK   auditor1 se une a plant-presence como lector -> "SUBSCRIBED"
+OK   root se une a plant-presence como lector -> "SUBSCRIBED"
+OK   op1 (OPERATOR) se une al canal privado para publicar -> "SUBSCRIBED"
+OK   op1 track -> ok -> "ok"
+OK   coord1 ve a op1 en línea con pendientes -> ["10000000-0000-0000-0000-000000000002"]
+OK   auditor1 y root también ven a op1
+OK   auditor1 NO aparece en la presencia aunque intente track -> {"viewerTrack":"error","seen":["10000000-0000-0000-0000-000000000002"]}
+OK   coord1 NO aparece en la presencia aunque intente track -> {"coordTrack":"error"}
+OK   op2 publica y coord1 lo ve -> ["10000000-0000-0000-0000-000000000002","10000000-0000-0000-0000-000000000005"]
+OK   op2 (OPERATOR) se une (Realtime exige lectura para unirse); RIESGO DOCUMENTADO: la sesión de un operario podría leer quién está en línea, nunca reportes -> {"status":"SUBSCRIBED","seesOthers":["10000000-0000-0000-0000-000000000002","10000000-0000-0000-0000-000000000005"]}
+OK   canal privado no autorizado -> no se une -> "CHANNEL_ERROR"
+OK   coord1: postgres_changes SUBSCRIBED -> "SUBSCRIBED"
+OK   auditor1: postgres_changes SUBSCRIBED -> "SUBSCRIBED"
+OK   op1: postgres_changes SUBSCRIBED -> "SUBSCRIBED"
+OK   op2: postgres_changes SUBSCRIBED -> "SUBSCRIBED"
+OK   op1 crea un reporte (201) -> {"status":201,"body":"1eb45b52-f718-4707-b402-339fe62d688f"}
+OK   coord1 recibe el INSERT del reporte en < 10 s -> "2150 ms"
+OK   coord1 recibe la auditoría del reporte
+OK   auditor1 recibe el INSERT del reporte en < 10 s -> "501 ms"
+OK   auditor1 recibe la auditoría del reporte
+OK   op1 recibe su propio reporte
+OK   op2 NO recibe el reporte de op1 (RLS) -> []
+OK   op1 no recibe la auditoría (nunca la ve) -> ["production_reports"]
+OK   op1 inicia una parada (201) -> 201
+OK   coord1 recibe la parada en < 10 s -> "354 ms"
+OK   auditor1 recibe la parada en < 10 s -> "3233 ms"
+OK   op2 NO recibe la parada de op1
+OK   summary refleja la máquina en parada y el reporte activo -> {"stopped":1,"kpis":{"DRAFT":1,"SUBMITTED":0,"CLOSED":0,"CANCELLED":0,"ACTIVE_STOP":1,"OFF_SHIFT":0,"OPEN_CONFLICTS":0}}
+
+SMOKE OK
+
+=== bun run db:test ===
+$ supabase test db --local
+Connecting to local database...
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/active_report_limits.test.sql .......... ok
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/admin_audit_root_only.test.sql ......... ok
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/approval.test.sql ...................... ok
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/cancellation_rules.test.sql ............ ok
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/catalog_delete_or_deactivate.test.sql .. ok
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/catalog_uniqueness.test.sql ............ ok
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/change_events.test.sql ................. ok
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/correct_report.test.sql ................ ok
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/critical_constraints.test.sql .......... ok
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/device_time_events.test.sql ............ ok
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/final_demo_readiness.test.sql .......... ok
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/full_audit.test.sql .................... ok
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/helpers/auth_as.sql .................... ok
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/login_lockout.test.sql ................. ok
+psql:/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/notification_pagination.test.sql:2: NOTICE:  extension "pgtap" already exists, skipping
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/notification_pagination.test.sql ....... ok
+psql:/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/notification_transitions.test.sql:2: NOTICE:  extension "pgtap" already exists, skipping
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/notification_transitions.test.sql ...... ok
+psql:/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/notifications.test.sql:2: NOTICE:  extension "pgtap" already exists, skipping
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/notifications.test.sql ................. ok
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/offline_flags_forced.test.sql .......... ok
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/offline_login_audit.test.sql ........... ok
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/operator_workflow.test.sql ............. ok
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/realtime_publication.test.sql .......... ok
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/report_audit_visibility.test.sql ....... ok
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/report_cancellation.test.sql ........... ok
+psql:/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/report_pagination_large.test.sql:2: NOTICE:  extension "pgtap" already exists, skipping
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/report_pagination_large.test.sql ....... ok
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/report_shift_assignment.test.sql ....... ok
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/rls_matrix.test.sql .................... ok
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/roles_root_invariant.test.sql .......... ok
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/shift_resolution.test.sql .............. ok
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/sync_cross_user_replay.test.sql ........ ok
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/sync_operation.test.sql ................ ok
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/sync_replay_idempotent.test.sql ........ ok
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/user_management_matrix.test.sql ........ ok
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/viewer_read_only.test.sql .............. ok
+All tests successful.
+Files=33, Tests=996, 12 wallclock secs ( 0.52 usr  0.31 sys +  0.96 cusr  0.78 csys =  2.57 CPU)
+Result: PASS
+
+=== db:reset (final) ===
+Finished supabase db reset (migración 20261016000100 aplicada)
+
+=== bun test (corrida 1) ===
+
+ 432 pass
+ 0 fail
+ 1879 expect() calls
+Ran 432 tests across 36 files. [20.32s]
+
+=== bun test (corrida 2) ===
+
+ 432 pass
+ 0 fail
+ 1879 expect() calls
+Ran 432 tests across 36 files. [18.16s]
+
+=== bunx astro check ===
+Result (223 files): 
+- 5 errors
+- 0 warnings
+- 18 hints
+
+
+=== bun run build ===
+[39m
+[2m18:27:37[22m [34m[build][39m Rearranging server assets...
+[2m18:27:38[22m [34m[build][39m [32m✓ Completed in 10.12s.[39m
+[2m18:27:38[22m [34m[@astrojs/vercel][39m Bundling function ..\..\..\..\dist\server\entry.mjs
+[2m18:27:41[22m [34m[build][39m Waiting for integration [1m"@astrojs/vercel"[22m, hook [1m"astro:build:done"[22m...
+[2m18:28:16[22m [34m[@astrojs/vercel][39m Copying static files to .vercel/output/static
+[2m18:28:16[22m [34m[build][39m Server built in [1m50.05s[22m
+[2m18:28:16[22m [34m[build][39m [1mComplete![22m
+
+=== CORRECCIÓN de tipos en tests (astro check tenía 5 errores en tests nuevos) ===
+bunx astro check: 0 errors, 0 warnings, 18 hints
+bun test final: 432 pass / 0 fail
+
+DESVIACIONES: (1) operarios con SELECT en plant-presence (Realtime exige lectura para unirse; verificado con S1 sin SELECT -> Unauthorized); (2) la ruta de la migración es 20261016000100 (no 20261014000100 de tasks.md); (3) LiveReportList también escucha report_stop_events; (4) el track exige un listener de presencia (.on) para habilitar presencia en el join.

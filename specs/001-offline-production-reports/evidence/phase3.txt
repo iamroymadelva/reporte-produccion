@@ -1,0 +1,143 @@
+== failing-first (before implementation) ==
+pgTAP login_lockout: Failed 3/3 subtests (script abortó en el test 4: private.check_login_allowed no existe); Files=19, Result: FAIL
+bun login+role-access:
+
+      at <anonymous> (C:\Users\ACER\Desktop\PROJECTS\empacando\reporte-produccion\tests\role-access.test.ts:95:45)
+(fail) middleware: rol x ruta protegida > las rutas de recuperación e invitación por correo ya no son públicas [4.19ms]
+
+ 41 pass
+ 15 fail
+ 114 expect() calls
+Ran 56 tests across 2 files. [1.91s]
+
+== db:reset ==
+{"target":"local","version":"","message":"Reset local database."}
+A new version of Supabase CLI is available: v2.120.0 (currently installed v2.116.0)
+We recommend updating regularly for new features and bug fixes: https://supabase.com/docs/guides/cli/getting-started#updating-the-supabase-cli
+== db:test ==
+psql:/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/login_lockout.test.sql:50: ERROR:  El nombre de usuario no puede modificarse
+CONTEXT:  PL/pgSQL function private.protect_profile_username() line 4 at RAISE
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/login_lockout.test.sql ............. 
+Dubious, test returned 3 (wstat 768, 0x300)
+All 15 subtests passed 
+psql:/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/notification_pagination.test.sql:2: NOTICE:  extension "pgtap" already exists, skipping
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/notification_pagination.test.sql ... ok
+psql:/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/notification_transitions.test.sql:2: NOTICE:  extension "pgtap" already exists, skipping
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/notification_transitions.test.sql .. ok
+psql:/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/notifications.test.sql:2: NOTICE:  extension "pgtap" already exists, skipping
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/notifications.test.sql ............. ok
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/operator_workflow.test.sql ......... ok
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/report_audit_visibility.test.sql ... ok
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/report_cancellation.test.sql ....... ok
+psql:/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/report_pagination_large.test.sql:2: NOTICE:  extension "pgtap" already exists, skipping
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/report_pagination_large.test.sql ... ok
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/report_shift_assignment.test.sql ... ok
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/rls_matrix.test.sql ................ ok
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/roles_root_invariant.test.sql ...... ok
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/shift_resolution.test.sql .......... ok
+
+Test Summary Report
+-------------------
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/login_lockout.test.sql           (Wstat: 768 (exited 3) Tests: 15 Failed: 0)
+  Non-zero exit status: 3
+  Parse errors: No plan found in TAP output
+Files=19, Tests=411, 11 wallclock secs ( 0.37 usr  0.55 sys +  0.83 cusr  0.72 csys =  2.47 CPU)
+Result: FAIL
+error running container: exit 1
+error: script "db:test" exited with code 1
+== bun test ==
+error: expect(received).toBe(expected)
+
+Expected: "LOCAL-1"
+Received: undefined
+
+      at <anonymous> (C:\Users\ACER\Desktop\PROJECTS\empacando\reporte-produccion\tests\operator-ui.test.tsx:285:66)
+(fail) Operator interactions > offline draft remains editable, persists in IndexedDB and requires manual save on reconnect [489.15ms]
+
+ 131 pass
+ 1 fail
+ 511 expect() calls
+Ran 132 tests across 9 files. [21.22s]
+== astro check ==
+[7m281[0m     await expect(guardedMutationFetch("/forbidden-offline", { method: "POST" })).rejects.toThrow("requiere conexión");
+[7m   [0m [93m    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+Result (130 files): 
+- 0 errors
+- 0 warnings
+- 4 hints
+
+== build ==
+[2m19:41:56[22m [34m[build][39m [32m✓ Completed in 13.08s.[39m
+[2m19:41:56[22m [34m[@astrojs/vercel][39m Bundling function ..\..\..\..\dist\server\entry.mjs
+[2m19:42:01[22m [34m[build][39m Waiting for integration [1m"@astrojs/vercel"[22m, hook [1m"astro:build:done"[22m...
+[2m19:43:03[22m [34m[@astrojs/vercel][39m Copying static files to .vercel/output/static
+[2m19:43:03[22m [34m[build][39m Server built in [1m1m 23s[22m
+[2m19:43:03[22m [34m[build][39m [1mComplete![22m
+
+== RERUN after test fix (username via metadata) ==
+== db:reset ==
+Initialising schema...
+{"_tag":"Error","error":{"code":"LegacyDbSetupError","message":"error running container: exit 1"}}
+error: script "db:reset" exited with code 1
+== db:test ==
+Failed 18/18 subtests 
+Failed 24/24 subtests 
+# Failed test 1: "Existe el contador anual de folios"
+# Failed test 2: "Existe la auditoría administrativa"
+Failed 10/10 subtests 
+psql:/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/login_lockout.test.sql:9: ERROR:  schema "private" does not exist
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/login_lockout.test.sql ............. 
+# Failed test 1: "Existe private.check_login_allowed(text)"
+# Failed test 2: "Existe private.register_login_result(text, boolean)"
+# Failed test 3: "Existe public.resolve_login_email(text)"
+Failed 3/3 subtests 
+Failed 5/5 subtests 
+Failed 22/22 subtests 
+Failed 29/29 subtests 
+Failed 9/9 subtests 
+Failed 7/7 subtests 
+# Failed test 1: "Existe private.current_shift_at(timestamptz)"
+Failed 1/1 subtests 
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/active_report_limits.test.sql    (Wstat: 768 (exited 3) Tests: 0 Failed: 0)
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/catalog_uniqueness.test.sql      (Wstat: 768 (exited 3) Tests: 0 Failed: 0)
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/change_events.test.sql           (Wstat: 768 (exited 3) Tests: 0 Failed: 0)
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/critical_constraints.test.sql    (Wstat: 768 (exited 3) Tests: 0 Failed: 0)
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/device_time_events.test.sql      (Wstat: 768 (exited 3) Tests: 0 Failed: 0)
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/final_demo_readiness.test.sql    (Wstat: 768 (exited 3) Tests: 2 Failed: 2)
+  Failed tests:  1-2
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/helpers/auth_as.sql              (Wstat: 768 (exited 3) Tests: 0 Failed: 0)
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/login_lockout.test.sql           (Wstat: 768 (exited 3) Tests: 3 Failed: 3)
+  Failed tests:  1-3
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/notification_pagination.test.sql (Wstat: 768 (exited 3) Tests: 0 Failed: 0)
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/notification_transitions.test.sql (Wstat: 768 (exited 3) Tests: 0 Failed: 0)
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/notifications.test.sql           (Wstat: 768 (exited 3) Tests: 0 Failed: 0)
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/operator_workflow.test.sql       (Wstat: 768 (exited 3) Tests: 0 Failed: 0)
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/report_audit_visibility.test.sql (Wstat: 768 (exited 3) Tests: 0 Failed: 0)
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/report_cancellation.test.sql     (Wstat: 768 (exited 3) Tests: 0 Failed: 0)
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/report_pagination_large.test.sql (Wstat: 768 (exited 3) Tests: 0 Failed: 0)
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/report_shift_assignment.test.sql (Wstat: 768 (exited 3) Tests: 0 Failed: 0)
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/rls_matrix.test.sql              (Wstat: 768 (exited 3) Tests: 0 Failed: 0)
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/roles_root_invariant.test.sql    (Wstat: 768 (exited 3) Tests: 0 Failed: 0)
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/shift_resolution.test.sql        (Wstat: 768 (exited 3) Tests: 1 Failed: 1)
+  Failed test:  1
+Files=19, Tests=6, 12 wallclock secs ( 0.19 usr  1.29 sys +  0.99 cusr  1.52 csys =  3.99 CPU)
+Result: FAIL
+== bun test (full) ==
+bun test v1.4.2 (744846f84)
+
+ 132 pass
+ 0 fail
+ 519 expect() calls
+Ran 132 tests across 9 files. [22.68s]
+== bun test x2 (operator-ui flaky check at full run) ==
+
+ 132 pass
+ 0 fail
+ 519 expect() calls
+Ran 132 tests across 9 files. [21.42s]
+
+== NOTE: the db:test in the RERUN block above failed for every file (Tests: 0) because it ran right after db:reset while the local DB was still restarting; clean rerun follows ==
+== db:reset + db:test (clean) ==
+login_lockout.test.sql ... ok | All tests successful. Files=19, Tests=425 Result: PASS
+== astro check (earlier block): 0 errors, 0 warnings, 4 hints; build: Complete! ==

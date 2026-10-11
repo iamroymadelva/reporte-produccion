@@ -1,0 +1,275 @@
+=== PHASE 7b EVIDENCE (progress log, appended) ===
+
+=== RED-FIRST: T067-T071 written before any src/lib/offline/* or src/lib/shifts.ts existed ===
+(bun test tests/shifts.test.ts tests/offline-outbox.test.ts tests/sync-client.test.ts tests/operator-shift-app.test.tsx tests/sync-full-shift.test.ts)
+bun test v1.4.2 (744846f84)
+
+tests\offline-outbox.test.ts:
+
+# Unhandled error between tests
+-------------------------------
+error: Cannot find module '../../src/lib/offline/db' from 'C:\Users\ACER\Desktop\PROJECTS\empacando\reporte-produccion\tests\helpers\offline-env.ts'
+-------------------------------
+
+
+tests\operator-shift-app.test.tsx:
+
+# Unhandled error between tests
+-------------------------------
+-------------------------------
+
+
+tests\shifts.test.ts:
+
+# Unhandled error between tests
+-------------------------------
+error: Cannot find module '../src/lib/shifts' from 'C:\Users\ACER\Desktop\PROJECTS\empacando\reporte-produccion\tests\shifts.test.ts'
+-------------------------------
+
+
+tests\sync-client.test.ts:
+
+# Unhandled error between tests
+-------------------------------
+-------------------------------
+
+
+tests\sync-full-shift.test.ts:
+
+# Unhandled error between tests
+-------------------------------
+error: Cannot find module '../../src/lib/shifts' from 'C:\Users\ACER\Desktop\PROJECTS\empacando\reporte-produccion\tests\helpers\fake-sync-server.ts'
+-------------------------------
+
+
+ 0 pass
+ 5 fail
+ 5 errors
+Ran 5 tests across 5 files. [429.00ms]
+
+=== PROGRESS 1 ===
+Done so far: src/lib/shifts.ts (T078), src/lib/offline/{types,db,outbox,validation,actions,snapshot,sync-client,hooks}.ts (T079-T081,T112), src/components/offline/{OfflineIndicator,PendingSyncSummary}.tsx (T083 part), connectivity.resetConnectivityForTests (test-only).
+GREEN: shifts/offline-outbox/sync-client/sync-full-shift = 43 pass, 0 fail.
+Pending: T082 OperatorShiftApp, T083 TopBar, T084, T085, T086, T087, T088, gates, smoke.
+
+=== PROGRESS 2 ===
+T082 OperatorShiftApp.tsx + LogoutGuard.tsx written; tests/operator-shift-app.test.tsx 4 pass (test harness fixed: wait outside a single act). Full bun test before T082: 281 pass / 1 fail (missing module). Next: TopBar/NavUser/AppShell integration, turno.astro, redirects, sw.js, retire old editor, docs.
+
+=== PROGRESS 3 ===
+T083 TopBar: OfflineIndicator (OPERATOR) + PendingSyncSummary in AppShell. T086: LogoutGuard (NavUser + /turno header). T084: src/pages/turno.astro (prerender, client:only), middleware bypass for isPrerendered, redirects from /reportes and /reportes/[id] to /turno for OPERATOR with own active report.
+T087: ReportEditor stripped of offline persistence (manager correction + online view kept); OfflineDraftNotice simplified; src/lib/offline-report-store.ts DELETED after v1->v2 migration test (tests/offline-outbox.test.ts "migración"); tests/operator-ui.test.tsx: removed 3 tests bound to the removed IndexedDB v1 editor (offline draft persists / no autosave with pending changes / newer revision survives ack) - intent covered by tests/sync-client.test.ts (SC-004 no batch/PATCH before confirm, partial upload, operationId reuse); kept "autosave ack preserves focus" (offline props removed, assertions unchanged); added per-file global re-installation (shared bun process).
+bun test: 282 pass / 0 fail (3 consecutive runs).
+T085 sw.js v4 done; T088 docs done.
+
+=== GATES ===
+--- bun run db:reset ---
+Applying migration 20261013000100_offline_sync.sql...
+Applying migration 20261013000200_drop_frequent_values.sql...
+Seeding data from supabase/seed.sql...
+Restarting containers...
+Finished supabase db reset on branch redesign/ui-ux.
+{"target":"local","version":"","message":"Reset local database."}
+A new version of Supabase CLI is available: v2.120.0 (currently installed v2.116.0)
+We recommend updating regularly for new features and bug fixes: https://supabase.com/docs/guides/cli/getting-started#updating-the-supabase-cli
+--- bun run db:test (tail) ---
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/viewer_read_only.test.sql .............. ok
+All tests successful.
+Files=29, Tests=876, 10 wallclock secs ( 0.40 usr  0.24 sys +  0.79 cusr  0.62 csys =  2.05 CPU)
+Result: PASS
+A new version of Supabase CLI is available: v2.120.0 (currently installed v2.116.0)
+We recommend updating regularly for new features and bug fixes: https://supabase.com/docs/guides/cli/getting-started#updating-the-supabase-cli
+--- bun test run 1 ---
+
+ 282 pass
+ 0 fail
+ 1243 expect() calls
+Ran 282 tests across 23 files. [15.29s]
+--- bun test run 2 ---
+
+ 282 pass
+ 0 fail
+ 1243 expect() calls
+Ran 282 tests across 23 files. [13.62s]
+--- astro check ---
+Result (184 files): 
+- 0 errors
+- 0 warnings
+- 7 hints
+
+--- build ---
+[39m
+[2m12:03:34[22m [34m[vite][39m [32m✓ built in 2.49s[39m
+
+[42m[30m prerendering static routes [39m[49m
+[2m12:03:34[22m   [34m├─[39m [2m/turno/index.html[22m[33m[1m12:03:36[22m [WARN][39m `Astro.request.headers` was used when rendering the route `src/pages/turno.astro'`. `Astro.request.headers` is not available on prerendered pages. If you need access to request headers, make sure that the page is server-rendered using `export const prerender = false;` or by setting `output` to `"server"` in your Astro config to make all your pages server-rendered by default.
+ [31m(+1.71s)[39m 
+[2m12:03:36[22m [32m✓ Completed in 2.32s.
+[39m
+[2m12:03:36[22m [34m[build][39m Rearranging server assets...
+[2m12:03:36[22m [34m[build][39m [32m✓ Completed in 10.06s.[39m
+[2m12:03:36[22m [34m[@astrojs/vercel][39m Bundling function ..\..\..\..\dist\server\entry.mjs
+[2m12:03:39[22m [34m[build][39m Waiting for integration [1m"@astrojs/vercel"[22m, hook [1m"astro:build:done"[22m...
+[2m12:04:15[22m [34m[@astrojs/vercel][39m Copying static files to .vercel/output/static
+[2m12:04:15[22m [34m[build][39m Server built in [1m50.03s[22m
+[2m12:04:15[22m [34m[build][39m [1mComplete![22m
+
+=== SMOKE (bun run dev --port 4399, cookie sb-127, DB local; dev PID 17484 + wrapper 5184 killed) ===
+GET /turno -> 200 (dev), 0 occurrences of user name/email in HTML; built dist /turno/index.html = static, 8585 B, only 2 astro-island client:only (no user data, no redirect).
+GET /api/offline/snapshot as op1 (login 303, cookie sb-127-auth-token) -> 200 profile Operario Uno.
+NOTE: no real browser used; the smoke runs the real sync-client/actions/outbox on happy-dom + fake-indexeddb against the real local server (scripts/smoke-offline-e2e.ts).
+OK   health HEAD 204
+usuario Operario Uno (10000000-0000-0000-0000-000000000002); turnos=3
+OK   ops en cola (CREATE, 2x START+CLOSE, ADD_CHANGE, 1 SAVE fundido, SUBMIT) = 8 -> ["CREATE_REPORT","START_STOP","CLOSE_STOP","START_STOP","CLOSE_STOP","ADD_CHANGE","SAVE_REPORT_FIELDS","SUBMIT_REPORT"]
+OK   seq 1..8 consecutivos
+OK   sin escrituras de red antes de confirmar -> []
+}
+OK   subida completa, 8 aplicadas -> {"status":"complete","applied":8,"duplicates":0,"conflicts":0,"rejected":0,"remaining":0}
+OK   lote enviado a /api/sync/batch -> [{"url":"/api/sync/batch","method":"POST","status":200}]
+OK   device-status enviado tras la subida
+OK   reenvío: 8 duplicate -> ["duplicate","duplicate","duplicate","duplicate","duplicate","duplicate","duplicate","duplicate"]
+OK   reporte único en la BD, SUBMITTED, origin offline, con folio -> {"id":"c8d97180-c92b-4096-af81-0ae72413d6ea","folio":"RPT-2026-000001","status":"SUBMITTED","origin":"offline","started_at":"2026-10-10T16:12:24.095+00:00","lot":"L-SMOKE","units_produced":1200,"created_by":"10000000-0000-0000-0000-000000000002"}
+OK   campos guardados
+OK   2 paradas sin duplicados, captured_offline -> 2
+OK   horas del dispositivo de las paradas -> [["2026-10-10T16:22:24.095+00:00","2026-10-10T16:27:24.095+00:00"],["2026-10-10T16:32:24.095+00:00","2026-10-10T16:37:24.095+00:00"]]
+OK   1 cambio, hora del dispositivo, captured_offline -> [{"id":"b8497fe0-1dd5-48a3-8bd0-8a542ab86a2d","occurred_at":"2026-10-10T16:42:24.095+00:00","captured_offline":true}]
+OK   sin reportes duplicados
+OK   outbox local vacía tras subir
+
+SMOKE OK
+(DB re-reset after smoke)
+
+=== CORRECTIONS ROUND (review NO-GO) ===
+Red-first = assertion failures (modules existed):
+--- MAJOR-2 pgTAP supabase/tests/sync_replay_idempotent.test.sql (RED before editing the migration) ---
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/sync_replay_idempotent.test.sql ........ 
+# Failed test 8: "Reenvío de CANCEL_STOP (parada ya cancelada, mismo motivo): duplicate"
+#         have: rejected
+#         want: duplicate
+# Failed test 9: "Reenvío de SET_STOP_CATEGORY (categoría ya igual, parada ya cerrada): duplicate"
+#         have: rejected
+#         want: duplicate
+# Failed test 15: "Reenvío de SUBMIT_REPORT con el reporte ya SUBMITTED: duplicate"
+#         have: conflict
+#         want: duplicate
+# Failed test 16: "Reenvío de CANCEL_STOP con el reporte ya enviado: duplicate"
+#         have: conflict
+#         want: duplicate
+# Failed test 17: "Reenvío de CLOSE_STOP con el reporte ya enviado: duplicate"
+#         have: conflict
+#         want: duplicate
+# Failed test 18: "Reenvío de SET_STOP_CATEGORY con el reporte ya enviado: duplicate"
+#         have: conflict
+#         want: duplicate
+# Failed test 19: "Reenvío de SAVE_REPORT_FIELDS con el reporte ya enviado y valores iguales: duplicate"
+#         have: conflict
+#         want: duplicate
+# Failed test 22: "Los reenvíos duplicate no crean filas en sync_quarantine (solo los 2 conflictos genuinos)"
+#         have: 7
+#         want: 2
+--
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/sync_replay_idempotent.test.sql      (Wstat: 0 Tests: 27 Failed: 9)
+  Failed tests:  8-9, 15-19, 22-23
+Files=30, Tests=903,  8 wallclock secs ( 0.36 usr  0.18 sys +  0.70 cusr  0.57 csys =  1.81 CPU)
+Result: FAIL
+--- MAJOR-2 bun sync-client lost-response (RED) ---
+error: expect(received).toMatchObject(expected)
+
+@@ -1,3 +1,5 @@
+  {
+-   "conflicts": 0,
++   "applied": 0,
++   "conflicts": 5,
++   "duplicates": 1,
+    "rejected": 0,
+
+- Expected  - 1
++ Received  + 3
+
+      at <anonymous> (C:\Users\ACER\Desktop\PROJECTS\empacando\reporte-produccion\tests\sync-client.test.ts:274:21)
+(fail) subida (T081) > respuesta perdida: lo ya aplicado fuera del log (ruta en línea) se reenvía por el lote y devuelve duplicate, sin conflictos ni rechazos [57.93ms]
+--- MAJOR-1 tests/shared-device.test.tsx (RED) ---
+error: expect(received).toBeNull()
+Received: "10000000-0000-4000-8000-00000000000a"
+(fail) dispositivo compartido > tras cerrar sesión con pendientes, abrir /turno sin conexión no actúa como el usuario anterior [206.52ms]
+error: expect(received).toBe(expected)
+Expected: "no-snapshot"
+Received: "ok"
+(fail) dispositivo compartido > cerrar sesión sin pendientes también olvida al usuario del dispositivo [79.32ms]
+ 1 pass
+ 2 fail
+--- MAJOR-3 tests/service-worker.test.ts (RED before sw.js change) ---
+error: expect(received).rejects.toBeDefined()
+(fail) service worker v4 > si /turno no se puede cachear la instalación FALLA (queda el worker anterior) [1.47ms]
+error: expect(received).rejects.toBeDefined()
+(fail) service worker v4 > si falla la red al bajar /turno la instalación FALLA [0.38ms]
+error: expect(received).rejects.toBeDefined()
+(fail) service worker v4 > si un recurso /_astro necesario no se puede cachear la instalación FALLA [0.44ms]
+error: expect(received).toBe(expected)
+(fail) service worker v4 > al activar no se borra la caché anterior si la nueva no contiene el shell /turno [0.98ms]
+(fail) service worker v4 > sin red, la navegación se respalda por ruta: /turno y /reportes* → shell; el resto → offline.html [1.84ms]
+ 4 pass
+ 5 fail
+--- MINOR-6 migration field names (RED) ---
+error: expect(received).not.toHaveProperty(path)
+Expected path: not "campo_inventado"
+Received value: "no existe"
+(fail) migración de IndexedDB v1 a v2 (T079) > los nombres de campo reales del editor v1 se conservan; los desconocidos no rompen el guardado y quedan registrados [20.21ms]
+ 16 pass
+ 1 fail
+--- item 7 prerender guard (RED with a temporary src/pages/zz-temp-prerender.astro, then removed) ---
++   "zz-temp-prerender.astro",
+(fail) páginas prerenderizadas > solo turno.astro declara prerender = true [1637.51ms]
+ 0 pass
+ 1 fail
+
+=== CORRECTIONS ROUND: GATES ===
+--- db:reset ---
+Finished supabase db reset on branch redesign/ui-ux.
+--- db:test ---
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/sync_operation.test.sql ................ ok
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/sync_replay_idempotent.test.sql ........ ok
+All tests successful.
+Files=30, Tests=903, 12 wallclock secs ( 0.47 usr  0.21 sys +  0.82 cusr  0.76 csys =  2.26 CPU)
+Result: PASS
+--- bun test run 1 ---
+
+ 297 pass
+ 0 fail
+ 1328 expect() calls
+Ran 297 tests across 26 files. [40.02s]
+--- bun test run 2 ---
+
+ 297 pass
+ 0 fail
+ 1328 expect() calls
+Ran 297 tests across 26 files. [14.32s]
+--- astro check ---
+Result (188 files): 
+- 0 errors
+- 0 warnings
+- 11 hints
+
+--- build ---
+[2m12:34:04[22m [34m[build][39m [32m✓ Completed in 998ms.[39m
+[2m12:34:29[22m   [34m├─[39m [2m/turno/index.html[22m[33m[1m12:34:32[22m [WARN][39m `Astro.request.headers` was used when rendering the route `src/pages/turno.astro'`. `Astro.request.headers` is not available on prerendered pages. If you need access to request headers, make sure that the page is server-rendered using `export const prerender = false;` or by setting `output` to `"server"` in your Astro config to make all your pages server-rendered by default.
+[2m12:34:32[22m [32m✓ Completed in 8.03s.
+[2m12:34:32[22m [34m[build][39m [32m✓ Completed in 28.66s.[39m
+[2m12:35:04[22m [34m[build][39m [1mComplete![22m
+--- smoke (corrections round; dev PID 31892 + wrapper 40284 killed; sb-127 cookie; DB re-reset after) ---
+GET /turno 200, 0 user-name occurrences
+OK   health HEAD 204
+OK   ops en cola (CREATE, 2x START+CLOSE, ADD_CHANGE, 1 SAVE fundido, SUBMIT) = 8 -> ["CREATE_REPORT","START_STOP","CLOSE_STOP","START_STOP","CLOSE_STOP","ADD_CHANGE","SAVE_REPORT_FIELDS","SUBMIT_REPORT"]
+OK   seq 1..8 consecutivos
+OK   sin escrituras de red antes de confirmar -> []
+OK   subida completa, 8 aplicadas -> {"status":"complete","applied":8,"duplicates":0,"conflicts":0,"rejected":0,"remaining":0}
+OK   lote enviado a /api/sync/batch -> [{"url":"/api/sync/batch","method":"POST","status":200}]
+OK   device-status enviado tras la subida
+OK   reenvío: 8 duplicate -> ["duplicate","duplicate","duplicate","duplicate","duplicate","duplicate","duplicate","duplicate"]
+OK   reporte único en la BD, SUBMITTED, origin offline, con folio -> {"id":"7a8d827f-70c9-4b4a-a98a-e8bc70c3c67d","folio":"RPT-2026-000001","status":"SUBMITTED","origin":"offline","started_at":"2026-10-10T16:40:51.627+00:00","lot":"L-SMOKE","units_produced":1200,"created_by":"10000000-0000-0000-0000-000000000002"}
+OK   campos guardados
+OK   2 paradas sin duplicados, captured_offline -> 2
+OK   horas del dispositivo de las paradas -> [["2026-10-10T16:50:51.627+00:00","2026-10-10T16:55:51.627+00:00"],["2026-10-10T17:00:51.627+00:00","2026-10-10T17:05:51.627+00:00"]]
+OK   1 cambio, hora del dispositivo, captured_offline -> [{"id":"5c6b5d81-e8fb-4833-92d3-46c400ecb5b9","occurred_at":"2026-10-10T17:10:51.627+00:00","captured_offline":true}]
+OK   sin reportes duplicados
+OK   outbox local vacía tras subir
+SMOKE OK

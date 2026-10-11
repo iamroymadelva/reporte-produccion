@@ -1,0 +1,211 @@
+=== FASE 10 — avance ===
+[18:40] MINOR-1 (presencia mínima) y MINOR-3 (rango 366 días) implementados; bun test de los 3 archivos afectados: 36 pass / 0 fail.
+
+=== T106 Accesibilidad / móvil 375 px — Chrome 154 REAL (headless, CDP) contra astro dev :4399 + Supabase local ===
+Script: ejecutado desde el scratchpad (CDP: Emulation.setDeviceMetricsOverride 375x812 mobile, cookies de sesión reales por rol).
+Evidencia: docs/qa/phase10/*.png (11 capturas) y docs/qa/phase10/audit-375.json (desbordamiento horizontal, etiquetas, nombres accesibles, objetivos < 40 px).
+Resultado (11 pantallas: login, acceso-offline, /turno claro y oscuro, dashboard, reportes, consulta-offline, usuarios, historial, detalle como coord1 y auditor1):
+  - desbordamiento horizontal: ninguno (scrollWidth = clientWidth = 375 en las 11)
+  - exactamente un <h1> por pantalla; lang="es"; 0 controles de formulario sin etiqueta; 0 botones/enlaces sin nombre accesible; 0 imágenes sin alt
+  - objetivos táctiles < 40 px antes de corregir: campana y cuenta (36 px), botones de /consulta-offline (32 px), "Marcar todas como leídas". Corregidos (min-h-11 / size-11 en móvil).
+  - restantes < 40 px tras corregir: 5 enlaces de KPI del dashboard (37 px de alto, pero la tarjeta entera es el área de clic: after:absolute inset-0) y 2 checkboxes nativos de 16 px dentro de <label> de 44 px.
+  - Hallazgo adicional corregido: el panel de aprobación quedaba pegado a la tarjeta siguiente (island display:contents rompe space-y) -> mb-5.
+LIMITACIÓN: sin tableta ni lector de pantalla reales; contraste verificado solo visualmente en claro/oscuro (capturas), no con herramienta WCAG.
+Correcciones de código T106: OperatorShiftApp (fecha operativa es-CO, role=timer, estado vacío de cambios, aviso de campos obligatorios), OfflineOverview (fecha es-CO, objetivos 44 px), PendingSyncSummary (objetivos 44 px, aria-busy), CorrectionDialog (ayuda aria-describedby, aria-invalid, etiqueta "(obligatorio)"), ApprovalPanel (etiquetas de progreso, ayuda del motivo, mb-5), LiveDashboard (estado de error en vez de "Cargando…" indefinido), NotificationBell/NavUser (44 px en móvil).
+Tests nuevos: tests/a11y-phase10.test.tsx (5).
+
+=== SC-006 exportar un mes sembrado (< 30 s) ===
+Siembra: scripts/seed-month.sql (900 reportes, 5 400 paradas, 2 700 cambios, 7 200 filas de historial; sólo local). Medición: scripts/measure-sc006.ts contra astro dev (NO build de producción).
+OK   coord1 corrida 1: HTTP 200 en 25838 ms, 791 KiB. Filas por hoja: SEGUIMIENTO PRODUCCIÓN=903, DETALLE PARADAS=5403, CAMBIOS=2703, HISTORIAL=7203, CATÁLOGO PARADAS=20
+OK   coord1 corrida 2: HTTP 200 en 20819 ms, 791 KiB. Filas por hoja: SEGUIMIENTO PRODUCCIÓN=903, DETALLE PARADAS=5403, CAMBIOS=2703, HISTORIAL=7203, CATÁLOGO PARADAS=20
+OK   coord1 corrida 3: HTTP 200 en 18404 ms, 791 KiB. Filas por hoja: SEGUIMIENTO PRODUCCIÓN=903, DETALLE PARADAS=5403, CAMBIOS=2703, HISTORIAL=7203, CATÁLOGO PARADAS=20
+OK   auditor1 corrida 1: HTTP 200 en 19571 ms, 791 KiB. Filas por hoja: SEGUIMIENTO PRODUCCIÓN=903, DETALLE PARADAS=5403, CAMBIOS=2703, HISTORIAL=7203, CATÁLOGO PARADAS=20
+OK   auditor1 corrida 2: HTTP 200 en 21815 ms, 791 KiB. Filas por hoja: SEGUIMIENTO PRODUCCIÓN=903, DETALLE PARADAS=5403, CAMBIOS=2703, HISTORIAL=7203, CATÁLOGO PARADAS=20
+OK   auditor1 corrida 3: HTTP 200 en 17670 ms, 791 KiB. Filas por hoja: SEGUIMIENTO PRODUCCIÓN=903, DETALLE PARADAS=5403, CAMBIOS=2703, HISTORIAL=7203, CATÁLOGO PARADAS=20
+SC-006 cumplido en local (limite 30 s)
+NOTA: margen estrecho (17,7–25,8 s vs 30 s) con ~90 % del tope de 1 000 reportes; en dev, sin minificar y con RLS evaluada por fila. En Vercel (serverless) el tiempo puede diferir. Riesgo declarado, no optimizado en esta fase.
+
+=== SC-012 login sin conexión (< 15 s) ===
+CPU x1: 778 ms, 772 ms, 822 ms  (secure=true, cores=8)
+CPU x4: 714 ms, 763 ms, 766 ms  (secure=true, cores=8)
+CPU x6: 930 ms, 969 ms, 670 ms  (secure=true, cores=8)
+UA: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/154.0.0.0 Safari/537.36
+NOTA: PBKDF2 600 000 iteraciones medido en Chrome 154 real de escritorio (8 núcleos): 0,77–0,82 s. El estrangulamiento de CPU de DevTools NO afecta a WebCrypto nativo, por lo que las filas x4/x6 no representan una tableta de gama baja. SC-012 en tableta real: NO VERIFICADO (pendiente de release-checklist #20).
+[19:09] docs hechos: SECURITY, ARCHITECTURE, ADMIN_GUIDE, API. Pendientes: DATA_MODEL, PWA_OFFLINE, USER_GUIDE, DEPLOYMENT, gap-analysis, gates.
+[19:11] docs completos (8). Siguiente: gap-analysis + gates
+[19:14] gap-analysis.md reescrito (0 ❌; 6 ⚠ justificados). Siguiente: gates finales.
+
+=================== GATES FINALES (2026-10-10 19:33) ===================
+
+=== bun run db:reset ===
+{"target":"local","version":"","message":"Reset local database."}
+A new version of Supabase CLI is available: v2.120.0 (currently installed v2.116.0)
+
+=== bun run db:test ===
+supabase/tests/active_report_limits.test.sql .......... ok
+supabase/tests/admin_audit_root_only.test.sql ......... ok
+supabase/tests/approval.test.sql ...................... ok
+supabase/tests/cancellation_rules.test.sql ............ ok
+supabase/tests/catalog_delete_or_deactivate.test.sql .. ok
+supabase/tests/catalog_uniqueness.test.sql ............ ok
+supabase/tests/change_events.test.sql ................. ok
+supabase/tests/correct_report.test.sql ................ ok
+supabase/tests/critical_constraints.test.sql .......... ok
+supabase/tests/device_time_events.test.sql ............ ok
+supabase/tests/final_demo_readiness.test.sql .......... ok
+supabase/tests/full_audit.test.sql .................... ok
+supabase/tests/helpers/auth_as.sql .................... ok
+supabase/tests/login_lockout.test.sql ................. ok
+supabase/tests/notification_pagination.test.sql ....... ok
+supabase/tests/notification_transitions.test.sql ...... ok
+supabase/tests/notifications.test.sql ................. ok
+supabase/tests/offline_flags_forced.test.sql .......... ok
+supabase/tests/offline_login_audit.test.sql ........... ok
+supabase/tests/operator_workflow.test.sql ............. ok
+supabase/tests/realtime_publication.test.sql .......... ok
+supabase/tests/report_audit_visibility.test.sql ....... ok
+supabase/tests/report_cancellation.test.sql ........... ok
+supabase/tests/report_pagination_large.test.sql ....... ok
+supabase/tests/report_shift_assignment.test.sql ....... ok
+supabase/tests/rls_matrix.test.sql .................... ok
+supabase/tests/roles_root_invariant.test.sql .......... ok
+supabase/tests/shift_resolution.test.sql .............. ok
+supabase/tests/sync_cross_user_replay.test.sql ........ ok
+supabase/tests/sync_operation.test.sql ................ ok
+supabase/tests/sync_replay_idempotent.test.sql ........ ok
+supabase/tests/user_management_matrix.test.sql ........ ok
+supabase/tests/viewer_read_only.test.sql .............. ok
+All tests successful.
+Files=33, Tests=996, 13 wallclock secs ( 0.50 usr  0.31 sys +  1.05 cusr  0.90 csys =  2.76 CPU)
+Result: PASS
+
+=== bun test (corrida 1) ===
+
+ 438 pass
+ 0 fail
+ 1903 expect() calls
+Ran 438 tests across 37 files. [21.48s]
+
+=== bun test (corrida 2) ===
+
+ 438 pass
+ 0 fail
+ 1903 expect() calls
+Ran 438 tests across 37 files. [18.18s]
+
+=== bunx astro check ===
+- 0 errors
+- 0 warnings
+- 18 hints
+
+
+=== bun run build ===
+19:19:20 [@astrojs/vercel] Copying static files to .vercel/output/static
+19:19:20 [build] Server built in 52.94s
+19:19:20 [build] Complete!
+
+=== bun scripts/check-sw-install-build.ts (SW v5 contra el build real) ===
+SW INSTALL OK contra el build real (53 cacheados, 45 /_astro; /turno 8, /consulta-offline 7, /acceso-offline 6 referencias, faltan 0)
+
+=== SMOKE fase 7b (smoke-offline-e2e.ts vs astro dev :4399 + Supabase LOCAL; happy-dom+fake-indexeddb, SIN navegador real) ===
+OK   health HEAD 204
+OK   ops en cola (CREATE, 2x START+CLOSE, ADD_CHANGE, 1 SAVE fundido, SUBMIT) = 8 -> ["CREATE_REPORT","START_STOP","CLOSE_STOP","START_STOP","CLOSE_STOP","ADD_CHANGE","SA
+OK   seq 1..8 consecutivos
+OK   sin escrituras de red antes de confirmar -> []
+OK   subida completa, 8 aplicadas -> {"status":"complete","applied":8,"duplicates":0,"conflicts":0,"rejected":0,"remaining":0}
+OK   lote enviado a /api/sync/batch -> [{"url":"/api/sync/batch","method":"POST","status":200}]
+OK   device-status enviado tras la subida
+OK   reenvío: 8 duplicate -> ["duplicate","duplicate","duplicate","duplicate","duplicate","duplicate","duplicate","duplicate"]
+OK   reporte único en la BD, SUBMITTED, origin offline, con folio -> {"id":"789c855a-3c80-4626-832f-b88be0644e7b","folio":"RPT-2026-000001","status":"SUBMITTED","origin"
+OK   campos guardados
+OK   2 paradas sin duplicados, captured_offline -> 2
+OK   horas del dispositivo de las paradas -> [["2026-10-10T23:38:21.431+00:00","2026-10-10T23:43:21.431+00:00"],["2026-10-10T23:48:21.431+00:00","2026-10-10T23:53:21.431+
+OK   1 cambio, hora del dispositivo, captured_offline -> [{"id":"bec65a2f-9eed-4857-a2be-869598a04991","occurred_at":"2026-10-10T23:58:21.431+00:00","captured_offline":tr
+OK   sin reportes duplicados
+OK   outbox local vacía tras subir
+SMOKE OK
+
+=== SMOKE fase 8 (smoke-phase8.ts) ===
+OK: 49
+SMOKE OK
+
+=== SMOKE fase 9 (smoke-phase9.ts, Realtime REAL por WebSocket, sin navegador) ===
+OK: 42
+OK   coord1 recibe el INSERT del reporte en < 10 s -> "1967 ms"
+OK   auditor1 recibe el INSERT del reporte en < 10 s -> "530 ms"
+OK   coord1 recibe la parada en < 10 s -> "193 ms"
+OK   auditor1 recibe la parada en < 10 s -> "3468 ms"
+SMOKE OK
+
+=== QUICKSTART por HTTP real (scripts/quickstart-api.ts): Fase 2 y Fase 3 ===
+=== Fase 2 — Roles y aprobación ===
+OK   2.1 sexto intento (aun con contraseña correcta) queda bloqueado con el mensaje genérico -> "/iniciar-sesion?error=Usuario o contraseña incorrectos"
+OK   2.1 un usuario inexistente da el MISMO mensaje
+OK   2.1 pasado el bloqueo (15 min simulados) op2 entra -> 303
+OK   2.2/2.7 GET /recuperar-contrasena ya no existe (404) -> 404
+OK   2.2/2.7 POST /api/auth/recovery ya no existe (404) -> 404
+OK   2.2/2.7 GET /auth/confirmar ya no existe (404) -> 404
+OK   2.2/2.7 POST /api/catalogs/frequent ya no existe (404) -> 404
+OK   2.2 /api/admin/users/invite ya no existe: no crea ni invita a nadie (la ruta [id] lo trata como un usuario inexistente) -> {"status":303,"flash":"/administracion/usuarios?error=No fue posible consultar el usuario."}
+OK   2.3 coord1 crea un operario con usuario y contraseña -> "/administracion/usuarios?ok=Usuario creado."
+OK   2.3 el alta queda como USER_CREATED en el historial administrativo
+OK   2.3 la asignación quedó por máquina y turno
+OK   2.3 el nuevo operario inicia sesión con su contraseña inicial
+OK   2.3 coord1 restablece su contraseña (PASSWORD_RESET sin guardarla) -> "/administracion/usuarios?ok=Contraseña restablecida."
+OK   2.3 la contraseña nueva funciona y la anterior no
+OK   2.3 coord1 NO puede editar a root (solicitud directa rechazada, sin cambios) -> {"status":303,"flash":"/administracion/usuarios?error=Solo el administrador raíz puede gestionar este usuario."}
+OK   2.3 coord1 NO puede restablecer la contraseña de auditor1 -> {"status":303,"flash":"/administracion/usuarios?error=Solo el administrador raíz puede gestionar este usuario."}
+OK   2.3 coord1 NO puede crear un coordinador (403) -> 403
+OK   4.1 root crea un auditor y este inicia sesión
+OK   2.4 op1 inicia un reporte en su máquina del turno vigente (201) -> 201
+OK   2.4 turno y fecha operativa se rellenan solos
+OK   2.4 un segundo reporte activo queda bloqueado (409 ACTIVE_REPORT_EXISTS)
+OK   2.6b retirar a op1 con reporte activo está bloqueado -> "/administracion/usuarios?error=El usuario tiene datos pendientes de subir o un reporte activo."
+OK   2.6c op1 inicia una parada sin categoría (201) -> 201
+OK   2.6c cerrarla sin categoría se rechaza -> 400
+OK   2.6c con categoría la parada se cierra -> {"setCat":200,"close":200}
+OK   2.4 op1 completa los datos (PATCH) -> 200
+OK   2.5 coord1 no puede editar un reporte Activo (PATCH → 403) -> 403
+OK   2.5 no se puede aprobar un reporte Activo (409) -> 409
+OK   2.4 op1 envía el reporte -> 200
+OK   2.5 coord1 aprueba y cierra un reporte Enviado (200) -> 200
+OK   2.5 «Cerrado (aprobado)» con aprobador y hora
+OK   2.5 el detalle muestra «Aprobado por» a un auditor
+OK   2.6 (preparación) op2 inicia un reporte activo -> 201
+OK   2.6 un Activo recién abierto NO lo puede cancelar el coordinador (< 2 h tras el fin del turno) -> 409
+OK   2.6 pasada la ventana el coordinador SÍ lo cancela con motivo -> 200
+OK   2.6 el auditor no cancela nada (403) -> 403
+OK   2.6b last-contact devuelve { lastSeenAt, pendingCount, activeReportId }
+OK   2.6b sin reporte activo ni pendientes op1 se retira -> "/administracion/usuarios?ok=Usuario retirado y acceso revocado."
+OK   2.6b un usuario retirado no inicia sesión
+OK   2.6b se reactiva con la misma identidad y vuelve a entrar -> "/administracion/usuarios?ok=Usuario reactivado."
+OK   2.8 eliminar una categoría en uso la DESACTIVA (conserva el histórico) -> "/administracion/paradas?ok=Categoría de parada desactivada porque está en uso."
+OK   2.8 una categoría sin uso se elimina definitivamente -> "/administracion/paradas?ok=Categoría de parada eliminada."
+=== Fase 3 — Auditoría, filtros y Excel ===
+OK   3.1 corregir sin motivo suficiente se rechaza (400) -> 400
+OK   3.1 coord1 corrige un reporte Cerrado con motivo (200) -> 200
+OK   3.1 el historial guarda campo, anterior, nuevo, autor, rol y motivo
+OK   3.2 las ediciones del operario en su borrador también están en el historial
+OK   3.3 auditor1 ve el reporte Cerrado con su historial -> ["report","stops","changes","audit"]
+OK   3.3 auditor y coordinador NO ven /administracion/historial; root sí -> {"auditor":302,"coord":302,"root":200}
+OK   3.3 GET /api/admin/audit (root) con filtro por acción
+OK   3.3 GET /api/admin/audit prohibido para coordinador y auditor (403)
+OK   3.4 el Excel (rango + máquina + estado) contiene SEGUIMIENTO, DETALLE PARADAS, CAMBIOS e HISTORIAL -> ["SEGUIMIENTO PRODUCCIÓN","DETALLE PARADAS","CAMBIOS","HISTORIAL","CATÁLOGO PARADAS"]
+OK   3.4 el Excel respeta el filtro (1 reporte) y trae columnas de aprobación -> 4
+OK   3.5 filtro sin resultados → 204 (sin descarga) -> 204
+OK   3.5 el operario no exporta (403)
+
+QUICKSTART API OK
+
+=== QUICKSTART: pasos NO ejecutados (requieren navegador/tableta reales) ===
+Fase 4a 1-7 (DevTools Offline, recarga sin conexión, 'Posponer', corte a mitad de subida, dispositivo compartido, cierre con pendientes): cubiertos SOLO por bun test (happy-dom + fake-indexeddb) y los smokes 7b/8, NO en navegador.
+Fase 4b 1-4 (cerrar y reabrir el navegador sin conexión, bloqueo local, reconexión, /consulta-offline): idem (smoke 8), NO en navegador.
+Fase 5 1-3 (dos navegadores, WebSocket bloqueado en DevTools): cubierto por smoke 9 con Realtime real y bun test de las islas; el bloqueo del WebSocket NO se probó en un navegador.
+
+=================== DESVIACIONES / RIESGOS ===================
+- Servidor de desarrollo de las pruebas (pid 21676) detenido al final; base local reiniciada (db:reset) para dejarla limpia. No se usó .env.local.
+- NO se marcó ninguna tarea [X] ni se hizo commit.
+- SC-006 cumple (17,7-25,8 s) con margen estrecho y en desarrollo; SC-012 solo medido en escritorio (0,77-0,82 s); nada offline probado en tableta real (release-checklist B, D, E, F).
+- Tras la última captura de 375 px se añadió mb-5 a ApprovalPanel (no re-capturado).
+- Hallazgo menor no corregido: cualquier ruta de formulario devuelve 500 si la petición llega sin Content-Type de formulario (comportamiento de Astro, común a todas las rutas; los navegadores siempre lo envían).
+- Hallazgo menor no corregido: /configurar-contrasena y POST /api/auth/password existen pero no están enlazadas en la interfaz.

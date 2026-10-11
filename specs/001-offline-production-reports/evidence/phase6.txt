@@ -1,0 +1,27 @@
+Phase 6 - US3 auditor y auditoria (T057-T059, T061-T065) - evidencia
+
+FAILING-FIRST
+- T057 admin_audit_root_only.test.sql: con la migracion 20261012000200 movida fuera y db reset, el test
+  fallo "37 de 50" (INSERT/UPDATE/DELETE sin filas, audit_admin_entity inexistente). Con la migracion: 50/50 ok.
+- T058 viewer_read_only.test.sql: PASA desde el primer intento valido; las protecciones de solo lectura del
+  VIEWER ya existian (Phases 1-5). La primera ejecucion fallo solo por sondeos del propio test (columnas identity,
+  vistas no actualizables, triggers BEFORE) y se corrigio el sondeo, no las aserciones. Sin fallo previo real.
+- T059 tests/report-audit.test.ts: contra el comportamiento previo a T062 (sin orden ascendente ni
+  actorRoleLabel/entityType) fallaron 5 de 11; con T062: 11/11 pass.
+
+GATES (finales)
+- bun run db:reset: Finished supabase db reset (local)
+- bun run db:test: Files=27, Tests=731, Result: PASS
+- bun test (x2): 219 pass, 0 fail (ambas corridas)
+- bunx astro check: 0 errors, 0 warnings, 4 hints
+- bun run build: Complete!
+
+SMOKE (bun run dev --port 4399, cookie sb-127-auth-token, PID 17480 terminado)
+- root GET /api/admin/audit?entity_type=machines: filas INSERT/UPDATE/DEACTIVATE de la maquina creada con
+  performed_by=root, actor_role=ROOT, old/new con solo los campos cambiados; filtros action/actor/from OK; from=xx -> 400
+- coord1/auditor1/op1 -> 403; anonimo -> 401
+- /administracion/historial: root 200 (muestra Creacion/Modificacion/Desactivacion); coord1 302 -> /reportes
+- auditor1 GET /api/reports/<SUBMITTED>/timeline: report,stops,changes,audit; audit n=18 ascendente; DRAFT: n=1 ascendente;
+  Cache-Control: private, no-store; coord1 igual; op1 (propio DRAFT y SUBMITTED): sin clave audit; anonimo 401; id inexistente 404
+- Detalle: auditor1 ve "Historial del reporte" en SUBMITTED y DRAFT sin "Aprobar y cerrar"/"Corregir"; coord1 si los ve; op1 no ve el historial
+- Dashboard auditor1: KPIs en curso, enviados, cerrados, cancelados, en parada y abiertos fuera de turno; /reportes lista ambos estados, sin "Abrir reporte de maquina"

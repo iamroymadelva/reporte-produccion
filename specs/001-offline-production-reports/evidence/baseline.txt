@@ -1,0 +1,108 @@
+===== $ bun run db:reset =====
+$ supabase db reset --local
+Resetting local database...
+Recreating database...
+Initialising schema...
+Seeding globals from roles.sql...
+Applying migration 20260830140000_initial_mvp.sql...
+Applying migration 20260830190000_catalogs_snapshots_and_submission.sql...
+Applying migration 20260830200000_add_cancelled_status.sql...
+Applying migration 20260830200100_report_cancellation.sql...
+Applying migration 20260830210000_final_demo_readiness.sql...
+Applying migration 20260831090000_catalog_normalized_uniqueness.sql...
+Applying migration 20260831120000_service_role_admin_grants.sql...
+Applying migration 20260916020525_operator_report_workflow.sql...
+Applying migration 20260927233202_report_audit_visibility_and_snapshots.sql...
+Applying migration 20260928003331_finalized_report_correction_audit.sql...
+Applying migration 20261008165311_notifications.sql...
+Seeding data from supabase/seed.sql...
+Restarting containers...
+Finished supabase db reset on branch redesign/ui-ux.
+{"target":"local","version":"","message":"Reset local database."}
+A new version of Supabase CLI is available: v2.120.0 (currently installed v2.116.0)
+We recommend updating regularly for new features and bug fixes: https://supabase.com/docs/guides/cli/getting-started#updating-the-supabase-cli
+----- exit code: 0 -----
+
+===== $ bun run db:test =====
+$ supabase test db --local
+Connecting to local database...
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/catalog_uniqueness.test.sql ........ ok
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/critical_constraints.test.sql ...... ok
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/final_demo_readiness.test.sql ...... ok
+psql:/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/notification_pagination.test.sql:2: NOTICE:  extension "pgtap" already exists, skipping
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/notification_pagination.test.sql ... ok
+psql:/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/notification_transitions.test.sql:2: NOTICE:  extension "pgtap" already exists, skipping
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/notification_transitions.test.sql .. ok
+psql:/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/notifications.test.sql:2: NOTICE:  extension "pgtap" already exists, skipping
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/notifications.test.sql ............. ok
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/operator_workflow.test.sql ......... ok
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/report_audit_visibility.test.sql ... ok
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/report_cancellation.test.sql ....... ok
+psql:/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/report_pagination_large.test.sql:2: NOTICE:  extension "pgtap" already exists, skipping
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/report_pagination_large.test.sql ... ok
+All tests successful.
+Files=10, Tests=192,  4 wallclock secs ( 0.18 usr  0.11 sys +  0.30 cusr  0.27 csys =  0.86 CPU)
+Result: PASS
+A new version of Supabase CLI is available: v2.120.0 (currently installed v2.116.0)
+We recommend updating regularly for new features and bug fixes: https://supabase.com/docs/guides/cli/getting-started#updating-the-supabase-cli
+----- exit code: 0 -----
+
+===== $ bun test =====
+bun test v1.4.2 (744846f84)
+
+ 66 pass
+ 0 fail
+ 327 expect() calls
+Ran 66 tests across 6 files. [41.55s]
+----- exit code: 0 -----
+
+===== $ bunx astro check =====
+[2m18:07:48[22m [34m[types][39m Generated [2m519ms[22m
+[2m18:07:48[22m [34m[check][39m Getting diagnostics for Astro files in C:\Users\ACER\Desktop\PROJECTS\empacando\reporte-produccion...
+[96msrc/layouts/BaseLayout.astro[0m:[93m60[0m:[93m43[0m - [93mwarning[0m[90m ts(6387): [0mThe signature '(callback: ((this: MediaQueryList, ev: MediaQueryListEvent) => any) | null): void' of 'media.addListener' is deprecated.
+
+[7m60[0m         else if (media.addListener) media.addListener(listener);
+[7m  [0m [93m                                          ~~~~~~~~~~~[0m
+[96msrc/layouts/BaseLayout.astro[0m:[93m60[0m:[93m24[0m - [93mwarning[0m[90m ts(6385): [0m'addListener' is deprecated.
+
+[7m60[0m         else if (media.addListener) media.addListener(listener);
+[7m  [0m [93m                       ~~~~~~~~~~~[0m
+[96msrc/layouts/BaseLayout.astro[0m:[93m151[0m:[93m11[0m - [93mwarning[0m[90m ts(6385): [0m'returnValue' is deprecated.
+
+[7m151[0m     event.returnValue = "";
+[7m   [0m [93m          ~~~~~~~~~~~[0m
+
+[96mtests/operator-ui.test.tsx[0m:[93m253[0m:[93m5[0m - [93mwarning[0m[90m ts(80007): [0m'await' has no effect on the type of this expression.
+
+[7m253[0m     await expect(guardedMutationFetch("/forbidden-offline", { method: "POST" })).rejects.toThrow("requiere conexión");
+[7m   [0m [93m    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+Result (131 files): 
+- 0 errors
+- 0 warnings
+- 4 hints
+
+----- exit code: 0 -----
+
+===== $ bun run build =====
+$ astro build
+[2m18:08:47[22m [34m[types][39m Generated [2m280ms[22m
+[2m18:08:47[22m [34m[build][39m output: [34m"server"[39m
+[2m18:08:47[22m [34m[build][39m mode: [34m"server"[39m
+[2m18:08:47[22m [34m[build][39m directory: [34mC:\Users\ACER\Desktop\PROJECTS\empacando\reporte-produccion\dist\[39m
+[2m18:08:47[22m [34m[build][39m adapter: [32m@astrojs/vercel[39m
+[2m18:08:47[22m [34m[build][39m Collecting build info...
+[2m18:08:47[22m [34m[build][39m [32m✓ Completed in 1.05s.[39m
+[2m18:08:48[22m [34m[build][39m Building server entrypoints...
+[2m18:08:49[22m [34m[vite][39m [32m✓ built in 1.26s[39m
+[2m18:08:55[22m [34m[vite][39m [32m✓ built in 5.87s[39m
+[2m18:09:09[22m [34m[vite][39m [32m✓ built in 14.14s[39m
+[2m18:09:09[22m [34m[build][39m Rearranging server assets...
+[2m18:09:09[22m [34m[build][39m [32m✓ Completed in 21.69s.[39m
+[2m18:09:09[22m [34m[@astrojs/vercel][39m Bundling function ..\..\..\..\dist\server\entry.mjs
+[2m18:09:13[22m [34m[build][39m Waiting for integration [1m"@astrojs/vercel"[22m, hook [1m"astro:build:done"[22m...
+[2m18:09:52[22m [34m[@astrojs/vercel][39m Copying static files to .vercel/output/static
+[2m18:09:52[22m [34m[build][39m Server built in [1m1m 5s[22m
+[2m18:09:52[22m [34m[build][39m [1mComplete![22m
+----- exit code: 0 -----
+
