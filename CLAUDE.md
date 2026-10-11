@@ -16,12 +16,14 @@ supabase/       # migrations/, seed.sql, tests/ (pgTAP)
 public/         # sw.js (service worker), manifest, icons, offline.html
 tests/          # bun test (happy-dom, fake-indexeddb)
 specs/          # Spec Kit features (001-offline-production-reports: spec, plan, research, data-model, contracts)
-docs/           # Architecture, data model, PWA/offline, security
+docs/           # Architecture, data model, PWA/offline, security, TESTING.md (pruebas locales)
 ```
 
 ## Commands
 
 bun test; bun run db:test; bunx astro check; bun run build; bun run db:reset (local Supabase)
+
+**WARNING: `.env.local` = PRODUCCIÓN.** `bun run dev` fuerza el Supabase local (scripts/dev-local.ts); `bun run dev:remote` usa `.env.local`. Ver [docs/TESTING.md](docs/TESTING.md).
 
 ## Code Style
 

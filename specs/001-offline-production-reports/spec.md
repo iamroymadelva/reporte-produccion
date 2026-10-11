@@ -59,7 +59,8 @@ esperado de la plataforma para los cuatro roles.
   únicamente cuando el envío del operario ya llegó al servidor. No existen conflictos de edición
   concurrente sobre un reporte activo.
 - Q: ¿Qué pasa con un reporte que su operario deja activo al terminar el turno (abandonado)? → A: Un
-  reporte que sigue activo después de terminar su turno queda marcado como "abierto fuera de turno".
+  reporte que sigue activo 2 horas después del fin de su turno (margen configurable) queda marcado
+  como "abierto fuera de turno".
   Solo su autor o el coordinador (o el administrador raíz) pueden cancelarlo, con motivo obligatorio.
   Esta es la única excepción a que el coordinador no cancele reportes activos; nunca puede editarlos.
 - Q: ¿A qué fecha pertenece un reporte para filtros, tablero y Excel? → A: A su fecha operativa, que
@@ -67,6 +68,20 @@ esperado de la plataforma para los cuatro roles.
   operario no la escribe). Un turno nocturno del día 9 al 10 pertenece al día 9.
 - Q: ¿Quién puede consultar el historial administrativo? → A: Solo el administrador raíz. Coordinadores
   y auditores no lo ven; el auditor ve únicamente el historial de cambios de los reportes.
+- Q: ¿Qué pasa si se desactiva un usuario con datos pendientes de subir? → A: No debe poder
+  desactivarse. La plataforma bloquea la desactivación si el usuario tiene un reporte activo o si el
+  último estado de pendientes informado por alguno de sus dispositivos es mayor que cero. Como el
+  servidor no puede conocer dispositivos que nunca reconectaron, antes de desactivar se muestra la
+  hora del último contacto del usuario y se exige confirmación; si aun así quedaran datos en un
+  dispositivo, el coordinador reactiva temporalmente al usuario y es el propio autor quien los sube.
+- Q: ¿Qué pasa si un dispositivo informó pendientes y nunca vuelve a conectarse, bloqueando la
+  desactivación del usuario? → A: El administrador raíz puede forzar la desactivación con motivo
+  obligatorio; queda auditado y el usuario marcado como "posibles datos sin subir". El coordinador
+  sigue bloqueado.
+- Q: ¿Desde qué momento un reporte activo cuenta como "abierto fuera de turno"? → A: 2 horas después
+  del fin de su turno (margen configurable), para dar tiempo a sincronizar a quien trabajó sin señal.
+- Q: ¿Cuándo indica el operario la categoría de una parada? → A: Es opcional al iniciarla y
+  obligatoria al cerrarla; no se puede enviar un reporte con paradas sin categoría.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -252,10 +267,14 @@ forma directa y verificar que es rechazada.
 - **Asignación revocada durante el offline**: si la asignación de máquina del operario cambia mientras
   está sin conexión, los datos capturados de su turno original se suben igualmente al confirmar,
   marcados como "capturado sin conexión", y el coordinador los ve señalados para revisión.
-- **Usuario desactivado o contraseña cambiada mientras el dispositivo estaba offline**: al reconectar,
-  la plataforma revalida la identidad; si el usuario fue desactivado, se cierra su sesión y sus datos
-  pendientes se suben solo si un coordinador lo autoriza, marcados para revisión; si cambió la
-  contraseña, el usuario debe iniciar sesión con la nueva antes de confirmar la subida.
+- **Desactivar un usuario con datos pendientes**: no se permite si el usuario tiene un reporte activo
+  o si alguno de sus dispositivos informó pendientes (FR-005a). Si un dispositivo que nunca reconectó
+  conserva datos de un usuario ya desactivado, al reconectar se cierra la sesión y los datos quedan
+  en el dispositivo sin subirse; el coordinador puede reactivar temporalmente al usuario para que él
+  mismo inicie sesión y confirme la subida, que queda marcada para revisión. Nadie más puede subirlos
+  (FR-019).
+- **Contraseña cambiada mientras el dispositivo estaba offline**: al reconectar, la plataforma revalida
+  la identidad; el usuario debe iniciar sesión con la nueva contraseña antes de confirmar la subida.
 - **Inicio de sesión offline sin habilitación previa**: un usuario que nunca inició sesión con conexión
   en ese dispositivo, o cuya habilitación offline caducó, recibe un mensaje claro de que necesita
   conexión para entrar.
@@ -267,7 +286,8 @@ forma directa y verificar que es rechazada.
   confirmación explícita antes de cerrar sesión; los datos permanecen asociados a su autor.
 - **Subida parcialmente fallida**: si la conexión cae a mitad de la subida, los elementos ya aceptados
   quedan como sincronizados y el resto sigue pendiente; nunca se duplica un reporte, parada o cambio.
-- **Parada abierta al terminar el turno**: no se puede enviar un reporte con una parada sin hora de fin.
+- **Parada abierta al terminar el turno**: no se puede enviar un reporte con una parada sin hora de fin
+  ni con paradas sin categoría.
 - **Paradas solapadas o con hora de fin anterior a la de inicio**: se rechazan con un mensaje claro,
   tanto online como offline.
 - **Reloj del dispositivo desajustado**: las horas registradas offline se conservan tal como las
@@ -298,6 +318,14 @@ forma directa y verificar que es rechazada.
 - **FR-004**: La plataforma MUST bloquear temporalmente (15 minutos) un usuario tras 5 intentos de
   inicio de sesión fallidos seguidos y mostrar mensajes de error que no revelen si el usuario existe.
 - **FR-005**: La plataforma MUST garantizar que siempre exista al menos un administrador raíz activo.
+- **FR-005a**: La plataforma MUST impedir desactivar o retirar a un usuario que tenga un reporte activo
+  o cuyo último estado informado por cualquiera de sus dispositivos indique datos pendientes de subir.
+  Cada dispositivo MUST informar al servidor su número de pendientes y la hora cada vez que tenga
+  conexión. Antes de desactivar, la plataforma MUST mostrar la hora del último contacto del usuario y
+  exigir una confirmación explícita que advierta que pueden existir datos en dispositivos sin conexión.
+  Solo el administrador raíz MAY forzar la desactivación o el retiro pese a ese bloqueo, indicando un
+  motivo obligatorio; la acción MUST quedar en el historial administrativo y el usuario MUST quedar
+  marcado como "posibles datos sin subir". Los coordinadores MUST NOT poder forzarla.
 - **FR-006**: La plataforma MUST permitir iniciar sesión sin conexión con usuario y contraseña a
   cualquier usuario activo que haya iniciado sesión con conexión en ese mismo dispositivo dentro de
   los últimos 7 días. El primer inicio de sesión en un dispositivo MUST requerir conexión.
@@ -325,7 +353,8 @@ forma directa y verificar que es rechazada.
   máquina que tenga asignada. Esta regla MUST aplicarse también a los reportes iniciados sin conexión.
 - **FR-008**: Los operarios MUST poder registrar, en un reporte activo, los datos de producción, las
   paradas (hora de inicio, hora de fin, categoría y observación) y los cambios (hora, tipo y
-  descripción).
+  descripción). La categoría de una parada MAY indicarse al iniciarla y MUST indicarse a más tardar al
+  cerrarla; un reporte MUST NOT enviarse con paradas sin categoría.
 - **FR-008a**: La hora de inicio y fin de cada parada y la hora de cada cambio MUST ser la del
   dispositivo en el momento en que el operario registra el evento (online u offline); la plataforma
   MUST guardar también la hora de llegada al servidor, MUST marcar para revisión los eventos
@@ -336,8 +365,8 @@ forma directa y verificar que es rechazada.
 - **FR-010**: Los operarios MUST poder enviar o cancelar (con motivo) sus propios reportes activos, y
   MUST NOT poder editar reportes enviados, cerrados o cancelados.
 - **FR-010a**: Un reporte activo MUST poder cancelarlo su operario autor en cualquier momento, con
-  motivo. Un reporte que sigue activo después de terminar su turno MUST marcarse como "abierto fuera de
-  turno", visible para coordinadores y auditores; solo en ese estado MUST poder cancelarlo también un
+  motivo. Un reporte que sigue activo 2 horas después del fin de su turno (margen configurable) MUST
+  marcarse como "abierto fuera de turno", visible para coordinadores y auditores; solo en ese estado MUST poder cancelarlo también un
   coordinador o el administrador raíz, con motivo obligatorio, con conexión y quedando en el historial
   de cambios. Los auditores MUST NOT cancelar reportes, y los reportes enviados o cerrados MUST NOT
   poder cancelarse por ningún rol.

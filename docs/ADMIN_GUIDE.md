@@ -1,116 +1,120 @@
 # Manual de Administración
 
-## 1. Alcance del Administrador
+## 1. Alcance de los roles de gestión
 
-El Administrador consulta todos los reportes visibles para su rol, gestiona usuarios y asignaciones, mantiene los catálogos operativos, realiza las correcciones de reportes que están soportadas y genera exportaciones. La interfaz no reemplaza los controles de autorización y de integridad de la base de datos.
+Hay dos roles de gestión:
+
+- **Administrador raíz (ROOT):** puede hacer todo lo del coordinador y, además, crear, editar, desactivar y reactivar **coordinadores y auditores**, restablecer la contraseña de cualquier usuario, consultar el **historial administrativo** y **forzar** la desactivación de un usuario con datos pendientes. Siempre debe existir al menos un raíz activo; la plataforma impide desactivar al último.
+- **Coordinador (ADMINISTRATOR):** gestiona **operarios**, máquinas, asignaciones por turno y catálogos; revisa, aprueba y corrige reportes; cancela reportes abiertos fuera de turno; revisa la cuarentena de sincronización y exporta. **No** puede crear ni editar coordinadores, auditores ni al raíz (la interfaz oculta las acciones y la solicitud directa recibe 403), ni forzar desactivaciones, ni ver el historial administrativo.
+
+La interfaz no reemplaza los controles de autorización y de integridad de la base de datos.
 
 ## 2. Gestión de usuarios
 
-### Invitar usuario
+En **Administración > Usuarios** seleccione **Nuevo usuario**.
 
-En **Administración > Usuarios y asignaciones**, seleccione **Nuevo usuario** e indique:
+### Alta con contraseña inicial
 
-- Correo electrónico.
-- Nombre.
-- Rol.
+Indique:
 
-La persona recibe una invitación y configura su propia contraseña. El Administrador no asigna ni conoce esa contraseña. Si el correo ya pertenece a un usuario activo, no se crea otro. Si pertenece a una identidad retirada, debe reactivarse la existente.
+- **Nombre de usuario** (3 a 32 caracteres: letras minúsculas, números, punto, guion y guion bajo). Es único, **no se puede cambiar** y es lo que la persona escribe para iniciar sesión. No hay correo electrónico, invitación ni recuperación por correo.
+- Nombre completo y cargo.
+- Rol (el coordinador solo ofrece **Operario**).
+- **Contraseña inicial** (mínimo 8 caracteres) y su confirmación. Comuníquela a la persona por un canal seguro; el sistema no la guarda en el historial.
+- Para un operario: sus **asignaciones** de máquina **por turno**, con vigencia opcional (desde/hasta).
 
-### Roles
-
-- **Administrador:** reportes, exportación y administración.
-- **Operario:** reportes propios de máquinas asignadas y flujo operativo.
-- **Consulta:** lectura de reportes enviados y exportación autorizada.
+Si el nombre de usuario ya existe, incluso en una cuenta retirada, no se crea otro: reactive la existente. El alta queda en el historial administrativo (`USER_CREATED`).
 
 ### Editar usuario
 
-La edición permite actualizar nombre, correo, cargo, rol, estado y asignaciones de máquinas. Un cambio de correo conserva el mismo UUID de Supabase Auth; no crea una identidad de reemplazo. El correo debe estar disponible para esa identidad.
+Permite actualizar nombre, cargo, rol (según la matriz), estado y asignaciones. El nombre de usuario no se edita. Al guardar, las asignaciones de máquinas o turnos que ya estén inactivos se desactivan porque no aparecen en el formulario. Las fechas de vigencia de las asignaciones que se conservan no cambian salvo que marque **Aplicar esta vigencia a todas las asignaciones**. Los cambios quedan en el historial administrativo (`UPDATE`, `ASSIGNMENTS_CHANGED`).
 
-Las máquinas asignadas determinan en cuáles puede crear reportes un Operario. Los demás roles no requieren asignaciones operativas activas.
+### Restablecer contraseña
+
+**Restablecer contraseña** asigna una contraseña nueva (mínimo 8 caracteres). Queda `PASSWORD_RESET` en el historial sin guardar la contraseña. Un coordinador solo puede hacerlo a operarios.
+
+### Asignaciones por turno
+
+Un operario solo puede iniciar reportes para las máquinas que tenga asignadas **en el turno vigente** y dentro de la vigencia de la asignación. Si no tiene ninguna, verá "Solicita una asignación a tu coordinador". Las asignaciones se editan en el formulario del usuario.
 
 ### Protección de la propia cuenta
 
-El Administrador autenticado no puede degradar su propio rol ni desactivar su propia cuenta mediante este flujo. Estas protecciones reducen el riesgo de perder accidentalmente el acceso administrativo actual.
+No puede degradar su propio rol ni desactivar su propia cuenta.
 
-### Retirar usuario
+### Desactivar o retirar con datos pendientes (FR-005a)
 
-**Retirar usuario**:
+El diálogo muestra **Último contacto**, los pendientes informados por los dispositivos y si el usuario tiene un reporte activo.
 
-- Conserva el UUID, perfil e historial.
-- Bloquea el acceso en Supabase Auth mediante una prohibición.
-- Desactiva sus asignaciones.
-- Marca el perfil como **Retirado** con metadatos de retiro.
-- Registra `REMOVE_USER` en la auditoría administrativa.
+- Con un **reporte activo** o **pendientes sin subir** la acción está **bloqueada**: "El usuario tiene datos pendientes de subir o un reporte activo". Espere a que el operario envíe o cancele y suba sus datos.
+- Sin reporte activo ni pendientes, debe marcar la advertencia de que pueden existir datos en dispositivos sin conexión.
+- Solo el **administrador raíz** puede **Forzar de todos modos**, indicando un motivo (mínimo 10 caracteres). El usuario queda marcado **Posibles datos sin subir** y la acción queda en el historial (`FORCE_DEACTIVATE`).
+- Si un dispositivo que nunca reconectó conserva datos de un usuario ya desactivado, al reconectar se cierra la sesión y los datos quedan en el dispositivo. Reactive temporalmente al usuario para que él mismo inicie sesión y suba sus datos (quedarán marcados para revisión); nadie más puede subirlos.
 
-No elimina reportes ni sustituye la identidad histórica.
+### Retirar y reactivar
 
-### Reactivar usuario
-
-**Reactivar usuario** utiliza la misma identidad, UUID, correo, contraseña e historial. No envía una nueva invitación ni restablece automáticamente la contraseña. El sistema elimina la prohibición de Auth y limpia el estado formal de retiro.
-
-Para un Operario, seleccione explícitamente las máquinas activas que deben quedar asignadas; las asignaciones anteriores no se restauran automáticamente. La implementación actual permite confirmar sin seleccionar máquinas, por lo que debe revisar esta selección de acuerdo con la operación. Para otros roles no se activan asignaciones de máquina.
+**Retirar usuario** conserva UUID, perfil e historial, bloquea el acceso, desactiva las asignaciones, marca el perfil como **Retirado** y registra `REMOVE_USER`. **Reactivar usuario** usa la misma identidad y exige elegir explícitamente las asignaciones que se habilitan (las anteriores no se restauran). Registra `REACTIVATE_USER`.
 
 ## 3. Gestión de máquinas
 
-**Máquinas** permite crear, editar, desactivar, reactivar y solicitar eliminación. Código y nombre no pueden duplicarse bajo las reglas de normalización. Una máquina referenciada por reportes no se elimina. Cuando una eliminación es segura, se retiran sus asignaciones asociadas.
+**Máquinas** permite crear, editar, desactivar, reactivar y eliminar. Código y nombre no pueden duplicarse bajo las reglas de normalización. Una máquina con reportes o referencias no se elimina: se **desactiva**.
 
-## 4. Productos
+## 4. Catálogos
 
-**Productos frecuentes** permite crear, editar, desactivar, reactivar y eliminar cuando no existen referencias que lo impidan. Los reportes conservan el nombre de producto registrado como dato histórico.
+Productos, clientes, líneas (áreas), tipos de dosificador, turnos, categorías de parada y **tipos de cambio** siguen las mismas acciones. Los operarios solo pueden **elegir** elementos activos; no crean ni modifican catálogos.
 
-## 5. Clientes
+- **Categorías de parada:** código numérico (alimenta las columnas `P-{código}` del Excel), nombre, descripción y estado. `1` y `01` son el mismo código.
+- **Tipos de cambio:** vienen sembrados Producto, Formato, Lote y Otro.
+- **Turnos:** nombre y horas de inicio y fin; el turno vigente y la fecha operativa de cada reporte se calculan con ellos (un turno que cruza la medianoche pertenece al día en que empieza).
 
-**Clientes frecuentes** sigue las mismas acciones de catálogo. Los reportes conservan el nombre de cliente registrado como dato histórico.
+## 5. Eliminar vs. desactivar
 
-## 6. Áreas/Líneas
+**Eliminar** consulta primero el uso: si el elemento está referenciado por reportes u otros datos, se **desactiva** (deja de ofrecerse en reportes nuevos y los históricos conservan su valor); si no tiene uso, se elimina de forma definitiva **tras una confirmación explícita**. **Reactivar** devuelve el mismo registro a uso. Nunca recree una variante para evadir una referencia o un duplicado.
 
-**Áreas / Líneas** clasifica el lugar operativo del reporte. Se puede crear, editar, desactivar, reactivar o eliminar si las referencias históricas lo permiten.
+La comparación de nombres y códigos ignora mayúsculas y espacios externos, conserva acentos e incluye registros inactivos.
 
-## 7. Tipos de dosificador
+## 6. Supervisión de reportes
 
-**Tipos de dosificador** mantiene los tipos disponibles para el reporte. Admite las acciones comunes de catálogo y respeta referencias históricas.
+- **Dashboard:** KPI por estado (en curso, enviados, cerrados, cancelados, en parada, abiertos fuera de turno), máquinas en parada, reportes recientes y conflictos de sincronización. Se actualiza **sin recargar**; si el tiempo real no está disponible verá "Actualización automática cada 8 s".
+- **Operarios en línea:** "En línea", "En línea con pendientes" o "Sin conexión" (con la última vez). Es **solo indicativo**: un operario podría falsearlo desde su navegador y no se usa para decidir permisos ni desactivaciones.
+- **Reportes:** filtros por rango de fechas operativas, máquina, turno, operario y estado, más "Con parada activa" y "Abiertos fuera de turno". Un reporte **Activo** solo se puede ver: lo edita únicamente su operario.
 
-## 8. Turnos
+## 7. Aprobación
 
-**Turnos** mantiene nombre y horas de inicio y fin. Admite crear, editar, desactivar, reactivar y eliminar cuando sea válido.
+Un reporte **Enviado** muestra **Aprobar y cerrar**. Al confirmar pasa a **Cerrado (aprobado)** con su aprobador y la fecha y hora, visibles para todos los roles y en el Excel. No se puede aprobar un reporte activo, cancelado o con **conflictos de sincronización abiertos**; la pantalla indica el motivo. La aprobación requiere conexión.
 
-## 9. Categorías de parada
+## 8. Correcciones
 
-**Categorías de parada** mantiene código numérico, nombre, descripción y estado. El código alimenta las columnas `P-{código}` de la exportación. El código y el nombre no pueden duplicarse; valores como `1` y `01` representan el mismo código numérico.
+En un reporte **Enviado** o **Cerrado** puede modificar campos, paradas y cambios; al guardar se abre **Corregir reporte** con el resumen y el **motivo obligatorio** (mínimo 5 caracteres). Cada campo corregido queda en el historial con valor anterior, valor nuevo, autor, rol, fecha y motivo. Las correcciones requieren conexión.
 
-## 10. Desactivar vs eliminar
+## 9. Reportes abiertos fuera de turno
 
-**Desactivar** conserva el registro y su identidad para la historia, pero evita su uso normal en nuevas operaciones. **Reactivar** vuelve a habilitar ese mismo registro y no crea uno nuevo.
+Un reporte que sigue **Activo** 2 horas después del fin de su turno (margen configurable en `app_settings.off_shift_grace`) aparece como **Abierto fuera de turno** en el dashboard y la lista. Solo entonces el coordinador o el raíz ve **Cancelar (abierto fuera de turno)**, que exige un motivo y cancela también las paradas abiertas. Antes de ese plazo solo puede cancelarlo su operario. Si el operario tenía datos pendientes sin subir, la cancelación se respeta y esos datos llegan después a la cuarentena.
 
-**Eliminar** intenta retirar físicamente un registro. Las referencias de reportes u otros datos pueden bloquear esta acción. Cuando el registro tiene historia, prefiera desactivar. Nunca recree una variante para evadir una referencia o una restricción de duplicado.
+## 10. Cuarentena de sincronización
 
-## 11. Prevención de duplicados
+Los datos capturados sin conexión que no se pueden aplicar (reporte cancelado en el servidor, asignación revocada, dos dispositivos del mismo operario, hora del dispositivo desajustada) se conservan en el reporte como **capturados sin conexión, en revisión** y el coordinador recibe una notificación. En el detalle del reporte:
 
-La comparación de nombres y códigos:
+- **Marcar revisado:** conserva el valor del servidor y libera la aprobación (nota opcional).
+- **Aplicar con motivo:** aplica los datos como una corrección (motivo mínimo 5 caracteres; solo reportes enviados o cerrados).
 
-- Ignora mayúsculas y minúsculas.
-- Ignora espacios al principio y al final.
-- Conserva espacios internos.
-- Conserva diferencias de acentos.
-- Incluye registros inactivos.
+Revise las horas con criterio: provienen del reloj del dispositivo del operario.
 
-Por ejemplo, un registro desactivado sigue reservando su nombre y código. Use **Reactivar** en lugar de crear un duplicado. El nombre completo de un usuario no tiene esta restricción; el correo es responsabilidad de la identidad de Supabase Auth.
+## 11. Auditoría disponible
 
-## 12. Correcciones administrativas de reportes
+- **Historial del reporte** (coordinador, raíz y auditor): toda creación y modificación de reportes, paradas y cambios por cualquier rol, con autor, rol, fecha, campo, valores, motivo y marca de captura sin conexión (con la hora real de llegada).
+- **Historial administrativo** (solo raíz, **Administración > Historial administrativo**, con filtros por fecha, autor y acción): altas, ediciones, desactivaciones, reactivaciones y eliminaciones de usuarios, restablecimientos de contraseña, roles, máquinas, asignaciones, catálogos y ajustes; además `FORCE_DEACTIVATE`, `BOOTSTRAP_ROOT` y los inicios de sesión sin conexión (`OFFLINE_LOGIN`, que llegan en la primera página con conexión, máximo 20 por usuario y hora).
+- Nadie, incluido el raíz, puede editar o borrar el historial.
 
-El Administrador puede abrir los reportes y realizar únicamente las correcciones que la pantalla y las reglas actuales permiten. Esta funcionalidad no amplía los permisos de edición de borradores. En reportes **Enviados** o **Cancelados**, los cambios quedan preparados en pantalla hasta seleccionar **Guardar cambios**; una confirmación puede incluir varios campos. La base de datos protege folio, creador, estados y demás campos inmutables. Cada campo corregido agrega un registro a `report_audit_log`; nunca sustituye uno anterior. El Administrador no crea reportes y la interfaz no ofrece el flujo operativo START/STOP para alterar paradas.
+No existe auditoría de lecturas, exportaciones, inicios de sesión en línea ni intentos fallidos.
 
-## 13. Auditoría disponible
+## 12. Exportación
 
-La auditoría implementada actualmente cubre:
+Raíz, coordinador y auditor pueden **Descargar Excel** con los mismos filtros de la lista. El archivo incluye las hojas SEGUIMIENTO PRODUCCIÓN, DETALLE PARADAS, CAMBIOS, HISTORIAL y CATÁLOGO PARADAS, con las columnas de aprobación. Si ningún reporte cumple el filtro se informa en lugar de generar un archivo vacío; si se superan los límites (1 000 reportes, 10 000 paradas, 50 000 filas de historial) se pide un período más corto.
 
-- Cambios administrativos confirmados en campos de reportes enviados o cancelados, con valor anterior, nuevo, actor y fecha. La edición normal de campos mientras el reporte está en curso no se registra como corrección administrativa.
-- Inicio, cambio de categoría, cierre, cancelación y correcciones administrativas de paradas.
-- Consulta del historial completo del reporte desde su detalle para Administrador y Consulta, con nombres legibles de campos, valores de catálogo y número cronológico de parada.
-- Eliminaciones exitosas de catálogos.
-- Retiro de usuario (`REMOVE_USER`).
-- Reactivación de usuario (`REACTIVATE_USER`).
+## 13. Consulta sin conexión
 
-Administrador y Consulta pueden leer el historial únicamente de los reportes que sus políticas permiten consultar. Operario no recibe acceso a esta sección. Las cuentas de aplicación no pueden insertar, modificar ni eliminar directamente sus filas; el registro se genera mediante funciones y disparadores de base de datos.
+Sin conexión, coordinadores y auditores ven **Consulta sin conexión** con el último resumen descargado y su hora ("Datos de HH:MM"). Exportar, corregir, aprobar, cancelar y administrar requieren conexión.
 
-No existe evidencia en el repositorio de auditoría completa para inicios de sesión, exportaciones, intentos fallidos, creación/edición/desactivación/reactivación de catálogos, invitaciones, edición normal de usuarios o asignaciones. No interprete esta cobertura como un historial integral de actividad.
+## 14. Primer administrador raíz
+
+En un entorno nuevo no existe ningún raíz hasta ejecutar `supabase/bootstrap-root.sql` (ver `DEPLOYMENT.md`). Los administradores anteriores pasan a ser coordinadores al migrar.

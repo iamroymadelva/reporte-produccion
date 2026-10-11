@@ -23,7 +23,9 @@ Leyenda de cambio: **[NUEVO]**, **[CAMBIA]**, **[SE ELIMINA]**. Fase entre paré
 | `POST /api/admin/users` | ROOT (cualquier rol), ADMINISTRATOR (solo `OPERATOR`) | Form `username`, `full_name`, `role`, `job_title?`, `password` (≥ 8), `password_confirm`, `assignments[]` (`machine_id:shift_id`) si OPERATOR. 409 si el usuario existe (también retirado → mensaje "reactiva el existente"). Audita `USER_CREATED`. | **[NUEVO]** reemplaza `invite.ts` (F2) |
 | `POST /api/admin/users/[id]` `intent=update` | idem matriz de gestión | Form `full_name`, `job_title`, `role`, `active`, `assignments[]`. El objetivo y el rol nuevo deben estar permitidos para el actor; nunca deja 0 ROOT activos. | **[CAMBIA]** (F2) |
 | `POST /api/admin/users/[id]` `intent=reset_password` | idem | Form `password`, `password_confirm`. Audita `PASSWORD_RESET`. | **[NUEVO]** (F2) |
-| `POST /api/admin/users/[id]` `intent=remove` / `reactivate` | idem | Comportamiento actual + chequeo de matriz. | **[CAMBIA]** (F2) |
+| `POST /api/admin/users/[id]` `intent=remove` / `reactivate` | idem | Comportamiento actual + chequeo de matriz. `remove` (y `update` con `active=false`) exige el campo `confirm_offline_risk=1` y responde con error "El usuario tiene datos pendientes de subir o un reporte activo" si `manage_user_assignments` devuelve `USER_HAS_PENDING_DATA` (FR-005a). | **[CAMBIA]** (F2) |
+| `GET /api/admin/users/[id]/last-contact` | manager (según matriz) | JSON `{ lastSeenAt, pendingCount, activeReportId }` para el diálogo de confirmación previo a desactivar. | **[NUEVO]** (F2) |
+| `POST /api/device-status` | cualquier usuario activo | JSON `{ deviceId, pendingCount, oldestPendingAt }` → RPC `report_device_sync_status`. 204. | **[NUEVO]** (F2 ruta / F4a cliente) |
 | `POST /api/admin/users/invite` | — | — | **[SE ELIMINA]** (F2) |
 
 ## Catálogos y máquinas
@@ -53,14 +55,14 @@ Leyenda de cambio: **[NUEVO]**, **[CAMBIA]**, **[SE ELIMINA]**. Fase entre paré
 | --- | --- | --- | --- |
 | `GET /api/reports/export` | ROOT, ADMINISTRATOR, VIEWER | Query: `from`, `to` (fecha operativa, ISO), `machine`, `shift`, `operator`, `status` (`DRAFT`,`SUBMITTED`,`CLOSED`,`CANCELLED`), `stop=active`, `offshift=1`. Compatibilidad: `period`/`date`/`month` se traducen a `from`/`to`. 200 xlsx con hojas SEGUIMIENTO PRODUCCIÓN, DETALLE PARADAS, CAMBIOS, HISTORIAL, CATÁLOGO PARADAS; **204** si no hay resultados; 422/413 límites. OPERATOR → 403. | **[CAMBIA]** (F3) |
 | `GET /api/admin/audit` | ROOT | Query `from`, `to`, `actor`, `action`, `entity_type`, `page`. JSON paginado. Página `/administracion/historial`. | **[NUEVO]** (F3) |
-| `GET /api/dashboard/summary` | manager, VIEWER | JSON KPIs por estado (rango de fechas), máquinas en parada, reportes fuera de turno. | **[NUEVO]** (F5) |
+| `GET /api/dashboard/summary` | manager, VIEWER | JSON KPIs por estado (rango de fechas, máximo 366 días → 422), máquinas en parada, reportes fuera de turno. | **[NUEVO]** (F5) |
 | `GET /api/reports/[id]/timeline` | manager, VIEWER, autor | JSON detalle + historial ordenado cronológicamente (ascendente). | **[NUEVO]** (F3/F5) |
 
 ## Offline
 
 | Método y ruta | Roles | Contrato | Cambio |
 | --- | --- | --- | --- |
-| `GET /api/offline/snapshot` | OPERATOR | JSON `{ profile, shifts[], assignments[] (vigentes), catalogs: { stopCategories, changeTypes, clients, products, lines, dosifierTypes } (activos), activeReport?: {...con paradas y cambios}, serverTime, fetchedAt }`. | **[NUEVO]** (F4a) |
+| `GET /api/offline/snapshot` | OPERATOR | JSON `{ profile, settings: { offShiftGrace, offlineLoginWindow }, shifts[], assignments[] (vigentes), catalogs: { stopCategories, changeTypes, clients, products, lines, dosifierTypes } (activos), activeReport?: {...con paradas y cambios}, serverTime, fetchedAt }`. | **[NUEVO]** (F4a) |
 | `POST /api/sync/batch` | OPERATOR | Ver [sync-protocol.md](./sync-protocol.md). | **[NUEVO]** (F4a) |
 | `GET /api/offline/overview` | manager, VIEWER | JSON snapshot de solo lectura (KPIs del día + últimos 200 reportes del rango visto). | **[NUEVO]** (F4b) |
 | `GET /api/health` | público | `HEAD` 204 (existente). | sin cambio |

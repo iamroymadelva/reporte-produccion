@@ -51,8 +51,14 @@ bun run build             # build de producción
    intentar un segundo reporte → bloqueado; enviar → coord ve "Enviado".
 5. `coord1` no puede editar un reporte Activo (sin controles; `PATCH` directo → 403); sí "Aprobar y
    cerrar" uno Enviado → "Cerrado (aprobado)" con aprobador y hora visibles para todos.
-6. Reporte Activo de un turno ya terminado aparece "Abierto fuera de turno"; `coord1` lo cancela con
-   motivo.
+6. Un reporte Activo cuyo turno terminó hace **menos de 2 h** no se puede cancelar desde `coord1`;
+   pasadas **2 h** aparece "Abierto fuera de turno" y `coord1` lo cancela con motivo.
+6b. `coord1` intenta retirar a `op1` mientras tiene un reporte activo o pendientes informados → la
+   acción está bloqueada ("El usuario tiene datos pendientes de subir o un reporte activo"). Sin
+   reporte activo ni pendientes → el diálogo muestra "Último contacto: HH:MM" y exige marcar la
+   advertencia antes de retirar.
+6c. `op1` inicia una parada sin categoría; al cerrarla se le exige elegir una categoría; no puede
+   enviar el reporte con paradas sin categoría.
 7. El editor del operario ya no ofrece "guardar como frecuente"; `POST /api/catalogs/frequent` → 404.
 8. Eliminar una categoría en uso → queda desactivada; sin uso → eliminada tras confirmar.
 

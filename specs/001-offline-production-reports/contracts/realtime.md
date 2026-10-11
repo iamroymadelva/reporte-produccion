@@ -26,8 +26,8 @@ recarga del fragmento autorizado.
 
 ## Presencia `plant-presence`
 
-- Solo operarios publican: `track({ userId, fullName, machineId|null, reportId|null, pendingCount,
-  lastSeen })`, actualizado al cambiar de reporte, al cambiar `pendingCount` y cada 30 s.
+- Solo operarios publican: `track({ userId, fullName, pendingCount, lastSeen })` (payload mínimo; la máquina y el reporte
+  se obtienen del servidor), actualizado al cambiar `pendingCount` y cada 30 s.
 - Managers y auditores solo escuchan (`presence sync`) y muestran: "En línea" (presente), "En
   línea con pendientes" (`pendingCount > 0`) y "Sin conexión" (no presente; con "última vez" si se
   conoce). La plataforma no conoce el estado de un dispositivo offline hasta que reconecta (supuesto

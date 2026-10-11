@@ -48,6 +48,22 @@ documento describe el **estado objetivo** y marca cada cambio como **[NUEVO]**, 
 | VIEWER / OPERATOR | ✗ | ✗ | ✗ | ✗ |
 
 - Auth: el correo sintético es `<username>@usuarios.reporte-produccion.invalid` (R1).
+- **Desactivación (FR-005a)**: `active = false` o retiro se rechaza si el usuario tiene un reporte
+  `DRAFT` o si alguna fila de `device_sync_status` del usuario tiene `pending_count > 0`. La UI muestra
+  `max(last_seen_at)` y exige confirmación explícita.
+
+### `device_sync_status` **[NUEVO]** (FR-005a)
+
+| Campo | Tipo | Reglas |
+| --- | --- | --- |
+| `user_id` | uuid → profiles | Parte de la PK |
+| `device_id` | uuid | Parte de la PK; generado y guardado en IndexedDB de cada dispositivo |
+| `pending_count` | int ≥ 0 | Pendientes del usuario en ese dispositivo |
+| `oldest_pending_at` | timestamptz null | Captura más antigua pendiente |
+| `last_seen_at` | timestamptz | Lo fija el servidor al recibir el aviso |
+
+Se escribe solo vía `report_device_sync_status(...)`, que el cliente llama cada vez que tiene
+conexión y cada vez que cambia el número de pendientes. Lectura: el propio usuario y los managers.
 
 ### `private.login_attempts` **[NUEVO]** (R2)
 
@@ -106,7 +122,12 @@ inicio (Clarification 4).
   `one_active_per_operator (created_by) where status='DRAFT'` y `one_active_per_machine
   (machine_id) where status='DRAFT'` (FR-007a).
 - **Calculado** (vista `production_report_overview`): `is_off_shift` = `status='DRAFT'` y `now()`
-  posterior al fin del turno en su fecha operativa; `has_open_conflict`; `has_pending_review`.
+  posterior al fin del turno en su fecha operativa **+ margen** (`app_settings.off_shift_grace`,
+  por defecto 2 h, configurable); `has_open_conflict`; `has_pending_review`.
+  - Semántica implementada en F1: `has_open_conflict` = existe una fila `OPEN` en `sync_quarantine` del reporte.
+    `has_pending_review` = `has_open_conflict` **o** (el reporte no está `CLOSED` y alguna parada o cambio tiene
+    `clock_skew_review = true`). `active_stop` = `jsonb` `{id, started_at, stop_category_id}` de la parada abierta
+    (sin `ended_at` ni cancelación) o `null`.
 
 #### Máquina de estados
 
@@ -129,7 +150,8 @@ inicio (Clarification 4).
 | Campo | Tipo | Reglas |
 | --- | --- | --- |
 | `id` | uuid PK | **[CAMBIA]** lo genera el cliente |
-| `report_id`, `stop_category_id` (activa al iniciar), `description` | — | Existentes |
+| `report_id`, `description` | — | Existentes |
+| `stop_category_id` | uuid null | **[CAMBIA]** opcional mientras la parada está abierta; obligatoria (y activa) para cerrarla; un reporte no se envía con paradas cerradas sin categoría |
 | `started_at`, `ended_at` | timestamptz | **[CAMBIA]** hora del dispositivo; el trigger ya no las sobrescribe (FR-008a) |
 | `received_at` **[NUEVO]**, `captured_offline` **[NUEVO]**, `clock_skew_review` **[NUEVO]** | — | `clock_skew_review` = online y \|captura − llegada\| > 5 min |
 | `cancellation_*`, `duration_seconds`, `responsible_user_id` | — | Existentes |
@@ -217,10 +239,17 @@ turno por un manager) o que entran en conflicto: `id`, `operation_id`, `report_i
   puede aprobar (FR-024b).
 - Los managers revisan; los auditores leen.
 
+### `app_settings` **[NUEVO]**
+
+Fila única de configuración: `off_shift_grace interval` (por defecto `2 hours`),
+`offline_login_window interval` (por defecto `7 days`). Lectura para usuarios autenticados;
+escritura solo ROOT.
+
 ### `notification_events` **[CAMBIA]**
 
 Se añaden los tipos `SYNC_CONFLICT`, `OFFLINE_DATA_REVIEW`, `CLOCK_SKEW_REVIEW` y
 `REPORT_APPROVED`. Los destinatarios son los managers activos (el autor, en `REPORT_APPROVED`).
+Requiere ampliar el CHECK de `type` y `private.notification_is_visible` (sin ello los inserts fallan).
 
 ### Elemento pendiente de subir (cliente, IndexedDB) **[CAMBIA]**
 
@@ -238,6 +267,10 @@ Base de datos `reporte-produccion-offline` **v2**:
 ---
 
 ## Matriz RLS objetivo (resumen)
+
+> Ninguna política concede `UPDATE` directo a managers sobre reportes, paradas o cambios. Las
+> mutaciones privilegiadas (aprobar, cancelar fuera de turno, corregir, sincronizar, revisar
+> cuarentena) se hacen solo vía RPC `security definer` que validan actor, rol y estado (Principio I).
 
 | Tabla / acción | ROOT | ADMINISTRATOR (coord.) | VIEWER (auditor) | OPERATOR |
 | --- | --- | --- | --- | --- |

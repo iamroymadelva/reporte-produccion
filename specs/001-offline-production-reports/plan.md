@@ -174,7 +174,7 @@ calidad, y la fase se cierra con **GO** del auditor (Opus). Las dependencias son
 | 1.5 | Reportes: `origin`, `received_at`, `approved_*`; trigger fija turno y fecha operativa; índices de un activo por operario y por máquina; se elimina el límite de 5 | FR-007a/b, FR-024a |
 | 1.6 | Paradas: horas del dispositivo, `received_at`, `captured_offline`, `clock_skew_review`; sin DELETE | FR-008a, FR-027 |
 | 1.7 | `change_types` + `report_change_events` con RLS | FR-008, CA-01-04 |
-| 1.8 | Columnas nuevas de `report_audit_log` y `administrative_audit_log`; `sync_operation_log`; `sync_quarantine`; vista `production_report_overview` | base de F3/F4 |
+| 1.8 | Columnas nuevas de `report_audit_log` y `administrative_audit_log`; `sync_operation_log`; `sync_quarantine`; `device_sync_status`; `app_settings` (margen fuera de turno 2 h); tipos de notificación nuevos; vista `production_report_overview` | base de F3/F4, FR-005a |
 | 1.9 | RLS objetivo: VIEWER ve todos los estados; managers sin UPDATE en `DRAFT`; operario solo catálogos activos | FR-031, FR-025a, FR-011a |
 | 1.10 | `seed.sql` con ROOT y cuentas de desarrollo; pgTAP de todo lo anterior | — |
 
@@ -189,10 +189,10 @@ pasando (sin funciones nuevas).
 | Paso | Contenido | Cierra |
 | --- | --- | --- |
 | 2.1 | Login por usuario + bloqueo (R1/R2); eliminar recuperación, invitación y `/auth/confirmar` | FR-001/001a/004, CA-05-02 |
-| 2.2 | Gestión de usuarios: alta con contraseña, reset, asignaciones por turno, matriz ROOT/coordinador, invariante ROOT | FR-028, CA-04-01/02 |
+| 2.2 | Gestión de usuarios: alta con contraseña, reset, asignaciones por turno, matriz ROOT/coordinador, invariante ROOT; bloqueo de desactivación con pendientes o reporte activo + aviso de último contacto | FR-028, FR-005a, CA-04-01/02 |
 | 2.3 | Roles y etiquetas nuevas en `types.ts`, middleware y navegación | FR-002 |
 | 2.4 | Aprobación (`approve_report`), panel con aprobador y fecha en el detalle y los listados | FR-024/024a/024b, CA-02-05/06 |
-| 2.5 | Cancelación: autor, o manager si está fuera de turno; marca "Abierto fuera de turno" | FR-010a |
+| 2.5 | Cancelación: autor, o manager si está fuera de turno (fin de turno + 2 h configurable); marca "Abierto fuera de turno"; RPC `security definer` que validan actor y estado | FR-010a |
 | 2.6 | Managers no editan `DRAFT` (UI y API); el editor del admin solo en `SUBMITTED`/`CLOSED` | FR-025a, Fuera de spec #2 |
 | 2.7 | Quitar "valor frecuente" del operario; selección solo de activos | FR-011a, Fuera de spec #1 |
 | 2.8 | Crear reporte: turno y fecha automáticos, mensaje "solicita asignación", un activo | FR-007/007a/007b, CA-01-01/02 |
@@ -205,7 +205,7 @@ prohibida de la tabla de roles (SC-007).
 
 | Paso | Contenido | Cierra |
 | --- | --- | --- |
-| 3.1 | Trigger de auditoría genérico (cualquier rol, motivo, rol, offline, llegada) | FR-029, SC-008 |
+| 3.1 | Trigger de auditoría genérico (cualquier rol, motivo, rol, offline, llegada) — **se adelanta a F2** (antes de las RPC con motivo; hallazgo O1) | FR-029, SC-008 |
 | 3.2 | `correct_report` con motivo obligatorio + `CorrectionDialog` | FR-025, CA-02-07 |
 | 3.3 | Historial en orden cronológico ascendente, con rol, motivo e indicador offline | CA-03-01 |
 | 3.4 | Historial administrativo completo + `/administracion/historial` (solo ROOT) | FR-029a, CA-04-03 |

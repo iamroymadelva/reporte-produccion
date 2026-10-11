@@ -66,6 +66,14 @@ Cada decisión resuelve una incógnita del Technical Context de [plan.md](./plan
   RLS y trigger impiden que un manager edite un `DRAFT`. "Abierto fuera de turno" es un valor
   **calculado** (`now()` posterior al fin del turno del reporte en su fecha operativa), expuesto en
   la vista `production_report_overview`; no se almacena.
+- **Mecanismo de permisos (añadido tras /speckit-analyze, hallazgo I1)**: ninguna política RLS
+  concede `UPDATE` directo a managers sobre reportes, paradas o cambios. `approve_report`,
+  `cancel_report`, `correct_report`, `review_quarantine` y `apply_sync_operation` son RPC
+  `security definer` con `search_path = ''` que validan, antes de nada, actor activo, rol, propiedad
+  y estado. Así la única vía de escritura privilegiada está controlada en la BD (Principio I).
+- **Margen "fuera de turno"**: `is_off_shift` se activa en el fin del turno + `off_shift_grace`
+  (2 h por defecto, configurable en `app_settings`), para no cancelar reportes de operarios que
+  trabajaron sin señal y aún no sincronizan su envío.
 - **Justificación**: El trigger existente `validate_production_report` ya centraliza las
   transiciones y se amplía. Calcular "fuera de turno" evita jobs programados y estados
   desincronizados.
@@ -157,8 +165,9 @@ Cada decisión resuelve una incógnita del Technical Context de [plan.md](./plan
     (contadores por tipo de operación), con "Confirmar y subir" y "Posponer". Mientras no haya
     pendientes, el modo online normal sigue autoguardando.
   - **Subida**: `POST /api/sync/batch` con hasta 50 operaciones en orden causal. El servidor las
-    aplica **una por una** vía la RPC `public.apply_sync_operation(op jsonb)` (security invoker,
-    RLS activa), cada una en su propia transacción. Responde por operación con `applied`,
+    aplica **una por una** vía la RPC `public.apply_sync_operation(op jsonb)` (`security definer`,
+    que valida explícitamente `userId = auth.uid()`, perfil activo, rol OPERATOR y reproduce las
+    reglas de RLS del operario), cada una en su propia transacción. Responde por operación con `applied`,
     `duplicate`, `conflict` o `rejected` y el motivo. La tabla `sync_operation_log(operation_id pk,
     user_id, result, applied_at)` garantiza la idempotencia: una operación repetida devuelve
     `duplicate` sin reaplicarse.
@@ -173,6 +182,12 @@ Cada decisión resuelve una incógnita del Technical Context de [plan.md](./plan
     las operaciones del usuario autenticado.
   - **Persistencia**: se pide `navigator.storage.persist()` al habilitar el modo offline, para
     reducir el riesgo de que el navegador borre los datos.
+  - **Aviso de pendientes al servidor (FR-005a)**: cada dispositivo (`deviceId` persistido) informa
+    `pendingCount` y `oldestPendingAt` vía `report_device_sync_status` cada vez que hay conexión. Es
+    solo un conteo, no una subida de datos, así que no viola FR-015. Permite bloquear la desactivación
+    de usuarios con pendientes conocidos. Los dispositivos que nunca reconectaron no se pueden
+    conocer: se mitiga mostrando la hora del último contacto y exigiendo confirmación, y con la vía
+    de reactivación temporal para que el autor suba sus datos.
   - **Antigüedad**: si hay pendientes con más de 7 días, se muestra un aviso persistente en cada
     inicio de sesión. Los pendientes nunca se borran automáticamente.
 - **Justificación**: Los IDs del cliente más un log de operaciones dan idempotencia exacta. Procesar
