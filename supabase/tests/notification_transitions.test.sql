@@ -5,13 +5,13 @@ select plan(22);
 
 insert into public.machines(id, code, name)
 values ('39000000-0000-0000-0000-000000000091', 'N-TEST', 'Máquina aviso');
-insert into public.operator_machine_assignments(operator_id, machine_id, created_by)
-values ('10000000-0000-0000-0000-000000000002', '39000000-0000-0000-0000-000000000091',
-  '10000000-0000-0000-0000-000000000001');
+insert into public.operator_machine_assignments(operator_id, machine_id, shift_id, valid_from, created_by)
+select '10000000-0000-0000-0000-000000000002', '39000000-0000-0000-0000-000000000091', id, '2000-01-01',
+  '10000000-0000-0000-0000-000000000001' from public.shifts where active;
 
 set local request.jwt.claims = '{"sub":"10000000-0000-0000-0000-000000000002","role":"authenticated"}';
-insert into public.production_reports(id, machine_id, created_by, updated_by)
-values ('89000000-0000-0000-0000-000000000091', '39000000-0000-0000-0000-000000000091',
+insert into public.production_reports(id, machine_id, started_at, created_by, updated_by)
+values ('89000000-0000-0000-0000-000000000091', '39000000-0000-0000-0000-000000000091', now(),
   '10000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000002');
 select is((select count(*)::integer from public.notification_events where resource_id =
   '89000000-0000-0000-0000-000000000091'), 0, 'Crear borrador no avisa');
@@ -23,7 +23,7 @@ select is((select count(*)::integer from public.notification_events where event_
   'stop:99000000-0000-0000-0000-000000000091'), 1, 'Inicio crea un solo evento');
 select is((select count(*)::integer from public.notification_deliveries d join public.notification_events e on e.id = d.event_id
   where e.event_key = 'stop:99000000-0000-0000-0000-000000000091'),
-  (select count(*)::integer from public.profiles where role = 'ADMINISTRATOR' and active and removed_at is null),
+  (select count(*)::integer from public.profiles where role in ('ROOT', 'ADMINISTRATOR') and active and removed_at is null),
   'Inicio se entrega a administradores activos');
 
 update public.notification_deliveries set read_at = '2026-01-01T00:00:00Z'
@@ -60,7 +60,7 @@ select is((select count(*)::integer from public.notification_events where type =
   '89000000-0000-0000-0000-000000000091'), 1, 'Cancelar reporte crea un solo aviso');
 select is((select count(*)::integer from public.notification_deliveries d join public.notification_events e on e.id = d.event_id
   where e.type = 'REPORT_CANCELLED' and e.resource_id = '89000000-0000-0000-0000-000000000091'),
-  (select count(*)::integer from public.profiles where role = 'ADMINISTRATOR' and active and removed_at is null),
+  (select count(*)::integer from public.profiles where role in ('ROOT', 'ADMINISTRATOR') and active and removed_at is null),
   'Cancelación llega a administradores');
 select is((select actor_id from public.notification_events where type = 'REPORT_CANCELLED' and resource_id =
   '89000000-0000-0000-0000-000000000091'), '10000000-0000-0000-0000-000000000002'::uuid,
@@ -83,11 +83,11 @@ select is((select count(*)::integer from public.notification_events where type =
 
 insert into public.machines(id, code, name)
 values ('39000000-0000-0000-0000-000000000092', 'N-SUB', 'Máquina envío');
-insert into public.operator_machine_assignments(operator_id, machine_id, created_by)
-values ('10000000-0000-0000-0000-000000000002', '39000000-0000-0000-0000-000000000092',
-  '10000000-0000-0000-0000-000000000001');
-insert into public.production_reports(id, machine_id, created_by, updated_by)
-values ('89000000-0000-0000-0000-000000000092', '39000000-0000-0000-0000-000000000092',
+insert into public.operator_machine_assignments(operator_id, machine_id, shift_id, valid_from, created_by)
+select '10000000-0000-0000-0000-000000000002', '39000000-0000-0000-0000-000000000092', id, '2000-01-01',
+  '10000000-0000-0000-0000-000000000001' from public.shifts where active;
+insert into public.production_reports(id, machine_id, started_at, created_by, updated_by)
+values ('89000000-0000-0000-0000-000000000092', '39000000-0000-0000-0000-000000000092', now(),
   '10000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000001');
 insert into public.report_stop_events(id, report_id, stop_category_id, responsible_user_id)
 select '99000000-0000-0000-0000-000000000093', '89000000-0000-0000-0000-000000000092', id,
@@ -104,9 +104,12 @@ select is((select count(*)::integer from public.notification_events where type =
   'Categoría aislada de otras correcciones no crea aviso');
 -- Fixture: emulate an already-open finalized stop without creating a prior correction event.
 alter table public.report_stop_events disable trigger notify_stop_change_after_write;
+-- (Las paradas abiertas en reportes finalizados ya no se pueden crear por la vía normal: fixture sin triggers.)
+set local session_replication_role = replica;
 insert into public.report_stop_events(id, report_id, stop_category_id, responsible_user_id)
 select '99000000-0000-0000-0000-000000000095', '89000000-0000-0000-0000-000000000092', id,
   '10000000-0000-0000-0000-000000000002' from public.stop_categories where code = '1';
+set local session_replication_role = origin;
 alter table public.report_stop_events enable trigger notify_stop_change_after_write;
 update public.report_stop_events set ended_at = now() where id = '99000000-0000-0000-0000-000000000095';
 select is((select count(*)::integer from public.notification_events where type = 'REPORT_CORRECTED'
@@ -116,9 +119,9 @@ delete from public.report_stop_events where id = '99000000-0000-0000-0000-000000
 select is((select count(*)::integer from public.notification_events where type = 'REPORT_CORRECTED'
   and resource_id = '89000000-0000-0000-0000-000000000092'), 1,
   'Eliminar parada agrupa corrección del mismo lote');
-insert into public.report_stop_events(id, report_id, stop_category_id, responsible_user_id)
+insert into public.report_stop_events(id, report_id, stop_category_id, responsible_user_id, started_at, ended_at)
 select '99000000-0000-0000-0000-000000000094', '89000000-0000-0000-0000-000000000092', id,
-  '10000000-0000-0000-0000-000000000002' from public.stop_categories where code = '1';
+  '10000000-0000-0000-0000-000000000002', now() - interval '48 hours', now() - interval '47 hours' from public.stop_categories where code = '1';
 select is((select count(*)::integer from public.notification_deliveries d
   join public.notification_events e on e.id = d.event_id where e.type = 'REPORT_CORRECTED'
   and e.resource_id = '89000000-0000-0000-0000-000000000092'

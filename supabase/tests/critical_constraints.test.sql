@@ -1,5 +1,5 @@
 begin;
-select plan(22);
+select plan(24);
 
 insert into auth.users (
   instance_id, id, aud, role, email, encrypted_password, email_confirmed_at,
@@ -11,6 +11,9 @@ insert into auth.users (
   '{"provider":"email","providers":["email"]}', '{"full_name":"Operario Prueba Reglas"}', now(), now(), '', '', '', ''
 );
 update public.profiles set role = 'OPERATOR', active = true where id = '10000000-0000-0000-0000-000000000102';
+insert into auth.users (id, email, raw_user_meta_data) values
+  ('10000000-0000-0000-0000-000000000107', 'operario-prueba-segundo@local.test', '{"full_name":"Segundo operario"}');
+update public.profiles set role = 'OPERATOR', active = true where id = '10000000-0000-0000-0000-000000000107';
 
 select has_table('public', 'shifts', 'Existe el catálogo de turnos');
 select has_column('public', 'production_reports', 'client_name', 'El reporte conserva el texto del Cliente');
@@ -30,29 +33,37 @@ insert into public.machines (id, code, name) values
   ('30000000-0000-0000-0000-000000000008', 'M-08', 'Empacadora 8'),
   ('30000000-0000-0000-0000-000000000009', 'M-09', 'Empacadora 9'),
   ('30000000-0000-0000-0000-000000000010', 'M-10', 'Empacadora 10');
-insert into public.operator_machine_assignments (operator_id, machine_id, created_by)
-select '10000000-0000-0000-0000-000000000102', id, '10000000-0000-0000-0000-000000000001'
-from public.machines where code in ('M-04', 'M-05', 'M-06', 'M-08', 'M-09', 'M-10');
+insert into public.operator_machine_assignments (operator_id, machine_id, shift_id, valid_from, created_by)
+select '10000000-0000-0000-0000-000000000102', m.id, s.id, '2000-01-01', '10000000-0000-0000-0000-000000000001'
+from public.machines m cross join public.shifts s
+where m.code in ('M-04', 'M-05', 'M-06', 'M-08', 'M-09', 'M-10') and s.active;
+insert into public.operator_machine_assignments (operator_id, machine_id, shift_id, valid_from, created_by)
+select '10000000-0000-0000-0000-000000000107', m.id, s.id, '2000-01-01', '10000000-0000-0000-0000-000000000001'
+from public.machines m cross join public.shifts s
+where m.code = 'M-04' and s.active;
 
 set local role authenticated;
 set local request.jwt.claims = '{"sub":"10000000-0000-0000-0000-000000000102","role":"authenticated"}';
 
-select lives_ok(
-  $$select public.save_frequent_catalog_value('products', 'Producto frecuente de prueba')$$,
-  'El Operador puede guardar un Producto frecuente mediante la función limitada'
+select is(
+  (select count(*) from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+   where n.nspname = 'public' and p.proname = 'save_frequent_catalog_value'),
+  0::bigint,
+  'T077: save_frequent_catalog_value fue eliminada (el Operador no puede crear valores frecuentes)'
 );
 
 select is(
   (select count(*) from public.products where name = 'Producto frecuente de prueba'),
-  1::bigint,
-  'El Producto frecuente no se duplica ni se pierde'
+  0::bigint,
+  'El intento rechazado del Operador no crea ningún Producto'
 );
 
 select lives_ok(
-  $$insert into public.production_reports (id, machine_id, client_id, client_name, product_id, product_name, created_by, updated_by)
+  $$insert into public.production_reports (id, machine_id, started_at, client_id, client_name, product_id, product_name, created_by, updated_by)
     values (
       '80000000-0000-0000-0000-000000000001',
       '30000000-0000-0000-0000-000000000004',
+      now(),
       '50000000-0000-0000-0000-000000000001',
       'Cliente histórico',
       '60000000-0000-0000-0000-000000000001',
@@ -64,33 +75,33 @@ select lives_ok(
 );
 
 select throws_ok(
-  $$insert into public.production_reports (machine_id, created_by, updated_by)
-    values ('30000000-0000-0000-0000-000000000007', '10000000-0000-0000-0000-000000000102', '10000000-0000-0000-0000-000000000102')$$,
+  $$insert into public.production_reports (machine_id, started_at, created_by, updated_by)
+    values ('30000000-0000-0000-0000-000000000007', now(), '10000000-0000-0000-0000-000000000102', '10000000-0000-0000-0000-000000000102')$$,
   'P0001', 'La máquina no está asignada al Operador',
   'El Operador no puede crear un reporte para una máquina no asignada'
 );
 
+set local request.jwt.claims = '{"sub":"10000000-0000-0000-0000-000000000107","role":"authenticated"}';
 select throws_ok(
-  $$insert into public.production_reports (machine_id, created_by, updated_by)
-    values ('30000000-0000-0000-0000-000000000004', '10000000-0000-0000-0000-000000000102', '10000000-0000-0000-0000-000000000102')$$,
+  $$insert into public.production_reports (machine_id, started_at, created_by, updated_by)
+    values ('30000000-0000-0000-0000-000000000004', now(), '10000000-0000-0000-0000-000000000107', '10000000-0000-0000-0000-000000000107')$$,
   '23505', null,
-  'Solo existe un borrador global por máquina'
+  'Solo existe un reporte activo global por máquina (otro operario asignado a la misma máquina)'
 );
+set local request.jwt.claims = '{"sub":"10000000-0000-0000-0000-000000000102","role":"authenticated"}';
 
-select lives_ok(
-  $$insert into public.production_reports (machine_id, created_by, updated_by) values
-    ('30000000-0000-0000-0000-000000000005', '10000000-0000-0000-0000-000000000102', '10000000-0000-0000-0000-000000000102'),
-    ('30000000-0000-0000-0000-000000000006', '10000000-0000-0000-0000-000000000102', '10000000-0000-0000-0000-000000000102'),
-    ('30000000-0000-0000-0000-000000000008', '10000000-0000-0000-0000-000000000102', '10000000-0000-0000-0000-000000000102'),
-    ('30000000-0000-0000-0000-000000000009', '10000000-0000-0000-0000-000000000102', '10000000-0000-0000-0000-000000000102')$$,
-  'El Operador puede mantener cinco borradores'
+select throws_ok(
+  $$insert into public.production_reports (machine_id, started_at, created_by, updated_by)
+    values ('30000000-0000-0000-0000-000000000005', now(), '10000000-0000-0000-0000-000000000102', '10000000-0000-0000-0000-000000000102')$$,
+  '23505', null,
+  'El Operador no puede tener un segundo reporte activo, ni siquiera en otra máquina asignada'
 );
 
 select throws_ok(
-  $$insert into public.production_reports (machine_id, created_by, updated_by)
-    values ('30000000-0000-0000-0000-000000000010', '10000000-0000-0000-0000-000000000102', '10000000-0000-0000-0000-000000000102')$$,
-  'P0001', 'Un Operador puede tener máximo 5 reportes en borrador',
-  'La base de datos rechaza el sexto borrador'
+  $$insert into public.production_reports (machine_id, started_at, created_by, updated_by)
+    values ('30000000-0000-0000-0000-000000000010', now(), '10000000-0000-0000-0000-000000000102', '10000000-0000-0000-0000-000000000102')$$,
+  '23505', null,
+  'La base de datos rechaza el segundo activo (ya no existe el límite de 5 borradores)'
 );
 
 select lives_ok(
@@ -108,10 +119,10 @@ select throws_ok(
   'Solo puede existir una parada abierta por reporte'
 );
 
-update public.production_reports set ended_at = now(), report_date = current_date,
+update public.production_reports set ended_at = now(),
   production_order = 'OP-PRUEBA', line_id = (select id from public.lines limit 1),
-  lot = 'L-PRUEBA', shift_id = (select id from public.shifts limit 1), weight = 0, g_min = 0,
-  dosifier_type_id = (select id from public.dosifier_types limit 1), started_at = now(),
+  lot = 'L-PRUEBA', weight = 0, g_min = 0,
+  dosifier_type_id = (select id from public.dosifier_types limit 1),
   programmed_hours = 0, units_produced = 0, waste = 0
 where id = '80000000-0000-0000-0000-000000000001';
 
@@ -171,6 +182,19 @@ select is(
 );
 
 set local request.jwt.claims = '{"sub":"10000000-0000-0000-0000-000000000001","role":"authenticated"}';
+
+select is(
+  (select count(*) from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+   where n.nspname = 'public' and p.proname = 'save_frequent_catalog_value'),
+  0::bigint,
+  'T077: save_frequent_catalog_value no existe tampoco para el Administrador'
+);
+
+select is(
+  (select count(*) from public.products where name = 'Producto frecuente de prueba'),
+  0::bigint,
+  'T077: no se crea ningún Producto frecuente (la función fue eliminada)'
+);
 
 select lives_ok(
   $$update public.products set name = 'Producto frecuente renombrado'

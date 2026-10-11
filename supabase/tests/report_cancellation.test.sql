@@ -20,17 +20,19 @@ insert into public.machines (id, code, name) values
   ('31000000-0000-0000-0000-000000000012', 'M-12', 'Máquina límite 4'),
   ('31000000-0000-0000-0000-000000000013', 'M-13', 'Máquina límite 5');
 
-insert into public.operator_machine_assignments (operator_id, machine_id, created_by)
-select '10000000-0000-0000-0000-000000000103', id, '10000000-0000-0000-0000-000000000001'
-from public.machines where code in ('M-08', 'M-09', 'M-10', 'M-11', 'M-12', 'M-13');
+insert into public.operator_machine_assignments (operator_id, machine_id, shift_id, valid_from, created_by)
+select '10000000-0000-0000-0000-000000000103', m.id, s.id, '2000-01-01', '10000000-0000-0000-0000-000000000001'
+from public.machines m cross join public.shifts s
+where m.code in ('M-08', 'M-09', 'M-10', 'M-11', 'M-12', 'M-13') and s.active;
 
 set local role authenticated;
 set local request.jwt.claims = '{"sub":"10000000-0000-0000-0000-000000000103","role":"authenticated"}';
 
-insert into public.production_reports (id, machine_id, created_by, updated_by)
+insert into public.production_reports (id, machine_id, started_at, created_by, updated_by)
 values (
   '81000000-0000-0000-0000-000000000001',
   '31000000-0000-0000-0000-000000000008',
+  now(),
   '10000000-0000-0000-0000-000000000103',
   '10000000-0000-0000-0000-000000000103'
 );
@@ -77,25 +79,25 @@ select ok(
 );
 
 select lives_ok(
-  $$insert into public.production_reports (machine_id, created_by, updated_by)
-    values ('31000000-0000-0000-0000-000000000008', '10000000-0000-0000-0000-000000000103', '10000000-0000-0000-0000-000000000103')$$,
+  $$insert into public.production_reports (id, machine_id, started_at, created_by, updated_by)
+    values ('81000000-0000-0000-0000-000000000002', '31000000-0000-0000-0000-000000000008', now(), '10000000-0000-0000-0000-000000000103', '10000000-0000-0000-0000-000000000103')$$,
   'Cancelar libera inmediatamente la máquina para otro borrador'
 );
 
-select lives_ok(
-  $$insert into public.production_reports (machine_id, created_by, updated_by) values
-    ('31000000-0000-0000-0000-000000000009', '10000000-0000-0000-0000-000000000103', '10000000-0000-0000-0000-000000000103'),
-    ('31000000-0000-0000-0000-000000000010', '10000000-0000-0000-0000-000000000103', '10000000-0000-0000-0000-000000000103'),
-    ('31000000-0000-0000-0000-000000000011', '10000000-0000-0000-0000-000000000103', '10000000-0000-0000-0000-000000000103'),
-    ('31000000-0000-0000-0000-000000000012', '10000000-0000-0000-0000-000000000103', '10000000-0000-0000-0000-000000000103')$$,
-  'El reporte cancelado no cuenta dentro de los cinco borradores'
+select throws_ok(
+  $$insert into public.production_reports (machine_id, started_at, created_by, updated_by)
+    values ('31000000-0000-0000-0000-000000000009', now(), '10000000-0000-0000-0000-000000000103', '10000000-0000-0000-0000-000000000103')$$,
+  '23505', null,
+  'Mientras haya un reporte activo no se puede iniciar otro, aunque la máquina esté asignada'
 );
 
-select throws_ok(
-  $$insert into public.production_reports (machine_id, created_by, updated_by)
-    values ('31000000-0000-0000-0000-000000000013', '10000000-0000-0000-0000-000000000103', '10000000-0000-0000-0000-000000000103')$$,
-  'P0001', 'Un Operador puede tener máximo 5 reportes en borrador',
-  'El límite de cinco borradores sigue vigente'
+update public.production_reports set status = 'CANCELLED', cancellation_reason = 'Liberar para iniciar otro reporte'
+where id = '81000000-0000-0000-0000-000000000002';
+
+select lives_ok(
+  $$insert into public.production_reports (machine_id, started_at, created_by, updated_by)
+    values ('31000000-0000-0000-0000-000000000009', now(), '10000000-0000-0000-0000-000000000103', '10000000-0000-0000-0000-000000000103')$$,
+  'Un reporte cancelado deja de contar como activo: se puede iniciar otro en otra máquina asignada'
 );
 
 update public.production_reports set observations = 'Cambio no permitido'
