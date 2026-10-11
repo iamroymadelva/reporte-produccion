@@ -1,11 +1,12 @@
 import { isActiveStop, type StopEvent } from "./stop-events";
 import type { ReportStatus } from "./types";
 
-export type ReportStatusVariant = "draft" | "submitted" | "cancelled";
+export type ReportStatusVariant = "draft" | "submitted" | "closed" | "cancelled";
 
 /** Maps a report status to the matching Badge variant. Unknown values fall back to "submitted". */
 export function reportStatusVariant(status: ReportStatus | string | null | undefined): ReportStatusVariant {
   if (status === "DRAFT") return "draft";
+  if (status === "CLOSED") return "closed";
   if (status === "CANCELLED") return "cancelled";
   return "submitted";
 }

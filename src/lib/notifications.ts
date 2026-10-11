@@ -1,6 +1,7 @@
 export type NotificationItem = {
   id: string;
-  type: "REPORT_SUBMITTED" | "REPORT_CANCELLED" | "REPORT_CORRECTED" | "ASSIGNMENTS_CHANGED" | "STOP_STARTED";
+  type: "REPORT_SUBMITTED" | "REPORT_CANCELLED" | "REPORT_CORRECTED" | "ASSIGNMENTS_CHANGED" | "STOP_STARTED"
+    | "REPORT_APPROVED" | "SYNC_CONFLICT" | "OFFLINE_DATA_REVIEW" | "CLOCK_SKEW_REVIEW";
   resourceType: "report" | "stop" | "assignment";
   resourceId: string;
   actorId: string | null;

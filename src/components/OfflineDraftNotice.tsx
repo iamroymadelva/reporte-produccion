@@ -1,22 +1,16 @@
 import { useEffect, useState } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { getReportDraft } from "../lib/offline-report-store";
 
 interface Props {
   visible?: boolean;
-  userId?: string;
-  reportId?: string;
   finalized?: boolean;
 }
 
 export default function OfflineDraftNotice({
   visible = false,
-  userId,
-  reportId,
   finalized = false,
 }: Props) {
-  const [storedDraftFound, setStoredDraftFound] = useState(false);
   const [dismissed, setDismissed] = useState(false);
 
   useEffect(() => {
@@ -24,25 +18,13 @@ export default function OfflineDraftNotice({
   }, [visible]);
 
   useEffect(() => {
-    if (!userId || !reportId) return;
-    let active = true;
-    void getReportDraft(userId, reportId).then((draft) => {
-      if (active) setStoredDraftFound(Boolean(draft));
-    }).catch(() => {
-      // The editor owns actionable storage errors. This read-only notice must not
-      // claim that a local draft exists when IndexedDB could not be inspected.
-    });
-    return () => { active = false; };
-  }, [reportId, userId]);
-
-  useEffect(() => {
-    if (!visible && !storedDraftFound) return;
+    if (!visible) return;
     const protect = (event: BeforeUnloadEvent) => event.preventDefault();
     window.addEventListener("beforeunload", protect);
     return () => window.removeEventListener("beforeunload", protect);
-  }, [storedDraftFound, visible]);
+  }, [visible]);
 
-  if ((!visible && !storedDraftFound) || dismissed) return null;
+  if (!visible || dismissed) return null;
 
   return (
     <Alert variant="warning" role="status" aria-live="polite">

@@ -18,7 +18,7 @@ const {
   action,
   recordName,
   title = "Eliminar registro",
-  description = "Esta acción es irreversible. Si el registro tiene uso histórico, la eliminación será bloqueada y podrás desactivarlo en su lugar.",
+  description = "Si el registro no se usa en ningún reporte ni asignación se eliminará de forma irreversible; si está en uso se desactivará para conservar el historial.",
   confirmLabel = "Eliminar",
   intent = "delete",
 } = Astro.props;

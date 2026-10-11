@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useCallback, useRef } from "react";
 import { Bell, ChevronsUpDown, LogOut, Moon, Sun } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -6,6 +6,7 @@ import { SidebarMenu, SidebarMenuItem, useSidebar } from "@/components/ui/sideba
 import { Button } from "@/components/ui/button";
 import { roleLabels, type Profile } from "@/lib/types";
 import { useTheme } from "@/lib/theme";
+import { useLogoutGuard } from "@/components/offline/LogoutGuard";
 
 export function initialsFor(name: string) {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -47,14 +48,18 @@ export function NavUser({ profile, variant = "sidebar" }: Props) {
   const { isMobile } = useSidebar();
   const initials = initialsFor(profile.full_name);
   const logoutFormRef = useRef<HTMLFormElement>(null);
-  const onLogout = () => logoutFormRef.current?.requestSubmit();
+  const submitLogout = useCallback(() => logoutFormRef.current?.requestSubmit(), []);
+  // T086: con datos sin subir pide confirmación explícita antes de enviar el formulario de cierre de sesión.
+  const guard = useLogoutGuard(profile.role === "OPERATOR" ? profile.id : undefined, submitLogout);
+  const onLogout = guard.request;
 
   if (variant === "icon") {
     return <>
+      {guard.dialog}
       <LogoutForm formRef={logoutFormRef} />
       <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button type="button" variant="ghost" size="icon" className="rounded-full" aria-label={`Cuenta de ${profile.full_name}`}>
+        <Button type="button" variant="ghost" size="icon" className="size-11 rounded-full md:size-9" aria-label={`Cuenta de ${profile.full_name}`}>
           <Avatar className="size-8"><AvatarFallback className="bg-primary text-xs font-semibold text-primary-foreground">{initials}</AvatarFallback></Avatar>
         </Button>
       </DropdownMenuTrigger>
@@ -65,6 +70,7 @@ export function NavUser({ profile, variant = "sidebar" }: Props) {
 
   return <SidebarMenu>
     <SidebarMenuItem>
+      {guard.dialog}
       <LogoutForm formRef={logoutFormRef} />
       <DropdownMenu>
         <DropdownMenuTrigger asChild>

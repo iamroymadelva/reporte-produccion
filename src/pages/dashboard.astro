@@ -1,16 +1,19 @@
 ---
-import { CheckCircle2, FileClock, OctagonAlert, XCircle } from "lucide-react";
+import { CheckCircle2, Clock, FileClock, Lock, OctagonAlert, XCircle } from "lucide-react";
 import BaseLayout from "../layouts/BaseLayout.astro";
 import PageHeader from "../components/PageHeader.astro";
 import StatusBadge from "../components/StatusBadge";
 import StopIndicator from "../components/StopIndicator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatDateTime, getBogotaDateKey } from "../lib/format";
 import { hasActiveStop } from "../lib/report-status";
 import { createSupabaseServerClient } from "../lib/supabase/server";
+import LiveDashboard from "../components/realtime/LiveDashboard";
+import PresenceList from "../components/realtime/PresenceList";
 
 const auth = Astro.locals.auth!;
 const isOperator = auth.profile.role === "OPERATOR";
@@ -19,45 +22,69 @@ const kpiLabels = isOperator
   ? {
       DRAFT: "Mis reportes en curso",
       SUBMITTED: "Mis reportes enviados",
+      CLOSED: "Mis reportes cerrados",
       CANCELLED: "Mis reportes cancelados",
       ACTIVE_STOP: "Mis reportes en parada",
     }
   : {
       DRAFT: "Reportes en curso",
       SUBMITTED: "Reportes enviados",
+      CLOSED: "Reportes cerrados",
       CANCELLED: "Reportes cancelados",
       ACTIVE_STOP: "Reportes en parada",
     };
 
 const today = getBogotaDateKey();
 const supabase = createSupabaseServerClient(Astro.request, Astro.cookies);
-const [reportsResult, draftCount, submittedCount, cancelledCount, activeStopCount] = await Promise.all([
-  supabase.from("production_reports")
-    .select("id, folio, report_date, production_order, status, creator_full_name, created_at, machine:machines(id, code, name), report_stop_events(id, ended_at, cancelled_at)")
+const [reportsResult, draftCount, submittedCount, closedCount, cancelledCount, activeStopCount, offShiftCount] = await Promise.all([
+  supabase.from("production_report_overview")
+    .select("id, folio, report_date, production_order, status, creator_full_name, created_at, approver_full_name, approved_at, is_off_shift, machine:machines(id, code, name), report_stop_events(id, ended_at, cancelled_at)")
     .eq("report_date", today).order("created_at", { ascending: false }).order("id", { ascending: false }).limit(10),
   supabase.from("production_reports").select("id", { count: "exact", head: true }).eq("report_date", today).eq("status", "DRAFT"),
   supabase.from("production_reports").select("id", { count: "exact", head: true }).eq("report_date", today).eq("status", "SUBMITTED"),
+  supabase.from("production_reports").select("id", { count: "exact", head: true }).eq("report_date", today).eq("status", "CLOSED"),
   supabase.from("production_reports").select("id", { count: "exact", head: true }).eq("report_date", today).eq("status", "CANCELLED"),
   supabase.from("production_reports").select("id, active_stops:report_stop_events!inner(id, ended_at)", { count: "exact", head: true })
     .eq("report_date", today).is("active_stops.ended_at", null),
+  supabase.from("production_report_overview").select("id", { count: "exact", head: true }).eq("status", "DRAFT").eq("is_off_shift", true),
 ]);
 const reports = (reportsResult.data ?? []) as any[];
 const recentReports = reports;
-const reportCounts = [draftCount, submittedCount, cancelledCount, activeStopCount].some((result) => result.error)
+const reportCounts = [draftCount, submittedCount, closedCount, cancelledCount, activeStopCount, offShiftCount].some((result) => result.error)
   ? null
   : {
       DRAFT: draftCount.count ?? 0,
       SUBMITTED: submittedCount.count ?? 0,
+      CLOSED: closedCount.count ?? 0,
       CANCELLED: cancelledCount.count ?? 0,
       ACTIVE_STOP: activeStopCount.count ?? 0,
+      OFF_SHIFT: offShiftCount.count ?? 0,
     };
 const hasError = Boolean(reportsResult.error || !reportCounts);
-const todayQuery = `period=day&date=${encodeURIComponent(today)}`;
+// T100/T102: managers y auditores ven el tablero en vivo (Realtime + polling) y la presencia de operarios.
+const liveBoard = !isOperator;
+const liveInitial = liveBoard && reportCounts && !reportsResult.error
+  ? {
+      kpis: reportCounts,
+      recent: recentReports.map((report) => ({
+        id: report.id, folio: report.folio ?? null, status: report.status, createdAt: report.created_at, machine: report.machine ?? null,
+        operator: report.creator_full_name ?? null, productionOrder: report.production_order ?? null, approver: report.approver_full_name ?? null,
+        approvedAt: report.approved_at ?? null, isOffShift: Boolean(report.is_off_shift), activeStop: hasActiveStop(report),
+      })),
+    }
+  : null;
+const presenceOperators = liveBoard
+  ? (((await supabase.from("profiles").select("id, full_name").eq("role", "OPERATOR").eq("active", true).order("full_name")).data ?? []) as Array<{ id: string; full_name: string }>)
+      .map((row) => ({ id: row.id, fullName: row.full_name }))
+  : [];
+const todayQuery = `from=${encodeURIComponent(today)}&to=${encodeURIComponent(today)}`;
 const kpis = [
-  { key: "DRAFT", show: !isViewer, label: kpiLabels.DRAFT, href: `/reportes?${todayQuery}&status=DRAFT`, title: "Ver reportes en curso de hoy", icon: FileClock, iconClass: "text-warning-text", card: "border-warning/20" },
+  { key: "DRAFT", show: true, label: kpiLabels.DRAFT, href: `/reportes?${todayQuery}&status=DRAFT`, title: "Ver reportes en curso de hoy", icon: FileClock, iconClass: "text-warning-text", card: "border-warning/20" },
   { key: "SUBMITTED", show: true, label: isViewer ? "Reportes enviados hoy" : kpiLabels.SUBMITTED, href: `/reportes?${todayQuery}&status=SUBMITTED`, title: "Ver reportes enviados hoy", icon: CheckCircle2, iconClass: "text-success-text", card: "" },
-  { key: "CANCELLED", show: !isViewer, label: kpiLabels.CANCELLED, href: `/reportes?${todayQuery}&status=CANCELLED`, title: "Ver reportes cancelados hoy", icon: XCircle, iconClass: "text-destructive-text", card: "border-destructive/20" },
-  { key: "ACTIVE_STOP", show: !isViewer, label: kpiLabels.ACTIVE_STOP, href: `/reportes?${todayQuery}&stop=active`, title: "Ver reportes en parada hoy", icon: OctagonAlert, iconClass: "text-stop-text", card: "border-stop/20" },
+  { key: "CLOSED", show: true, label: isViewer ? "Reportes cerrados hoy" : kpiLabels.CLOSED, href: `/reportes?${todayQuery}&status=CLOSED`, title: "Ver reportes cerrados hoy", icon: Lock, iconClass: "text-primary", card: "" },
+  { key: "CANCELLED", show: true, label: kpiLabels.CANCELLED, href: `/reportes?${todayQuery}&status=CANCELLED`, title: "Ver reportes cancelados hoy", icon: XCircle, iconClass: "text-destructive-text", card: "border-destructive/20" },
+  { key: "ACTIVE_STOP", show: true, label: kpiLabels.ACTIVE_STOP, href: `/reportes?${todayQuery}&stop=active`, title: "Ver reportes en parada hoy", icon: OctagonAlert, iconClass: "text-stop-text", card: "border-stop/20" },
+  { key: "OFF_SHIFT", show: !isOperator, label: "Abiertos fuera de turno", href: "/reportes?status=DRAFT&offshift=1", title: "Ver reportes abiertos fuera de turno", icon: Clock, iconClass: "text-warning-text", card: "border-warning/20" },
 ] as const;
 ---
 
@@ -71,7 +98,14 @@ const kpis = [
       </Alert>
     )}
 
-    <section class="grid grid-cols-2 gap-4 lg:grid-cols-4" aria-label="Indicadores de hoy">
+    {liveBoard ? (
+      <>
+        <LiveDashboard client:load date={today} initial={liveInitial} />
+        <PresenceList client:load operators={presenceOperators} />
+      </>
+    ) : (
+    <>
+    <section class={`grid grid-cols-2 gap-4 ${isOperator ? "lg:grid-cols-5" : "lg:grid-cols-3 xl:grid-cols-6"}`} aria-label="Indicadores de hoy">
       {kpis.filter((kpi) => kpi.show).map((kpi) => (
         <Card className={`rounded-2xl relative gap-0 py-4 transition-colors hover:bg-muted/40 ${kpi.card}`}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -82,7 +116,7 @@ const kpis = [
           </CardHeader>
           <CardContent>
             <div class="text-2xl font-bold tabular-nums">{reportCounts?.[kpi.key] ?? "—"}</div>
-            <p class="mt-1 text-xs text-muted-foreground">Hoy · ver detalle</p>
+            <p class="mt-1 text-xs text-muted-foreground">{kpi.key === "OFF_SHIFT" ? "Abiertos ahora · ver detalle" : "Hoy · ver detalle"}</p>
           </CardContent>
         </Card>
       ))}
@@ -108,12 +142,16 @@ const kpis = [
             <article class="space-y-3 p-4">
               <div class="flex items-start justify-between gap-3">
                 <a class="min-w-0 break-words font-mono font-semibold tabular-nums text-primary underline-offset-4 hover:underline" href={`/reportes/${report.id}`}>{report.folio}</a>
-                <StatusBadge status={report.status} />
+                <div class="flex flex-wrap justify-end gap-1.5">
+                  <StatusBadge status={report.status} />
+                  {report.is_off_shift && <Badge variant="stop">Abierto fuera de turno</Badge>}
+                </div>
               </div>
               <dl class="grid gap-2 text-sm">
                 <div><dt class="text-muted-foreground">Fecha / hora</dt><dd>{formatDateTime(report.created_at)}</dd></div>
                 <div><dt class="text-muted-foreground">Máquina</dt><dd class="font-semibold">{report.machine ? `${report.machine.code} · ${report.machine.name}` : "—"}</dd></div>
                 <div><dt class="text-muted-foreground">Operario</dt><dd>{report.creator_full_name || "—"}</dd></div>
+                {report.status === "CLOSED" && <div><dt class="text-muted-foreground">Aprobado por</dt><dd>{report.approver_full_name || "—"} · {formatDateTime(report.approved_at)}</dd></div>}
               </dl>
               {hasActiveStop(report) && <StopIndicator active variant="inline" className="text-sm" />}
             </article>
@@ -128,6 +166,7 @@ const kpis = [
               <TableHead>O.P.</TableHead>
               <TableHead>Operario</TableHead>
               <TableHead>Estado</TableHead>
+              <TableHead>Aprobación</TableHead>
               <TableHead>Parada</TableHead>
             </TableRow>
           </TableHeader>
@@ -139,7 +178,13 @@ const kpis = [
                 <TableCell className="font-semibold">{report.machine ? `${report.machine.code} · ${report.machine.name}` : "—"}</TableCell>
                 <TableCell>{report.production_order || "—"}</TableCell>
                 <TableCell>{report.creator_full_name || "—"}</TableCell>
-                <TableCell><StatusBadge status={report.status} /></TableCell>
+                <TableCell>
+                  <div class="flex flex-wrap gap-1.5">
+                    <StatusBadge status={report.status} />
+                    {report.is_off_shift && <Badge variant="stop">Abierto fuera de turno</Badge>}
+                  </div>
+                </TableCell>
+                <TableCell>{report.status === "CLOSED" ? <span>{report.approver_full_name || "—"}<span class="block text-xs text-muted-foreground">{formatDateTime(report.approved_at)}</span></span> : "—"}</TableCell>
                 <TableCell>{hasActiveStop(report) ? <StopIndicator active /> : "—"}</TableCell>
               </TableRow>
             ))}
@@ -148,5 +193,7 @@ const kpis = [
         </>
       )}
     </Card>
+    </>
+    )}
   </main>
 </BaseLayout>

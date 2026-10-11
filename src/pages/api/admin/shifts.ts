@@ -2,6 +2,7 @@ import type { APIRoute } from "astro";
 import { adminCatalogErrorMessage } from "../../../lib/admin-catalog-errors";
 import { createSupabaseServerClient } from "../../../lib/supabase/server";
 import { redirectWithMessage } from "../../../lib/http";
+import { deleteOrDeactivateCatalogItem } from "../../../lib/admin-catalog-delete";
 
 const path = "/administracion/turnos";
 
@@ -17,12 +18,8 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
     return redirect(redirectWithMessage(path, "ok", "Turno reactivado."), 303);
   }
   if (form.get("intent") === "delete") {
-    const { error } = await supabase.from("shifts").delete().eq("id", id);
-    if (error) {
-      const message = error.code === "23503" ? "No se puede eliminar porque existen reportes históricos que lo referencian. Desactívalo en su lugar." : "No fue posible eliminar el turno.";
-      return redirect(redirectWithMessage(path, "error", message), 303);
-    }
-    return redirect(redirectWithMessage(path, "ok", "Turno eliminado."), 303);
+    const result = await deleteOrDeactivateCatalogItem(supabase, "shifts", id, { label: "Turno" });
+    return redirect(redirectWithMessage(path, result.ok ? "ok" : "error", result.message), 303);
   }
   const startTime = String(form.get("start_time") ?? "");
   const endTime = String(form.get("end_time") ?? "");

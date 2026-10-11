@@ -1,5 +1,5 @@
 import {
-  Bell, Building2, ClipboardList, Cog, Droplets, LayoutDashboard, OctagonAlert, Package, Settings, Timer, Users, Waypoints,
+  ArrowLeftRight, Bell, Building2, ClipboardList, Cog, Droplets, History, LayoutDashboard, OctagonAlert, Package, Settings, Timer, Users, Waypoints,
   type LucideIcon,
 } from "lucide-react";
 import type { AppRole } from "@/lib/types";
@@ -10,6 +10,8 @@ export type NavItem = {
   icon: LucideIcon;
   /** Solo se marca activo con coincidencia exacta de ruta. */
   exact?: boolean;
+  /** Si se define, solo estos roles ven el ítem (por defecto, los del grupo). */
+  roles?: AppRole[];
 };
 
 export type NavGroupId = "operacion" | "administracion" | "cuenta";
@@ -38,6 +40,8 @@ export const adminItems: NavItem[] = [
   { title: "Dosificadores", href: "/administracion/dosificadores", icon: Droplets },
   { title: "Turnos", href: "/administracion/turnos", icon: Timer },
   { title: "Categorías de parada", href: "/administracion/paradas", icon: OctagonAlert },
+  { title: "Tipos de cambio", href: "/administracion/tipos-cambio", icon: ArrowLeftRight },
+  { title: "Historial administrativo", href: "/administracion/historial", icon: History, roles: ["ROOT"] },
 ];
 
 /** Fuente única de íconos por sección de administración (la usa también AdminCategoryIcon). */
@@ -50,6 +54,7 @@ export const sectionIcons = {
   dosifiers: Droplets,
   shifts: Timer,
   stops: OctagonAlert,
+  changes: ArrowLeftRight,
   reports: ClipboardList,
 } as const satisfies Record<string, LucideIcon>;
 
@@ -57,7 +62,7 @@ export type SectionIconKey = keyof typeof sectionIcons;
 
 export const navGroups: NavGroup[] = [
   { id: "operacion", label: "Operación", items: [dashboard, reportes] },
-  { id: "administracion", label: "Administración", items: adminItems, roles: ["ADMINISTRATOR"], collapsible: true },
+  { id: "administracion", label: "Administración", items: adminItems, roles: ["ROOT", "ADMINISTRATOR"], collapsible: true },
   { id: "cuenta", label: "Cuenta", items: [notificaciones] },
 ];
 
@@ -65,7 +70,9 @@ export const navGroups: NavGroup[] = [
 export const mobileTabs: NavItem[] = [dashboard, reportes, notificaciones];
 
 export function navForRole(role: AppRole): NavGroup[] {
-  return navGroups.filter((group) => !group.roles || group.roles.includes(role));
+  return navGroups
+    .filter((group) => !group.roles || group.roles.includes(role))
+    .map((group) => ({ ...group, items: group.items.filter((item) => !item.roles || item.roles.includes(role)) }));
 }
 
 function normalize(pathname: string) {

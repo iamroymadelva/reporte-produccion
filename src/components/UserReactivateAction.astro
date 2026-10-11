@@ -1,6 +1,7 @@
 ---
 import { UserPlus, X } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
+import UserAssignmentsField from "./UserAssignmentsField.astro";
 import type { AppRole } from "../lib/types";
 
 interface MachineOption {
@@ -9,14 +10,22 @@ interface MachineOption {
   name: string;
 }
 
+interface ShiftOption {
+  id: string;
+  name: string | null;
+  start_time: string;
+  end_time: string;
+}
+
 interface Props {
   userId: string;
   userName: string;
   role: AppRole;
   machines: MachineOption[];
+  shifts: ShiftOption[];
 }
 
-const { userId, userName, role, machines } = Astro.props;
+const { userId, userName, role, machines, shifts } = Astro.props;
 const dialogId = `reactivate-user-${userId.replace(/[^a-zA-Z0-9_-]/g, "-")}`;
 ---
 
@@ -32,7 +41,7 @@ const dialogId = `reactivate-user-${userId.replace(/[^a-zA-Z0-9_-]/g, "-")}`;
 </button>
 
 {/* Contrato con AdminDialogHost: data-dialog-title y data-dialog-description; el host usa showCloseButton={false}. */}
-<template id={dialogId} data-admin-dialog-template data-dialog-title="Reactivar usuario" data-dialog-description="Restaura el acceso del usuario conservando su identidad, correo e historial." data-dialog-size="large">
+<template id={dialogId} data-admin-dialog-template data-dialog-title="Reactivar usuario" data-dialog-description="Restaura el acceso del usuario conservando su identidad e historial." data-dialog-size="large">
   <form class="grid max-h-[calc(100dvh-1rem)] w-full min-w-0 grid-rows-[auto_minmax(0,1fr)_auto] sm:max-h-[calc(100dvh-2rem)]" method="POST" action={`/api/admin/users/${userId}`}>
     <input type="hidden" name="intent" value="reactivate" />
     <header class="flex items-center justify-between gap-3 border-b px-5 py-4">
@@ -42,20 +51,12 @@ const dialogId = `reactivate-user-${userId.replace(/[^a-zA-Z0-9_-]/g, "-")}`;
       </button>
     </header>
     <div class="min-h-0 overflow-y-auto p-5">
-      <p class="text-foreground">Se restaurará el acceso de <strong>{userName}</strong> conservando su identidad, correo e historial.</p>
+      <p class="text-foreground">Se restaurará el acceso de <strong>{userName}</strong> conservando su identidad e historial.</p>
       {role === "OPERATOR" && (
-        <fieldset class="mt-5">
-          <legend class="field-label mb-2 block text-sm font-semibold text-foreground">Máquinas asignadas</legend>
-          <p class="mb-3 text-sm text-muted-foreground">Selecciona explícitamente las máquinas que tendrá asignadas. Las asignaciones anteriores no se restaurarán automáticamente.</p>
-          <div class="grid gap-2 sm:grid-cols-2">
-            {machines.map((machine) => (
-              <label class="flex min-h-12 items-center gap-3 rounded-xl border bg-card p-3">
-                <input type="checkbox" class="size-5 shrink-0 accent-primary" name="machine_ids" value={machine.id} />
-                <span>{machine.code} · {machine.name}</span>
-              </label>
-            ))}
-          </div>
-        </fieldset>
+        <>
+          <p class="mt-3 text-sm text-muted-foreground">Las asignaciones anteriores no se restauran automáticamente: selecciona las que tendrá ahora.</p>
+          <UserAssignmentsField machines={machines} shifts={shifts} />
+        </>
       )}
       {role !== "OPERATOR" && <p class="mt-4 text-sm text-muted-foreground">No se activarán asignaciones de máquinas para este rol.</p>}
     </div>

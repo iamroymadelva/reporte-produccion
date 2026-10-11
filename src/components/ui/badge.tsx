@@ -20,6 +20,7 @@ const badgeVariants = cva(
         // Estados de reporte
         draft: "border-warning/30 bg-warning/15 text-warning-text",
         submitted: "border-success/30 bg-success/15 text-success-text",
+        closed: "border-primary/30 bg-primary/15 text-primary",
         cancelled: "border-destructive/30 bg-destructive/15 text-destructive-text",
         // Parada de máquina: naranja con punto indicador
         stop: "border-stop/30 bg-stop/15 text-stop-text before:size-1.5 before:shrink-0 before:rounded-full before:bg-current before:content-['']",

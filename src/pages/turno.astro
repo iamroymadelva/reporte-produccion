@@ -1,0 +1,14 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import OperatorShiftApp from "../components/offline/OperatorShiftApp";
+import PendingSyncSummary from "../components/offline/PendingSyncSummary";
+
+// Shell estático del Operario (T084, R10): HTML SIN datos, precacheado por el service worker. Las islas solo
+// existen en el cliente (client:only) y leen el snapshot y la outbox de IndexedDB del usuario autenticado.
+export const prerender = true;
+---
+
+<BaseLayout title="Turno de producción" description="Turno de producción del Operario, también sin conexión">
+  <OperatorShiftApp client:only="react" />
+  <PendingSyncSummary client:only="react" />
+</BaseLayout>

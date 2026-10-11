@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Toaster } from "@/components/ui/sonner";
+import PendingSyncSummary from "@/components/offline/PendingSyncSummary";
 import type { Profile } from "@/lib/types";
 import { BottomNav } from "./BottomNav";
 import { NavUser } from "./NavUser";
@@ -111,5 +112,6 @@ export default function AppShell({ profile, pathname: initialPathname, defaultOp
     <TopBar profile={profile} pathname={pathname} />
     <BottomNav pathname={pathname} />
     <Toaster position="top-right" closeButton />
+    {profile.role === "OPERATOR" && <PendingSyncSummary userId={profile.id} />}
   </SidebarProvider>;
 }

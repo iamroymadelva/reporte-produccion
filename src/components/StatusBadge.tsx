@@ -7,7 +7,7 @@ interface Props {
   className?: string;
 }
 
-/** Badge de estado de reporte (En curso / Enviado / Cancelado). Renderizable sin hidratar. */
+/** Badge de estado de reporte (Activo / Enviado / Cerrado (aprobado) / Cancelado). Renderizable sin hidratar. */
 export default function StatusBadge({ status, className }: Props) {
   return (
     <Badge variant={reportStatusVariant(status)} className={className}>

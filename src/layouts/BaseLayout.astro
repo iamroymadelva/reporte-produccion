@@ -68,7 +68,7 @@ const flashError = Astro.url.searchParams.get("error");
     <title>{title}</title>
     <ClientRouter />
   </head>
-  <body data-shell={profile ? "" : undefined}>
+  <body data-shell={profile ? "" : undefined} data-user-id={profile?.id} data-user-role={profile?.role}>
     {profile && <>
       <a class="skip-link" href="#main-content">Saltar al contenido</a>
       <AppShell profile={profile} pathname={pathname} defaultOpen={defaultOpen} client:load transition:persist="app-shell" />
@@ -77,7 +77,7 @@ const flashError = Astro.url.searchParams.get("error");
       <ConnectionStatus />
       <slot />
     </div>
-    {profile?.role === "ADMINISTRATOR" && <AdminDialogHost client:load transition:persist="admin-dialog-host" />}
+    {(profile?.role === "ROOT" || profile?.role === "ADMINISTRATOR") && <AdminDialogHost client:load transition:persist="admin-dialog-host" />}
     {profile && <FlashToast ok={flashOk} error={flashError} client:load />}
   </body>
 </html>
@@ -110,6 +110,20 @@ const flashError = Astro.url.searchParams.get("error");
     MUTATION_REQUIRES_CONNECTION,
     showConnectivityNotice,
   } from "../lib/connectivity";
+  import { runOfflineBootstrap } from "../lib/offline/bootstrap";
+
+  // Phase 8: confirma/descarta la matrícula del acceso sin conexión y refresca en silencio la consulta de managers y
+  // VIEWER. Se ejecuta en cada página (ClientRouter incluido); nunca bloquea ni lanza.
+  const bootOfflineAccess = () => {
+    void runOfflineBootstrap({
+      pathname: location.pathname,
+      search: location.search,
+      userId: document.body.dataset.userId || null,
+      role: document.body.dataset.userRole || null,
+    });
+  };
+  document.addEventListener("astro:page-load", bootOfflineAccess);
+  bootOfflineAccess();
 
   // Este módulo se ejecuta UNA sola vez (ClientRouter no re-ejecuta scripts empaquetados),
   // por lo que los listeners globales de abajo no se duplican al navegar.

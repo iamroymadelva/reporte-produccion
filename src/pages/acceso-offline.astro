@@ -1,0 +1,13 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import LoginCard from "../components/LoginCard.astro";
+
+// Shell estático del acceso (T095, R8/R10): HTML SIN datos ni mensajes del servidor, precacheado por el service worker.
+// Sin conexión sustituye a /iniciar-sesion, / y /dashboard (páginas SSR que nunca se guardan en Cache Storage). El
+// formulario valida contra el verificador local y, tras entrar, navega por el rol guardado.
+export const prerender = true;
+---
+
+<BaseLayout title="Acceso sin conexión" description="Inicio de sesión con o sin conexión">
+  <LoginCard offlineShell />
+</BaseLayout>

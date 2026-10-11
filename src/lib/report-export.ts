@@ -1,5 +1,6 @@
 import ExcelJS from "exceljs";
-import { statusLabels } from "./types";
+import { describeAuditRows, sortAuditRowsAscending, type ReportAuditRow } from "./report-audit";
+import { roleLabels, statusLabels, type AppRole } from "./types";
 
 type ExportCategory = { id: string; code: string; name: string; numeric_code?: number | null };
 type ExportStop = {
@@ -11,15 +12,28 @@ type ExportStop = {
   description: string | null;
   cancelled_at: string | null;
   cancellation_reason: string | null;
-  stop_category_id: string;
+  stop_category_id: string | null;
   stop_category?: ExportCategory | null;
 };
+
+type ExportChange = {
+  id: string;
+  report_id: string;
+  description: string;
+  occurred_at: string;
+  captured_offline?: boolean | null;
+  change_type?: { name: string } | null;
+};
+
+type ExportHistoryRow = ReportAuditRow & { report_id: string };
 
 interface WorkbookInput {
   reports: any[];
   metrics: any[];
   stops: ExportStop[];
   categories: ExportCategory[];
+  changes?: ExportChange[];
+  history?: ExportHistoryRow[];
   filterLabel: string;
   generatedLabel: string;
 }
@@ -159,6 +173,8 @@ export async function buildProductionWorkbook(input: WorkbookInput) {
     "Objetivo teórico", "Objetivo neto", "Unidades producidas", "Rendimiento teórico", "Rendimiento neto", "Desperdicio",
     "Tipo/Dosificador", "Peso (gr)", "Observaciones",
     ...categories.map((category) => `P-${category.code}`),
+    // Las columnas de aprobación van al final para no desplazar las columnas P-* existentes.
+    "Aprobado por", "Fecha de aprobación",
   ];
   const production = workbook.addWorksheet("SEGUIMIENTO PRODUCCIÓN");
   production.addRow(["SEGUIMIENTO DIARIO DE PRODUCCIÓN"]);
@@ -170,7 +186,7 @@ export async function buildProductionWorkbook(input: WorkbookInput) {
     const reportStops = stopsByReport.get(report.id) ?? [];
     const categoryDurations = new Map<string, number>();
     for (const stop of reportStops) {
-      if (!stop.ended_at || stop.cancelled_at || stop.duration_seconds === null) continue;
+      if (!stop.stop_category_id || !stop.ended_at || stop.cancelled_at || stop.duration_seconds === null) continue;
       categoryDurations.set(stop.stop_category_id, (categoryDurations.get(stop.stop_category_id) ?? 0) + Number(stop.duration_seconds));
     }
     production.addRow([
@@ -200,16 +216,19 @@ export async function buildProductionWorkbook(input: WorkbookInput) {
       numericValue(report.weight),
       report.observations || null,
       ...categories.map((category) => categoryDurations.has(category.id) ? durationValue(categoryDurations.get(category.id)) : null),
+      report.approver_full_name || null,
+      bogotaDateTime(report.approved_at),
     ]);
   }
-  styleSheet(production, productionHeaders.length, [18, 14, 16, 12, 28, 26, 16, 13, 24, 24, 22, 11, 18, 16, 18, 18, 17, 17, 17, 17, 17, 14, 16, 12, 36, ...categories.map(() => 11)]);
+  styleSheet(production, productionHeaders.length, [18, 14, 16, 12, 28, 26, 16, 13, 24, 24, 22, 11, 18, 16, 18, 18, 17, 17, 17, 17, 17, 14, 16, 12, 36, ...categories.map(() => 11), 24, 20]);
   styleDataRows(production, productionHeaders.length);
   production.getColumn(8).numFmt = "dd/mm/yyyy";
   production.getColumn(15).numFmt = "[h]:mm:ss";
   production.getColumn(16).numFmt = "[h]:mm:ss";
   production.getColumn(20).numFmt = "0.0%";
   production.getColumn(21).numFmt = "0.0%";
-  for (let column = 26; column <= productionHeaders.length; column += 1) production.getColumn(column).numFmt = "[h]:mm:ss";
+  for (let column = 26; column < productionHeaders.length - 1; column += 1) production.getColumn(column).numFmt = "[h]:mm:ss";
+  production.getColumn(productionHeaders.length).numFmt = "dd/mm/yyyy hh:mm";
 
   const detailHeaders = ["No. Reporte", "Fecha", "Máquina", "Operario", "O.P.", "Código parada", "Categoría", "Inicio", "Fin", "Duración", "Estado parada", "Observaciones"];
   const detail = workbook.addWorksheet("DETALLE PARADAS");
@@ -221,7 +240,7 @@ export async function buildProductionWorkbook(input: WorkbookInput) {
   for (const stop of orderedStops) {
     const report = reportById.get(stop.report_id);
     if (!report) continue;
-    const category = stop.stop_category ?? categoryById.get(stop.stop_category_id);
+    const category = stop.stop_category ?? (stop.stop_category_id ? categoryById.get(stop.stop_category_id) : undefined);
     detail.addRow([
       report.folio,
       excelDate(report.report_date),
@@ -243,6 +262,90 @@ export async function buildProductionWorkbook(input: WorkbookInput) {
   detail.getColumn(8).numFmt = "dd/mm/yyyy hh:mm";
   detail.getColumn(9).numFmt = "dd/mm/yyyy hh:mm";
   detail.getColumn(10).numFmt = "[h]:mm:ss";
+
+  const changeHeaders = ["No. Reporte", "Fecha", "Máquina", "Operario", "Tipo de cambio", "Descripción", "Hora del cambio", "Capturado sin conexión"];
+  const changesSheet = workbook.addWorksheet("CAMBIOS");
+  changesSheet.addRow(["CAMBIOS DURANTE LA PRODUCCIÓN"]);
+  changesSheet.addRow([`${input.filterLabel} · Generado: ${input.generatedLabel}`]);
+  changesSheet.addRow(changeHeaders);
+  const orderedChanges = [...(input.changes ?? [])]
+    .filter((change) => reportById.has(change.report_id))
+    .sort((left, right) => left.occurred_at.localeCompare(right.occurred_at) || left.id.localeCompare(right.id));
+  for (const change of orderedChanges) {
+    const report = reportById.get(change.report_id);
+    changesSheet.addRow([
+      report.folio,
+      excelDate(report.report_date),
+      relationLabel(report.machine),
+      report.creator_full_name,
+      change.change_type?.name ?? null,
+      change.description,
+      bogotaDateTime(change.occurred_at),
+      change.captured_offline ? "Sí" : "No",
+    ]);
+  }
+  styleSheet(changesSheet, changeHeaders.length, [18, 13, 22, 24, 22, 44, 20, 18]);
+  styleDataRows(changesSheet, changeHeaders.length);
+  changesSheet.getColumn(2).numFmt = "dd/mm/yyyy";
+  changesSheet.getColumn(7).numFmt = "dd/mm/yyyy hh:mm";
+
+  const historyHeaders = [
+    "No. Reporte", "Fecha y hora", "Usuario", "Rol", "Entidad", "Acción", "Campo", "Valor anterior", "Valor nuevo",
+    "Motivo", "Capturado sin conexión", "Hora de llegada",
+  ];
+  const historySheet = workbook.addWorksheet("HISTORIAL");
+  historySheet.addRow(["HISTORIAL DE MODIFICACIONES"]);
+  historySheet.addRow([`${input.filterLabel} · Generado: ${input.generatedLabel}`]);
+  historySheet.addRow(historyHeaders);
+  const historyByReport = new Map<string, ExportHistoryRow[]>();
+  for (const row of input.history ?? []) {
+    if (!reportById.has(row.report_id)) continue;
+    const current = historyByReport.get(row.report_id) ?? [];
+    current.push(row);
+    historyByReport.set(row.report_id, current);
+  }
+  const entityLabels: Record<string, string> = { report: "Reporte", stop: "Parada", change: "Cambio" };
+  const actionLabels: Record<string, string> = { INSERT: "Creación", UPDATE: "Modificación", STATUS: "Cambio de estado" };
+  const historyLines: Array<{ at: string; id: string; cells: unknown[] }> = [];
+  for (const [reportId, rows] of historyByReport) {
+    const report = reportById.get(reportId);
+    // describeAuditRows ordena de forma ascendente: se alinean filas y entradas con el mismo orden.
+    const orderedRows = sortAuditRowsAscending(rows);
+    const entries = describeAuditRows(orderedRows, { stops: stopsByReport.get(reportId) ?? [] });
+    orderedRows.forEach((row, index) => {
+      const entry = entries[index];
+      const entity = row.entity_type ? entityLabels[row.entity_type] ?? row.entity_type : "";
+      const entityText = entry.stopNumber ? `${entity} #${entry.stopNumber}` : entity;
+      const details = entry.details.length > 0 ? entry.details : [{ label: entry.title, previous: undefined, next: undefined }];
+      details.forEach((detail, detailIndex) => {
+        historyLines.push({
+          at: row.changed_at,
+          id: `${String(row.id).padStart(12, "0")}-${detailIndex}`,
+          cells: [
+            report.folio,
+            bogotaDateTime(row.changed_at),
+            entry.actor,
+            row.actor_role ? roleLabels[row.actor_role as AppRole] ?? row.actor_role : null,
+            entityText || null,
+            row.action ? actionLabels[row.action] ?? row.action : null,
+            detail.label,
+            detail.previous ?? null,
+            detail.next ?? null,
+            row.reason || null,
+            row.captured_offline ? "Sí" : "No",
+            bogotaDateTime(row.received_at),
+          ],
+        });
+      });
+    });
+  }
+  // Orden cronológico ascendente (desempate por identificador de la fila).
+  historyLines.sort((left, right) => left.at.localeCompare(right.at) || left.id.localeCompare(right.id));
+  for (const line of historyLines) historySheet.addRow(line.cells);
+  styleSheet(historySheet, historyHeaders.length, [18, 20, 24, 18, 14, 18, 26, 30, 30, 34, 18, 20]);
+  styleDataRows(historySheet, historyHeaders.length);
+  historySheet.getColumn(2).numFmt = "dd/mm/yyyy hh:mm:ss";
+  historySheet.getColumn(12).numFmt = "dd/mm/yyyy hh:mm:ss";
 
   const catalog = workbook.addWorksheet("CATÁLOGO PARADAS");
   catalog.addRow(["Código", "Categoría"]);

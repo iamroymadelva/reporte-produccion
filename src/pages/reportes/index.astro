@@ -1,6 +1,7 @@
 ---
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import PageHeader from "../../components/PageHeader.astro";
+import LiveReportList from "../../components/realtime/LiveReportList";
 import StatusBadge from "../../components/StatusBadge";
 import StopIndicator from "../../components/StopIndicator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -12,42 +13,44 @@ import { FieldLabel, Label } from "@/components/ui/label";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { createSupabaseServerClient } from "../../lib/supabase/server";
-import { formatDate, getBogotaDateKey } from "../../lib/format";
+import { formatDate, formatDateTime, getBogotaDateKey } from "../../lib/format";
+import { isManagerRole } from "../../lib/auth";
 import { hasActiveStop } from "../../lib/report-status";
-import { applyReportFilters, parseReportFilters, periodHref, reportFilterParams } from "../../lib/report-filters";
+import { activePeriod, applyReportFilters, hasActiveReportFilters, parseReportFilters, periodHref, reportFilterParams } from "../../lib/report-filters";
 import { stopDuration, summarizeClosedStops } from "../../lib/stop-events";
+import { REPORT_STATUSES } from "../../lib/report-filters";
 import { roleLabels, statusLabels, type AppRole } from "../../lib/types";
 
 const auth = Astro.locals.auth!;
 const supabase = createSupabaseServerClient(Astro.request, Astro.cookies);
-const administrativeList = auth.profile.role === "ADMINISTRATOR" || auth.profile.role === "VIEWER";
-const reportSelection = "id, folio, report_date, production_order, product_name, shift, status, created_by, created_at, machine:machines(id, code, name), product:products(id, name), shift_catalog:shifts(id, name, start_time, end_time), operator:profiles!production_reports_created_by_fkey(full_name, role), report_stop_events(id, ended_at, duration_seconds, cancelled_at)";
+const isManagerUser = isManagerRole(auth.profile.role);
+const administrativeList = isManagerUser || auth.profile.role === "VIEWER";
+const reportSelection = "id, folio, report_date, production_order, product_name, shift, status, created_by, created_at, approver_full_name, approved_at, is_off_shift, machine:machines(id, code, name), product:products(id, name), shift_catalog:shifts(id, name, start_time, end_time), operator:profiles!production_reports_created_by_fkey(full_name, role), report_stop_events(id, ended_at, duration_seconds, cancelled_at)";
 const PAGE_SIZE = 25;
 const requestedPage = Number(Astro.url.searchParams.get("page") ?? "1");
 const page = Number.isSafeInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1;
 const { data: draftRows, error: draftError } = auth.profile.role === "OPERATOR"
-  ? await supabase.from("production_reports").select(reportSelection).eq("status", "DRAFT").eq("created_by", auth.user.id).order("created_at", { ascending: false }).order("id", { ascending: false })
+  ? await supabase.from("production_report_overview").select(reportSelection).eq("status", "DRAFT").eq("created_by", auth.user.id).order("created_at", { ascending: false }).order("id", { ascending: false })
   : { data: [], error: null };
 const drafts = (draftRows ?? []) as any[];
+// T084: el Operario con reporte activo propio trabaja en /turno (también sin conexión).
+if (auth.profile.role === "OPERATOR" && drafts.length > 0 && !draftError) return Astro.redirect("/turno");
 const filters = parseReportFilters(Astro.url.searchParams);
-const activeFilterLabel = filters.activeStop
-  ? "Parada activa"
-  : filters.status
-    ? statusLabels[filters.status]
-    : null;
+const activeFilterLabel = [
+  filters.status ? statusLabels[filters.status] : null,
+  filters.activeStop ? "Parada activa" : null,
+  filters.offShift ? "Abiertos fuera de turno" : null,
+].filter(Boolean).join(" · ") || null;
 let visibleReports: any[] = [];
 let visibleReportError: string | null = null;
 let reportTotal = 0;
 if (!filters.error) {
-  const visibleSelection = filters.activeStop
-    ? `${reportSelection}, active_stop:report_stop_events!inner(id, ended_at)`
-    : reportSelection;
   let visibleQuery = supabase
-    .from("production_reports")
-    .select(visibleSelection, { count: "exact" })
+    .from("production_report_overview")
+    .select(reportSelection, { count: "exact" })
     .order("created_at", { ascending: false })
     .order("id", { ascending: false });
-  visibleQuery = applyReportFilters(visibleQuery, filters, filters.activeStop ? "active_stop" : "report_stop_events");
+  visibleQuery = applyReportFilters(visibleQuery, filters);
   const visibleResult = await visibleQuery.range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
   visibleReports = (visibleResult.data ?? []) as any[];
   reportTotal = visibleResult.count ?? 0;
@@ -59,25 +62,32 @@ const pageHref = (target: number) => {
   if (target > 1) params.set("page", String(target));
   return `/reportes${params.size ? `?${params.toString()}` : ""}`;
 };
-let assignedMachines: any[] = [];
 
-if (auth.profile.role === "OPERATOR") {
-  const { data } = await supabase
-    .from("operator_machine_assignments")
-    .select("machine_id, active, machine:machines(id, code, name, active)")
-    .eq("operator_id", auth.user.id)
-    .eq("active", true);
-  assignedMachines = (data ?? []).filter((assignment: any) => assignment.machine?.active);
-}
+// Selectores de filtros cargados desde los catálogos (máquinas, turnos) y los operarios.
+const [machineOptionsResult, shiftOptionsResult, operatorOptionsResult] = administrativeList
+  ? await Promise.all([
+      supabase.from("machines").select("id, code, name").order("code"),
+      supabase.from("shifts").select("id, name, start_time, end_time").order("start_time"),
+      supabase.from("profiles").select("id, full_name").eq("role", "OPERATOR").order("full_name"),
+    ])
+  : [{ data: [] }, { data: [] }, { data: [] }];
+const machineOptions = (machineOptionsResult.data ?? []) as any[];
+const shiftOptions = (shiftOptionsResult.data ?? []) as any[];
+const operatorOptions = (operatorOptionsResult.data ?? []) as any[];
+const shiftOptionLabel = (shift: any) => {
+  const range = `${String(shift.start_time).slice(0, 5)} - ${String(shift.end_time).slice(0, 5)}`;
+  return shift.name ? `${shift.name} · ${range}` : range;
+};
 
 // Los resultados de acciones (?ok / ?error) se muestran como toast; aquí solo errores de carga o de filtros.
 const error = filters.error ?? visibleReportError ?? draftError?.message;
 const today = getBogotaDateKey();
-const currentMonth = today.slice(0, 7);
 const exportParams = reportFilterParams(filters);
 const exportHref = `/api/reports/export${exportParams.size ? `?${exportParams.toString()}` : ""}`;
-const withoutPeriodParams = reportFilterParams(filters, { includePeriod: false });
-const clearPeriodHref = `/reportes${withoutPeriodParams.size ? `?${withoutPeriodParams.toString()}` : ""}`;
+const filtersActive = hasActiveReportFilters(filters);
+const currentPeriod = activePeriod(filters, today);
+const NO_RESULTS_MESSAGE = "No hay reportes para los filtros seleccionados";
+const emptyMessage = filtersActive ? NO_RESULTS_MESSAGE : "No hay reportes disponibles.";
 const filterSummary = [filters.periodLabel, activeFilterLabel].filter(Boolean).join(" · ");
 const shiftLabel = (report: any) => {
   if (!report.shift_catalog) return report.shift || "—";
@@ -90,16 +100,16 @@ const shiftLabel = (report: any) => {
   <main class="mx-auto w-full max-w-7xl space-y-6 px-4 py-4 sm:px-6 sm:py-6">
     <PageHeader
       title="Reportes de producción"
-      description={auth.profile.role === "OPERATOR" ? `${drafts.length} de 5 reportes abiertos.` : "Consulta de reportes autorizados."}
+      description={auth.profile.role === "OPERATOR" ? (drafts.length > 0 ? "Tienes un reporte activo." : "No tienes un reporte activo.") : "Consulta de reportes autorizados."}
     >
-      <Fragment slot="actions">{auth.profile.role === "ADMINISTRATOR" && <a class={buttonVariants({ variant: "outline", size: "lg" })} href="/administracion">Administración</a>}</Fragment>
+      <Fragment slot="actions">{isManagerUser && <a class={buttonVariants({ variant: "outline", size: "lg" })} href="/administracion">Administración</a>}</Fragment>
     </PageHeader>
 
     {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
 
     {auth.profile.role === "OPERATOR" && drafts.length > 0 && (
-      <section aria-label="Cambio rápido de máquina">
-        <h2 class="mb-3 text-sm font-bold uppercase tracking-wider text-muted-foreground">Máquinas abiertas</h2>
+      <section aria-label="Reporte activo">
+        <h2 class="mb-3 text-sm font-bold uppercase tracking-wider text-muted-foreground">Reporte activo</h2>
         <div class="flex gap-3 overflow-x-auto pb-2">
           {drafts.map((report) => (
             <a class="block min-w-48 rounded-2xl outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50" href={`/reportes/${report.id}`}>
@@ -118,68 +128,94 @@ const shiftLabel = (report: any) => {
         <div class="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 class="text-base font-semibold leading-none">Abrir reporte de máquina</h2>
-            <CardDescription className="mt-1">Solo aparecen máquinas activas que tienes asignadas.</CardDescription>
+            <CardDescription className="mt-1">Elige tu máquina asignada del turno actual en la pantalla Turno.</CardDescription>
           </div>
-          <Badge variant="neutral" className="px-3 py-2 text-sm">{drafts.length}/5 abiertos</Badge>
+          <Badge variant="neutral" className="px-3 py-2 text-sm">{drafts.length}/1 activo</Badge>
         </div>
-        <form class="mt-5 grid gap-4 md:grid-cols-[1fr_220px_auto] md:items-end" method="POST" action="/api/reports">
-          <Label>
-            <FieldLabel>Máquina</FieldLabel>
-            <NativeSelect name="machine_id" required disabled={drafts.length >= 5}>
-              <option value="">Selecciona una máquina</option>
-              {assignedMachines.map((assignment) => (
-                <option value={assignment.machine.id}>{assignment.machine.code} · {assignment.machine.name}</option>
-              ))}
-            </NativeSelect>
-          </Label>
-          <Label>
-            <FieldLabel>Fecha</FieldLabel>
-            <Input type="date" name="report_date" value={today} disabled={drafts.length >= 5} />
-          </Label>
-          <button class={buttonVariants({ variant: "accent", size: "lg", className: "w-full md:w-auto" })} type="submit" disabled={drafts.length >= 5}>Nuevo reporte</button>
-        </form>
+        <p class="mt-4 text-sm text-muted-foreground">Los reportes se inician y se trabajan en la pantalla Turno, que también funciona sin conexión.</p>
+        <a class={buttonVariants({ variant: "accent", size: "lg", className: "mt-4 min-h-12 w-full text-base md:w-auto" })} href="/turno" data-astro-reload>Ir a Turno para iniciar un reporte</a>
       </Card>
     )}
 
     <Card className="rounded-2xl gap-4 p-5" aria-labelledby="period-filter-title">
       <div class="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 id="period-filter-title" class="text-base font-semibold leading-none">Período</h2>
-          <CardDescription className="mt-1">Filtra la tabla por la fecha operativa del reporte.</CardDescription>
+          <h2 id="period-filter-title" class="text-base font-semibold leading-none">Filtros</h2>
+          <CardDescription className="mt-1">El rango usa la fecha operativa del reporte.</CardDescription>
         </div>
-        <div class="grid w-full grid-cols-3 gap-2 sm:flex sm:w-auto sm:flex-wrap" aria-label="Seleccionar tipo de período">
+        <div class="grid w-full grid-cols-3 gap-2 sm:flex sm:w-auto sm:flex-wrap" aria-label="Atajos de período">
           {([["day", "Día"], ["week", "Semana"], ["month", "Mes"]] as const).map(([value, label]) => (
             <a
-              class={buttonVariants({ variant: filters.period === value ? "secondary" : "outline", size: "lg", className: filters.period === value ? "border border-primary px-2" : "px-2" })}
-              href={periodHref(value, filters)}
-              aria-current={filters.period === value ? "page" : undefined}
+              class={buttonVariants({ variant: currentPeriod === value ? "secondary" : "outline", size: "lg", className: currentPeriod === value ? "border border-primary px-2" : "px-2" })}
+              href={periodHref(value, filters, today)}
+              aria-current={currentPeriod === value ? "page" : undefined}
             >{label}</a>
           ))}
         </div>
       </div>
 
-      {filters.period && (
-        <form class="grid gap-3 sm:flex sm:flex-wrap sm:items-end" method="GET" action="/reportes">
-          <input type="hidden" name="period" value={filters.period} />
-          {filters.activeStop && <input type="hidden" name="stop" value="active" />}
-          {!filters.activeStop && filters.status && <input type="hidden" name="status" value={filters.status} />}
-          {filters.period === "month" ? (
-            <Label className="min-w-0 flex-1 sm:min-w-56 sm:flex-none">
-              <FieldLabel>Mes</FieldLabel>
-              <Input type="month" name="month" value={filters.month ?? currentMonth} required />
+      <form class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4" method="GET" action="/reportes">
+        <Label className="min-w-0">
+          <FieldLabel>Desde</FieldLabel>
+          <Input type="date" name="from" value={filters.from ?? ""} />
+        </Label>
+        <Label className="min-w-0">
+          <FieldLabel>Hasta</FieldLabel>
+          <Input type="date" name="to" value={filters.to ?? ""} />
+        </Label>
+        {administrativeList && (
+          <>
+            <Label className="min-w-0">
+              <FieldLabel>Máquina</FieldLabel>
+              <NativeSelect name="machine">
+                <option value="">Todas</option>
+                {machineOptions.map((machine) => <option value={machine.id} selected={filters.machine === machine.id}>{machine.code} · {machine.name}</option>)}
+              </NativeSelect>
             </Label>
-          ) : (
-            <Label className="min-w-0 flex-1 sm:min-w-56 sm:flex-none">
-              <FieldLabel>{filters.period === "week" ? "Fecha dentro de la semana" : "Fecha"}</FieldLabel>
-              <Input type="date" name="date" value={filters.date ?? today} required />
+            <Label className="min-w-0">
+              <FieldLabel>Turno</FieldLabel>
+              <NativeSelect name="shift">
+                <option value="">Todos</option>
+                {shiftOptions.map((shift) => <option value={shift.id} selected={filters.shift === shift.id}>{shiftOptionLabel(shift)}</option>)}
+              </NativeSelect>
             </Label>
+            <Label className="min-w-0">
+              <FieldLabel>Operario</FieldLabel>
+              <NativeSelect name="operator">
+                <option value="">Todos</option>
+                {operatorOptions.map((operator) => <option value={operator.id} selected={filters.operator === operator.id}>{operator.full_name}</option>)}
+              </NativeSelect>
+            </Label>
+          </>
+        )}
+        <Label className="min-w-0">
+          <FieldLabel>Estado</FieldLabel>
+          <NativeSelect name="status">
+            <option value="">Todos</option>
+            {REPORT_STATUSES.map((status) => <option value={status} selected={filters.status === status}>{statusLabels[status]}</option>)}
+          </NativeSelect>
+        </Label>
+        <div class="flex flex-wrap items-end gap-x-5 gap-y-2 sm:col-span-2 lg:col-span-2">
+          <label class="flex min-h-11 items-center gap-2 text-sm font-medium">
+            <input class="size-4 accent-primary" type="checkbox" name="stop" value="active" checked={filters.activeStop} />
+            Con parada activa
+          </label>
+          {administrativeList && (
+            <label class="flex min-h-11 items-center gap-2 text-sm font-medium">
+              <input class="size-4 accent-primary" type="checkbox" name="offshift" value="1" checked={filters.offShift} />
+              Abiertos fuera de turno
+            </label>
           )}
-          <button class={buttonVariants({ size: "lg", className: "w-full sm:w-auto" })} type="submit">Aplicar</button>
-          <a class={buttonVariants({ variant: "outline", size: "lg", className: "w-full sm:w-auto" })} href={clearPeriodHref}>Limpiar período</a>
-        </form>
-      )}
+        </div>
+        <div class="flex flex-wrap items-end gap-3 sm:col-span-2 lg:col-span-4">
+          <button class={buttonVariants({ size: "lg", className: "w-full sm:w-auto" })} type="submit">Aplicar filtros</button>
+          {filtersActive && <a class={buttonVariants({ variant: "outline", size: "lg", className: "w-full sm:w-auto" })} href="/reportes">Limpiar filtros</a>}
+        </div>
+      </form>
     </Card>
 
+    {administrativeList && !filters.error && <LiveReportList client:load filters={filters} />}
+    <div id="report-list-live">
     <Card className="rounded-2xl gap-0 overflow-hidden py-0">
       <CardHeader className="flex flex-wrap items-center justify-between gap-3 border-b p-5">
         <div>
@@ -189,10 +225,10 @@ const shiftLabel = (report: any) => {
           </CardDescription>
         </div>
         <div class="flex flex-wrap items-center gap-3">
-          {(auth.profile.role === "ADMINISTRATOR" || auth.profile.role === "VIEWER") && !filters.error && (
-            <a class={buttonVariants({ size: "lg" })} href={exportHref}>Exportar Excel</a>
-          )}
-          {(activeFilterLabel || filters.period) && <a class={buttonVariants({ variant: "link" })} href="/reportes">Limpiar filtros</a>}
+          {administrativeList && !filters.error && (reportTotal > 0
+            ? <a class={buttonVariants({ size: "lg" })} href={exportHref}>Exportar Excel</a>
+            : <span class={buttonVariants({ size: "lg", className: "pointer-events-none opacity-50" })} aria-disabled="true" role="link" title={NO_RESULTS_MESSAGE}>Exportar Excel</span>)}
+          {filtersActive && <a class={buttonVariants({ variant: "link" })} href="/reportes">Limpiar filtros</a>}
         </div>
       </CardHeader>
       <div class={`divide-y divide-border ${administrativeList ? "lg:hidden" : "md:hidden"}`}>
@@ -203,7 +239,10 @@ const shiftLabel = (report: any) => {
             <article class={administrativeList ? "space-y-2 p-3" : "space-y-3 p-4"}>
               <div class="flex items-start justify-between gap-3">
                 <p class="min-w-0 break-words font-mono font-semibold tabular-nums text-foreground">{report.folio}</p>
-                <StatusBadge status={report.status} />
+                <div class="flex flex-wrap justify-end gap-1.5">
+                  <StatusBadge status={report.status} />
+                  {report.is_off_shift && <Badge variant="stop">Abierto fuera de turno</Badge>}
+                </div>
               </div>
               {administrativeList ? (
                 <>
@@ -214,6 +253,9 @@ const shiftLabel = (report: any) => {
                     <div><dt class="text-muted-foreground">Producto</dt><dd>{report.product_name || report.product?.name || "—"}</dd></div>
                     <div><dt class="text-muted-foreground">O.P.</dt><dd>{report.production_order || "—"}</dd></div>
                     <div><dt class="text-muted-foreground">Turno</dt><dd>{shiftLabel(report)}</dd></div>
+                    {report.status === "CLOSED" && (
+                      <div class="min-[380px]:col-span-2"><dt class="text-muted-foreground">Aprobado por</dt><dd>{report.approver_full_name || "—"} · {formatDateTime(report.approved_at)}</dd></div>
+                    )}
                   </dl>
                   <div class="flex flex-wrap gap-x-5 gap-y-1 text-sm font-semibold">
                     <span>Paradas: {stopSummary.count}</span>
@@ -241,12 +283,12 @@ const shiftLabel = (report: any) => {
             </article>
           );
         })}
-        {visibleReports.length === 0 && <p class="p-8 text-center text-muted-foreground">No hay reportes disponibles.</p>}
+        {visibleReports.length === 0 && <p class="p-8 text-center text-muted-foreground">{emptyMessage}</p>}
       </div>
       <Table className="min-w-[760px] lg:min-w-[960px]" container={{ role: "region", "aria-label": "Listado de reportes", tabIndex: 0, className: `hidden ${administrativeList ? "lg:block" : "md:block"}` }}>
         <TableHeader>
           <TableRow>
-            <TableHead>Folio</TableHead><TableHead>Fecha</TableHead><TableHead>Máquina</TableHead><TableHead className="hidden lg:table-cell">O.P.</TableHead><TableHead>Operario</TableHead><TableHead className="hidden lg:table-cell">Rol</TableHead><TableHead>Estado</TableHead><TableHead>Parada</TableHead><TableHead><span class="sr-only">Acciones</span></TableHead>
+            <TableHead>Folio</TableHead><TableHead>Fecha</TableHead><TableHead>Máquina</TableHead><TableHead className="hidden lg:table-cell">O.P.</TableHead><TableHead>Operario</TableHead><TableHead className="hidden lg:table-cell">Rol</TableHead><TableHead>Estado</TableHead><TableHead className="hidden lg:table-cell">Aprobación</TableHead><TableHead>Parada</TableHead><TableHead><span class="sr-only">Acciones</span></TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -258,12 +300,22 @@ const shiftLabel = (report: any) => {
               <TableCell className="hidden lg:table-cell">{report.production_order || "—"}</TableCell>
               <TableCell>{report.operator?.full_name || "—"}</TableCell>
               <TableCell className="hidden whitespace-nowrap lg:table-cell">{report.operator?.role ? roleLabels[report.operator.role as AppRole] ?? "—" : "—"}</TableCell>
-              <TableCell><StatusBadge status={report.status} /></TableCell>
+              <TableCell>
+                <div class="flex flex-wrap gap-1.5">
+                  <StatusBadge status={report.status} />
+                  {report.is_off_shift && <Badge variant="stop">Abierto fuera de turno</Badge>}
+                </div>
+              </TableCell>
+              <TableCell className="hidden lg:table-cell">
+                {report.status === "CLOSED"
+                  ? <span>{report.approver_full_name || "—"}<span class="block text-xs text-muted-foreground">{formatDateTime(report.approved_at)}</span></span>
+                  : "—"}
+              </TableCell>
               <TableCell>{hasActiveStop(report) ? <StopIndicator active /> : "—"}</TableCell>
               <TableCell className="text-right"><a class="font-semibold text-primary underline-offset-4 hover:underline" href={`/reportes/${report.id}`}>Abrir</a></TableCell>
             </TableRow>
           ))}
-          {visibleReports.length === 0 && <TableRow><TableCell className="p-8 text-center text-muted-foreground" colSpan={9}>No hay reportes disponibles.</TableCell></TableRow>}
+          {visibleReports.length === 0 && <TableRow><TableCell className="p-8 text-center text-muted-foreground" colSpan={10}>{emptyMessage}</TableCell></TableRow>}
         </TableBody>
       </Table>
       {pageCount > 1 && (
@@ -274,5 +326,6 @@ const shiftLabel = (report: any) => {
         </nav>
       )}
     </Card>
+    </div>
   </main>
 </BaseLayout>

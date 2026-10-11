@@ -19,13 +19,15 @@ interface Props {
   title: string;
   description: string;
   catalog: string;
+  /** Ruta POST del catálogo; por defecto /api/admin/catalogs/[catalog]. */
+  action?: string;
   items: CatalogItem[];
   /** Error de carga de datos (los resultados ?ok/?error de las acciones se muestran como toast). */
   error?: string | null;
 }
 
-const { profile, title, description, catalog, items, error } = Astro.props;
-const action = `/api/admin/catalogs/${catalog}`;
+const { profile, title, description, catalog, items, error, action: customAction } = Astro.props;
+const action = customAction ?? `/api/admin/catalogs/${catalog}`;
 ---
 
 <BaseLayout title={title} description={description} profile={profile}>

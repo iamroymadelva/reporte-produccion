@@ -6,7 +6,8 @@
   "packageManager": "bun@1.3.14",
   "scripts": {
     "test": "bun test",
-    "dev": "astro dev",
+    "dev": "bun scripts/dev-local.ts",
+    "dev:remote": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
     "astro": "astro",

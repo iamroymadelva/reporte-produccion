@@ -35,12 +35,23 @@ describe("nav-config", () => {
     }
   });
 
-  test("ADMINISTRATOR ve 9 enlaces de administración", () => {
+  test("ADMINISTRATOR ve 10 enlaces de administración (con Tipos de cambio, sin Historial)", () => {
     const groups = navForRole("ADMINISTRATOR");
     expect(groups.map((group) => group.id)).toEqual(["operacion", "administracion", "cuenta"]);
     const admin = groups.find((group) => group.id === "administracion")!;
-    expect(admin.items).toHaveLength(9);
+    expect(admin.items).toHaveLength(10);
     expect(admin.items.every((item) => item.href.startsWith("/administracion"))).toBe(true);
+    expect(admin.items.some((item) => item.href === "/administracion/tipos-cambio")).toBe(true);
+    expect(admin.items.some((item) => item.href === "/administracion/historial")).toBe(false);
+  });
+
+  test("ROOT ve 11 enlaces de administración, incluido Historial administrativo", () => {
+    const groups = navForRole("ROOT");
+    expect(groups.map((group) => group.id)).toEqual(["operacion", "administracion", "cuenta"]);
+    const admin = groups.find((group) => group.id === "administracion")!;
+    expect(admin.items).toHaveLength(11);
+    expect(admin.items.some((item) => item.title === "Historial administrativo" && item.href === "/administracion/historial")).toBe(true);
+    expect(admin.items.some((item) => item.href === "/administracion/tipos-cambio")).toBe(true);
   });
 
   test("mobileTabs: dashboard, reportes y notificaciones", () => {

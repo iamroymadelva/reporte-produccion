@@ -1,21 +1,26 @@
 ---
 import BaseLayout from "../../layouts/BaseLayout.astro";
-import OfflineDraftNotice from "../../components/OfflineDraftNotice";
 import PageHeader from "../../components/PageHeader.astro";
 import StatusBadge from "../../components/StatusBadge";
 import StopIndicator from "../../components/StopIndicator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import ApprovalPanel from "../../components/ApprovalPanel";
+import QuarantineReviewPanel from "../../components/QuarantineReviewPanel";
+import LiveTimeline from "../../components/realtime/LiveTimeline";
 import ReportEditor from "../../components/ReportEditor";
 import StopManager from "../../components/StopManager";
 import StopEventsTable from "../../components/StopEventsTable";
 import StopSummary from "../../components/StopSummary";
-import { describeAuditRows, type AuditCatalogs, type ReportAuditRow } from "../../lib/report-audit";
+import { describeAuditRows, offlineBadgeLabel, type AuditCatalogs, type ReportAuditRow } from "../../lib/report-audit";
 import { STOP_EVENT_SELECTION, isActiveStop } from "../../lib/stop-events";
 import { createSupabaseServerClient } from "../../lib/supabase/server";
 import { formatDateTime, formatDuration, formatNumber, formatPercent } from "../../lib/format";
+import { isManagerRole } from "../../lib/auth";
 import { hasActiveStop } from "../../lib/report-status";
+import { describeQuarantineItem, type QuarantineRow } from "../../lib/sync-quarantine";
 import { roleLabels } from "../../lib/types";
 
 const auth = Astro.locals.auth!;
@@ -23,7 +28,8 @@ const isOperator = auth.profile.role === "OPERATOR";
 const id = Astro.params.id!;
 const supabase = createSupabaseServerClient(Astro.request, Astro.cookies);
 
-const [reportResult, metricsResult, stopsResult, linesResult, clientsResult, productsResult, dosifiersResult, shiftsResult, categoriesResult] = await Promise.all([
+const [overviewResult, reportResult, metricsResult, stopsResult, linesResult, clientsResult, productsResult, dosifiersResult, shiftsResult, categoriesResult] = await Promise.all([
+  supabase.from("production_report_overview").select("is_off_shift, has_open_conflict, has_pending_review").eq("id", id).maybeSingle(),
   supabase.from("production_reports").select("*, machine:machines(id, code, name), line:lines(id, code, name), client:clients(id, code, name), product:products(id, code, name), dosifier_type:dosifier_types(id, code, name), shift_catalog:shifts(id, name, start_time, end_time), operator:profiles!production_reports_created_by_fkey(id, full_name, job_title, role), cancelled_by_profile:profiles!production_reports_cancelled_by_fkey(id, full_name)").eq("id", id).single(),
   isOperator ? Promise.resolve({ data: null }) : supabase.from("production_report_metrics").select("*").eq("id", id).single(),
   supabase.from("report_stop_events").select(STOP_EVENT_SELECTION).eq("report_id", id).order("started_at"),
@@ -47,8 +53,16 @@ const dosifierTypes = (dosifiersResult.data ?? []) as any[];
 const shifts = (shiftsResult.data ?? []) as any[];
 const categories = (categoriesResult.data ?? []) as any[];
 const isOwnerDraft = auth.profile.role === "OPERATOR" && report.created_by === auth.user.id && report.status === "DRAFT";
-const adminCorrection = auth.profile.role === "ADMINISTRATOR";
-const editable = isOwnerDraft || adminCorrection;
+// T084: el reporte activo propio del Operario se trabaja en /turno.
+if (isOwnerDraft) return Astro.redirect("/turno");
+const adminCorrection = isManagerRole(auth.profile.role);
+const overview = (overviewResult.data ?? {}) as { is_off_shift?: boolean; has_open_conflict?: boolean };
+// Los managers no editan reportes activos (DRAFT): solo corrigen (con motivo) enviados o cerrados.
+const correctable = report.status === "SUBMITTED" || report.status === "CLOSED";
+const editable = isOwnerDraft || (adminCorrection && correctable);
+const approvalBlockedReason = overview.has_open_conflict
+  ? "El reporte tiene datos sin conciliar de la sincronización. Resuélvelos antes de aprobar."
+  : null;
 const shiftLabel = (shift: any) => {
   if (!shift) return report.shift || "—";
   const range = `${String(shift.start_time).slice(0, 5)} - ${String(shift.end_time).slice(0, 5)}`;
@@ -66,14 +80,27 @@ if (auth.profile.role === "OPERATOR") {
   openDrafts = (data ?? []) as any[];
 }
 
+// Datos capturados sin conexión pendientes de revisión (solo managers).
+let quarantineItems: ReturnType<typeof describeQuarantineItem>[] = [];
+if (adminCorrection) {
+  const { data } = await supabase
+    .from("sync_quarantine")
+    .select("id, reason, payload, created_at")
+    .eq("report_id", id)
+    .eq("status", "OPEN")
+    .order("created_at", { ascending: true });
+  quarantineItems = ((data ?? []) as QuarantineRow[]).map((row) => describeQuarantineItem(row, report.status));
+}
+
 let audit: ReportAuditRow[] = [];
 let auditError: string | null = null;
-if (auth.profile.role === "ADMINISTRATOR" || auth.profile.role === "VIEWER") {
+if (adminCorrection || auth.profile.role === "VIEWER") {
   const { data, error } = await supabase
     .from("report_audit_log")
-    .select("id, changed_at, changed_by, field_name, old_value, new_value, user:profiles!report_audit_log_changed_by_fkey(full_name)")
+    .select("id, changed_at, changed_by, field_name, old_value, new_value, entity_type, action, actor_role, reason, captured_offline, captured_at, received_at, user:profiles!report_audit_log_changed_by_fkey(full_name)")
     .eq("report_id", id)
-    .order("changed_at", { ascending: false });
+    .order("changed_at", { ascending: true })
+    .order("id", { ascending: true });
   audit = (data ?? []) as unknown as ReportAuditRow[];
   auditError = error ? "No fue posible consultar la auditoría del reporte." : null;
 }
@@ -121,7 +148,7 @@ const auditEntries = describeAuditRows(audit, { catalogs: auditCatalogs, stops }
       <Fragment slot="actions"><StatusBadge status={report.status} /></Fragment>
     </PageHeader>
 
-    {(auth.profile.role === "ADMINISTRATOR" || auth.profile.role === "VIEWER") && (
+    {(adminCorrection || auth.profile.role === "VIEWER") && (
       <Card className="rounded-2xl grid gap-4 p-5 sm:grid-cols-3" aria-label="Responsable del reporte">
         <div><p class="text-sm text-muted-foreground">Creador del reporte</p><p class="font-bold">{report.creator_full_name}</p></div>
         <div><p class="text-sm text-muted-foreground">Cargo al crear el reporte</p><p class="font-bold">{report.creator_job_title || "—"}</p></div>
@@ -140,14 +167,18 @@ const auditEntries = describeAuditRows(audit, { catalogs: auditCatalogs, stops }
       </Card>
     )}
 
-    {auth.profile.role === "OPERATOR" && !isOwnerDraft && (
-      <OfflineDraftNotice
-        client:load
-        userId={auth.user.id}
-        reportId={id}
-        finalized
-      />
-    )}
+    <ApprovalPanel
+      client:load
+      reportId={id}
+      status={report.status}
+      isManager={adminCorrection}
+      approvalBlockedReason={approvalBlockedReason}
+      approverName={report.approver_full_name}
+      approvedAt={report.approved_at}
+      isOffShift={Boolean(overview.is_off_shift)}
+    />
+
+    {adminCorrection && quarantineItems.length > 0 && <QuarantineReviewPanel client:load items={quarantineItems} />}
 
     {!isOperator && <section class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
       <Card className="rounded-2xl gap-0 p-5"><p class="text-sm text-muted-foreground">Unidades teóricas/hora</p><p class="mt-2 font-mono text-2xl font-bold tabular-nums">{formatNumber(metrics.theoretical_units_per_hour)}</p></Card>
@@ -171,13 +202,8 @@ const auditEntries = describeAuditRows(audit, { catalogs: auditCatalogs, stops }
         shifts={shifts.filter((shift) => shift.active)}
         canSubmit={isOwnerDraft}
         hasActiveStop={stops.some(isActiveStop)}
-        adminCorrection={adminCorrection && report.status !== "DRAFT"}
-        offlinePersistence={isOwnerDraft}
-        authenticatedUserId={isOwnerDraft ? auth.user.id : undefined}
-        serverUpdatedAt={isOwnerDraft ? report.updated_at : undefined}
-        reportFolio={isOwnerDraft ? report.folio : undefined}
-        machineId={isOwnerDraft ? report.machine_id : undefined}
-        machineLabel={isOwnerDraft ? `${report.machine?.code} · ${report.machine?.name}` : undefined}
+        adminCorrection={adminCorrection && correctable}
+        machineLabel={`${report.machine?.code} · ${report.machine?.name}`}
       />
     ) : (
       <Card className="rounded-2xl gap-0 p-5">
@@ -215,35 +241,15 @@ const auditEntries = describeAuditRows(audit, { catalogs: auditCatalogs, stops }
       </Card>
     )}
 
-    {(auth.profile.role === "ADMINISTRATOR" || auth.profile.role === "VIEWER") && (
-      <Card className="rounded-2xl gap-0 p-5" aria-labelledby="report-audit-title">
-        <h2 id="report-audit-title" class="text-base font-semibold leading-none">Auditoría de correcciones</h2>
-        {auditError ? (
-          <Alert variant="destructive" className="mt-4"><AlertDescription>{auditError}</AlertDescription></Alert>
-        ) : (
-          <div class="mt-4 space-y-3">
-            {auditEntries.map((entry) => (
-              <article class="rounded-xl bg-muted/50 p-4 text-sm">
-                <div class="flex flex-wrap items-start justify-between gap-2">
-                  <h3 class="font-bold text-foreground">{entry.title}{entry.stopNumber ? ` · Parada #${entry.stopNumber}` : ""}</h3>
-                  <time class="text-muted-foreground" datetime={entry.changedAt}>{formatDateTime(entry.changedAt)}</time>
-                </div>
-                <p class="mt-1 text-muted-foreground"><span class="font-semibold text-foreground">Actor:</span> {entry.actor}</p>
-                <div class="mt-3 space-y-3">
-                  {entry.details.map((detail) => (
-                    <div class="grid gap-2 border-t border-border pt-3 min-[420px]:grid-cols-2">
-                      <p class="font-semibold text-foreground min-[420px]:col-span-2">{detail.label}</p>
-                      {detail.previous !== undefined && <dl><dt class="text-xs uppercase tracking-wide text-muted-foreground">Valor anterior</dt><dd class="mt-1 break-words text-foreground">{detail.previous}</dd></dl>}
-                      {detail.next !== undefined && <dl><dt class="text-xs uppercase tracking-wide text-muted-foreground">Valor nuevo</dt><dd class="mt-1 break-words text-foreground">{detail.next}</dd></dl>}
-                    </div>
-                  ))}
-                </div>
-              </article>
-            ))}
-            {auditEntries.length === 0 && <p class="text-sm text-muted-foreground">No hay correcciones registradas.</p>}
-          </div>
-        )}
-      </Card>
+    {(adminCorrection || auth.profile.role === "VIEWER") && (
+      <LiveTimeline
+        client:load
+        reportId={id}
+        initialAudit={audit}
+        initialStops={stops.map((stop) => ({ id: stop.id, started_at: stop.started_at }))}
+        catalogs={Object.fromEntries(Object.entries(auditCatalogs).map(([key, map]) => [key, [...(map ?? new Map<string, string>()).entries()]]))}
+        initialError={auditError}
+      />
     )}
   </main>
 </BaseLayout>

@@ -14,7 +14,7 @@ export function NotificationBell() {
 
   return <Popover open={open} onOpenChange={(value) => { setOpen(value); if (value) void refresh(); }}>
     <PopoverTrigger asChild>
-      <Button type="button" variant="ghost" size="icon" className="relative" aria-label={online ? `Notificaciones, ${count} sin leer` : "Notificaciones sin conexión"}>
+      <Button type="button" variant="ghost" size="icon" className="relative size-11 md:size-9" aria-label={online ? `Notificaciones, ${count} sin leer` : "Notificaciones sin conexión"}>
         <Bell className="size-5" aria-hidden="true" />
         {online && count > 0 && <span aria-hidden="true" className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-semibold text-destructive-foreground">{count > 99 ? "99+" : count}</span>}
       </Button>
@@ -25,7 +25,7 @@ export function NotificationBell() {
           <h2 className="text-sm font-semibold">Notificaciones</h2>
           <p className="text-xs text-muted-foreground">{online ? `${count} sin leer` : "Sin conexión"}</p>
         </div>
-        {count > 0 && online && <Button variant="ghost" size="sm" type="button" onClick={() => void markAllRead()}>Marcar todas como leídas</Button>}
+        {count > 0 && online && <Button variant="ghost" size="sm" className="min-h-11" type="button" onClick={() => void markAllRead()}>Marcar todas como leídas</Button>}
       </div>
       {!online && <p role="status" className="m-3 rounded-md bg-muted p-3 text-sm text-muted-foreground">Conéctate para consultar y marcar notificaciones.</p>}
       {error && <div role="alert" className="m-3 rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive-text">

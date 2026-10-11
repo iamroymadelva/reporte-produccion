@@ -1,0 +1,152 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import PageHeader from "../../components/PageHeader.astro";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { buttonVariants } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { FieldLabel, Label } from "@/components/ui/label";
+import { NativeSelect } from "@/components/ui/native-select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  ADMIN_AUDIT_PAGE_SIZE,
+  adminAuditActionLabels,
+  adminAuditEntityLabels,
+  describeAdminChanges,
+  parseAdminAuditFilters,
+  queryAdminAudit,
+} from "../../lib/admin-audit";
+import { isRoot } from "../../lib/auth";
+import { formatDateTime } from "../../lib/format";
+import { createSupabaseServerClient } from "../../lib/supabase/server";
+import { roleLabels, type AppRole } from "../../lib/types";
+
+const auth = Astro.locals.auth!;
+// Defensa en profundidad: el middleware y la RLS ya limitan esta página a ROOT.
+if (!isRoot(auth)) return Astro.redirect("/reportes");
+
+const filters = parseAdminAuditFilters(Astro.url.searchParams);
+const supabase = createSupabaseServerClient(Astro.request, Astro.cookies);
+const result = filters.error
+  ? { error: filters.error, rows: [], total: 0 }
+  : await queryAdminAudit(supabase, filters);
+const pageCount = Math.max(1, Math.ceil(result.total / ADMIN_AUDIT_PAGE_SIZE));
+const filtersActive = Boolean(filters.from || filters.to || filters.actor || filters.action || filters.entityType);
+
+function pageHref(page: number) {
+  const params = new URLSearchParams();
+  if (filters.from) params.set("from", filters.from);
+  if (filters.to) params.set("to", filters.to);
+  if (filters.actor) params.set("actor", filters.actor);
+  if (filters.action) params.set("action", filters.action);
+  if (filters.entityType) params.set("entity_type", filters.entityType);
+  if (page > 1) params.set("page", String(page));
+  const query = params.toString();
+  return query ? `/administracion/historial?${query}` : "/administracion/historial";
+}
+
+const actorName = (row: (typeof result.rows)[number]) =>
+  row.performer?.full_name?.trim() || row.performer?.username || (row.performed_by ? row.performed_by : "Sistema");
+---
+
+<BaseLayout title="Historial administrativo" description="Historial de cambios administrativos" profile={auth.profile}>
+  <main class="mx-auto w-full max-w-7xl space-y-6 px-4 py-4 sm:px-6 sm:py-6">
+    <PageHeader
+      title="Historial administrativo"
+      description="Registro de altas, cambios, desactivaciones y eliminaciones de usuarios, máquinas, catálogos y turnos. Visible solo para el administrador raíz."
+      back={{ href: "/administracion", label: "Administración" }}
+    />
+
+    <Card className="rounded-2xl gap-0 p-5">
+      <form class="grid gap-3 sm:grid-cols-2 lg:grid-cols-5" method="GET" action="/administracion/historial">
+        <Label className="min-w-0">
+          <FieldLabel>Desde</FieldLabel>
+          <Input type="date" name="from" value={filters.from ?? ""} />
+        </Label>
+        <Label className="min-w-0">
+          <FieldLabel>Hasta</FieldLabel>
+          <Input type="date" name="to" value={filters.to ?? ""} />
+        </Label>
+        <Label className="min-w-0">
+          <FieldLabel>Autor</FieldLabel>
+          <Input type="text" name="actor" value={filters.actor ?? ""} placeholder="Nombre o usuario" maxLength={80} />
+        </Label>
+        <Label className="min-w-0">
+          <FieldLabel>Acción</FieldLabel>
+          <NativeSelect name="action">
+            <option value="">Todas</option>
+            {Object.entries(adminAuditActionLabels).map(([value, label]) => (
+              <option value={value} selected={filters.action === value}>{label}</option>
+            ))}
+          </NativeSelect>
+        </Label>
+        <Label className="min-w-0">
+          <FieldLabel>Entidad</FieldLabel>
+          <NativeSelect name="entity_type">
+            <option value="">Todas</option>
+            {Object.entries(adminAuditEntityLabels).map(([value, label]) => (
+              <option value={value} selected={filters.entityType === value}>{label}</option>
+            ))}
+          </NativeSelect>
+        </Label>
+        <div class="flex flex-wrap items-end gap-3 sm:col-span-2 lg:col-span-5">
+          <button class={buttonVariants({ size: "lg", className: "w-full sm:w-auto" })} type="submit">Aplicar filtros</button>
+          {filtersActive && <a class={buttonVariants({ variant: "outline", size: "lg", className: "w-full sm:w-auto" })} href="/administracion/historial">Limpiar filtros</a>}
+        </div>
+      </form>
+    </Card>
+
+    {result.error && <Alert variant="destructive"><AlertDescription>{result.error}</AlertDescription></Alert>}
+
+    <Card className="rounded-2xl gap-0 overflow-hidden py-0">
+      <p class="border-b px-5 py-3 text-sm text-muted-foreground">{result.total} {result.total === 1 ? "registro" : "registros"}</p>
+      <Table className="min-w-[960px]" container={{ role: "region", "aria-label": "Historial administrativo", tabIndex: 0 }}>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Fecha</TableHead><TableHead>Autor</TableHead><TableHead>Rol</TableHead><TableHead>Acción</TableHead><TableHead>Entidad</TableHead><TableHead>Etiqueta</TableHead><TableHead>Cambios</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {result.rows.map((row) => {
+            const changes = describeAdminChanges(row);
+            return (
+              <TableRow>
+                <TableCell className="whitespace-nowrap tabular-nums">{formatDateTime(row.performed_at)}</TableCell>
+                <TableCell>{actorName(row)}</TableCell>
+                <TableCell>{row.actor_role ? (roleLabels[row.actor_role as AppRole] ?? row.actor_role) : "—"}</TableCell>
+                <TableCell><Badge variant="outline">{adminAuditActionLabels[row.action] ?? row.action}</Badge></TableCell>
+                <TableCell>{adminAuditEntityLabels[row.entity_type] ?? row.entity_type}</TableCell>
+                <TableCell className="max-w-48 break-words">{row.entity_label || "—"}</TableCell>
+                <TableCell className="min-w-64">
+                  {changes.length === 0 ? <span class="text-muted-foreground">—</span> : (
+                    <ul class="space-y-1 text-sm">
+                      {changes.map((change) => (
+                        <li class="break-words">
+                          <span class="font-semibold">{change.label}:</span>{" "}
+                          {change.previous !== undefined && <span class="text-muted-foreground">{change.previous}</span>}
+                          {change.previous !== undefined && change.next !== undefined && <span aria-label="cambia a"> → </span>}
+                          {change.next !== undefined && <span>{change.next}</span>}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </TableCell>
+              </TableRow>
+            );
+          })}
+          {result.rows.length === 0 && (
+            <TableRow><TableCell colSpan={7} className="py-8 text-center text-muted-foreground">No hay registros para los filtros seleccionados.</TableCell></TableRow>
+          )}
+        </TableBody>
+      </Table>
+      {pageCount > 1 && (
+        <nav class="flex items-center justify-between gap-3 border-t px-5 py-3" aria-label="Paginación">
+          <a class={buttonVariants({ variant: "outline", size: "lg" })} href={pageHref(Math.max(1, filters.page - 1))} aria-disabled={filters.page <= 1 ? "true" : undefined}>Anterior</a>
+          <span class="text-sm text-muted-foreground">Página {filters.page} de {pageCount}</span>
+          <a class={buttonVariants({ variant: "outline", size: "lg" })} href={pageHref(Math.min(pageCount, filters.page + 1))} aria-disabled={filters.page >= pageCount ? "true" : undefined}>Siguiente</a>
+        </nav>
+      )}
+    </Card>
+  </main>
+</BaseLayout>

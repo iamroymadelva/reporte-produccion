@@ -1,0 +1,105 @@
+---
+import { Eye, EyeOff, Factory } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label, FieldLabel } from "@/components/ui/label";
+
+interface Props {
+  error?: string | null;
+  ok?: string | null;
+  /** Aviso informativo (p. ej. volver a iniciar sesión para subir datos pendientes). */
+  notice?: string | null;
+  /** Variante estática sin datos (/acceso-offline): el HTML no incluye mensajes del servidor. */
+  offlineShell?: boolean;
+}
+const { error = null, ok = null, notice = null, offlineShell = false } = Astro.props;
+---
+
+<main class="flex min-h-screen flex-col items-center justify-center gap-4 bg-gradient-to-br from-auth-from via-auth-via to-auth-to p-4">
+  <Card className="w-full max-w-md shadow-2xl">
+    <CardHeader className="space-y-1">
+      <div class="mb-4 flex items-center justify-center">
+        <div class="rounded-2xl bg-primary p-4 shadow-lg"><Factory className="h-12 w-12 text-primary-foreground" aria-hidden="true" /></div>
+      </div>
+      <h1 data-slot="card-title" class="text-center text-2xl leading-none font-bold">Bienvenido</h1>
+      <CardDescription className="text-center">
+        {offlineShell
+          ? "Acceso con o sin conexión. Sin conexión solo entra quien inició sesión con conexión en este dispositivo en los últimos días."
+          : "Reporte de Producción · Ingresa con la cuenta asignada por Administración."}
+      </CardDescription>
+    </CardHeader>
+    <form method="POST" action="/api/auth/login" data-offline-login>
+      <CardContent className="space-y-4">
+        <div data-local-session-slot></div>
+        {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
+        {ok && <Alert variant="success"><AlertDescription>{ok}</AlertDescription></Alert>}
+        {notice && <Alert variant="info"><AlertDescription>{notice}</AlertDescription></Alert>}
+        <div data-login-messages aria-live="polite"></div>
+        <Label>
+          <FieldLabel>Usuario</FieldLabel>
+          <Input type="text" name="username" autoComplete="username" autoCapitalize="none" autoCorrect="off" spellCheck={false} placeholder="usuario" required />
+        </Label>
+        <div>
+          <Label htmlFor="login-password"><FieldLabel>Contraseña</FieldLabel></Label>
+          <div class="relative">
+            <Input id="login-password" className="pr-14" type="password" name="password" autoComplete="current-password" placeholder="••••••••" required />
+            <button
+              id="toggle-password-visibility"
+              class="absolute right-0 top-1/2 flex size-11 -translate-y-1/2 items-center justify-center rounded-lg text-muted-foreground transition hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+              type="button"
+              aria-label="Mostrar contraseña"
+              aria-controls="login-password"
+              aria-pressed="false"
+              title="Mostrar contraseña"
+            >
+              <Eye data-password-hidden-icon className="pointer-events-none size-5" aria-hidden="true" />
+              <EyeOff data-password-visible-icon className="pointer-events-none hidden size-5" aria-hidden="true" />
+            </button>
+          </div>
+        </div>
+      </CardContent>
+      <CardFooter className="mt-4 flex flex-col space-y-4">
+        <Button type="submit" size="lg" className="w-full">Iniciar sesión</Button>
+        <p class="text-center text-sm text-muted-foreground">No hay registro público de usuarios.</p>
+      </CardFooter>
+    </form>
+  </Card>
+</main>
+
+<script>
+  import { installLoginInterceptor, renderLocalSessionNotice } from "../lib/offline/login-flow";
+
+  function initPasswordToggle() {
+    const passwordField = document.querySelector<HTMLInputElement>("#login-password");
+    const visibilityToggle = document.querySelector<HTMLButtonElement>("#toggle-password-visibility");
+    if (!passwordField || !visibilityToggle || visibilityToggle.dataset.bound === "true") return;
+    visibilityToggle.dataset.bound = "true";
+    const hiddenIcon = visibilityToggle.querySelector<SVGElement>("[data-password-hidden-icon]");
+    const visibleIcon = visibilityToggle.querySelector<SVGElement>("[data-password-visible-icon]");
+
+    visibilityToggle.addEventListener("click", () => {
+      const willShowPassword = passwordField.type === "password";
+      const accessibleLabel = willShowPassword ? "Ocultar contraseña" : "Mostrar contraseña";
+
+      passwordField.type = willShowPassword ? "text" : "password";
+      visibilityToggle.setAttribute("aria-label", accessibleLabel);
+      visibilityToggle.setAttribute("aria-pressed", String(willShowPassword));
+      visibilityToggle.title = accessibleLabel;
+      hiddenIcon?.classList.toggle("hidden", willShowPassword);
+      visibleIcon?.classList.toggle("hidden", !willShowPassword);
+    });
+  }
+
+  function init() {
+    initPasswordToggle();
+    void renderLocalSessionNotice(document.querySelector<HTMLElement>("[data-local-session-slot]"));
+  }
+
+  // Con ClientRouter el DOM se reemplaza en cada navegación: se enlaza en astro:page-load
+  // y también al evaluar el módulo (sin router). La marca data-bound evita enlaces duplicados.
+  installLoginInterceptor();
+  document.addEventListener("astro:page-load", init);
+  init();
+</script>

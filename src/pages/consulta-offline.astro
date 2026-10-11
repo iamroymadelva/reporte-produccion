@@ -1,0 +1,12 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import OfflineOverview from "../components/offline/OfflineOverview";
+
+// Shell estático de la consulta sin conexión (T094, R10): HTML SIN datos, precacheado por el service worker. La isla
+// solo existe en el cliente (client:only), es de solo lectura y lee el resumen de IndexedDB del usuario autenticado.
+export const prerender = true;
+---
+
+<BaseLayout title="Consulta sin conexión" description="Última información descargada, de solo lectura">
+  <OfflineOverview client:only="react" />
+</BaseLayout>

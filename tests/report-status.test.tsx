@@ -16,6 +16,7 @@ describe("reportStatusVariant", () => {
   test("maps each report status to its badge variant", () => {
     expect(reportStatusVariant("DRAFT")).toBe("draft");
     expect(reportStatusVariant("SUBMITTED")).toBe("submitted");
+    expect(reportStatusVariant("CLOSED")).toBe("closed");
     expect(reportStatusVariant("CANCELLED")).toBe("cancelled");
   });
 });
@@ -43,11 +44,14 @@ describe("hasActiveStop", () => {
 describe("StatusBadge", () => {
   test("renders the Spanish label with the matching variant", () => {
     const draft = renderToStaticMarkup(<StatusBadge status="DRAFT" />);
-    expect(draft).toContain("En curso");
+    expect(draft).toContain("Activo");
     expect(draft).toContain('data-variant="draft"');
     const submitted = renderToStaticMarkup(<StatusBadge status="SUBMITTED" />);
     expect(submitted).toContain("Enviado");
     expect(submitted).toContain('data-variant="submitted"');
+    const closed = renderToStaticMarkup(<StatusBadge status="CLOSED" />);
+    expect(closed).toContain("Cerrado (aprobado)");
+    expect(closed).toContain('data-variant="closed"');
     const cancelled = renderToStaticMarkup(<StatusBadge status="CANCELLED" />);
     expect(cancelled).toContain("Cancelado");
     expect(cancelled).toContain('data-variant="cancelled"');

@@ -4,6 +4,7 @@ import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbP
 import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
+import OfflineIndicator from "@/components/offline/OfflineIndicator";
 import { cn } from "@/lib/utils";
 import type { Profile } from "@/lib/types";
 import { NavUser } from "./NavUser";
@@ -45,7 +46,8 @@ export function TopBar({ profile, pathname }: { profile: Profile; pathname: stri
         })}
       </BreadcrumbList>
     </Breadcrumb>
-    <div className="ml-auto flex items-center gap-3">
+    <div className="ml-auto flex min-w-0 items-center gap-3">
+      {profile.role === "OPERATOR" && <OfflineIndicator userId={profile.id} className="min-w-0 truncate" />}
       <NotificationBell />
       <div className="lg:hidden"><NavUser profile={profile} variant="icon" /></div>
     </div>
