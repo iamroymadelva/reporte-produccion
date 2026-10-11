@@ -1,5 +1,6 @@
 import type { APIRoute } from "astro";
 import { createSupabaseServerClient } from "../../../lib/supabase/server";
+import { isManager } from "../../../lib/auth";
 import { json } from "../../../lib/http";
 import {
   areReportEditableValuesEquivalent,
@@ -17,7 +18,9 @@ const reportStateSelection = `
 export const PATCH: APIRoute = async ({ request, cookies, locals, params }) => {
   const auth = locals.auth;
   if (!auth || !params.id) return json({ error: "No autorizado." }, 401);
-  if (auth.profile.role === "VIEWER") return json({ error: "No autorizado para editar reportes." }, 403);
+  // Solo el Operario autor edita, y únicamente su reporte en borrador. Los managers corrigen con motivo (/correct).
+  if (isManager(auth)) return json({ error: "Usa Corregir con motivo" }, 403);
+  if (auth.profile.role !== "OPERATOR") return json({ error: "No autorizado para editar reportes." }, 403);
 
   const incoming = await request.json().catch(() => null);
   if (!incoming || typeof incoming !== "object" || Array.isArray(incoming)) {
@@ -26,7 +29,7 @@ export const PATCH: APIRoute = async ({ request, cookies, locals, params }) => {
 
   const hasBaseUpdatedAt = Object.prototype.hasOwnProperty.call(incoming, "_base_updated_at");
   const baseUpdatedAt = (incoming as Record<string, unknown>)._base_updated_at;
-  const useOptimisticConcurrency = auth.profile.role === "OPERATOR" && hasBaseUpdatedAt;
+  const useOptimisticConcurrency = hasBaseUpdatedAt;
   if (useOptimisticConcurrency && (typeof baseUpdatedAt !== "string" || !baseUpdatedAt.trim())) {
     return json({ error: "La versión base del reporte es inválida." }, 400);
   }
@@ -37,17 +40,19 @@ export const PATCH: APIRoute = async ({ request, cookies, locals, params }) => {
 
   const supabase = createSupabaseServerClient(request, cookies);
 
-  // Administrative corrections deliberately retain their existing unconditional behavior.
-  // Operator clients that do not yet send a base version also remain backward compatible.
+  // Operator clients that do not yet send a base version remain backward compatible.
   if (!useOptimisticConcurrency) {
     const { data, error } = await supabase
       .from("production_reports")
       .update(updates)
       .eq("id", params.id)
+      .eq("created_by", auth.user.id)
+      .eq("status", "DRAFT")
       .select("id, updated_at")
-      .single();
+      .maybeSingle();
 
     if (error) return json({ error: error.message }, 400);
+    if (!data) return json({ error: "El reporte ya no está disponible para edición." }, 409);
     return json({ ok: true, report: data });
   }
 

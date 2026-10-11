@@ -6,7 +6,8 @@
   "packageManager": "bun@1.3.14",
   "scripts": {
     "test": "bun test",
-    "dev": "astro dev",
+    "dev": "bun --no-env-file scripts/dev-local.ts",
+    "dev:remote": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
     "astro": "astro",
@@ -18,21 +19,30 @@
   "dependencies": {
     "@astrojs/react": "^6.0.4",
     "@astrojs/vercel": "^11.0.8",
-    "@fontsource/fira-code": "^5.3.0",
-    "@fontsource/fira-sans": "^5.3.0",
+    "@fontsource-variable/geist": "^5.3.0",
+    "@fontsource-variable/geist-mono": "^5.3.0",
     "@supabase/ssr": "^0.12.5",
     "@supabase/supabase-js": "^2.112.4",
     "@tailwindcss/vite": "^4.3.3",
     "astro": "^7.2.9",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
     "exceljs": "^4.4.0",
+    "lucide-react": "^1.53.0",
+    "radix-ui": "^1.7.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
-    "tailwindcss": "^4.3.3"
+    "sonner": "^2.0.8",
+    "tailwind-merge": "^3.7.0",
+    "tailwindcss": "^4.3.3",
+    "tw-animate-css": "^1.4.0"
   },
   "devDependencies": {
+    "@astrojs/check": "^0.9.10",
     "@types/bun": "^1.4.2",
     "fake-indexeddb": "^6.2.5",
     "happy-dom": "^20.14.5",
-    "supabase": "^2.116.0"
+    "supabase": "^2.116.0",
+    "typescript": "5.9.3"
   }
 }

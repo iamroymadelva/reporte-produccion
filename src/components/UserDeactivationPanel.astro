@@ -1,0 +1,41 @@
+---
+import { Input } from "@/components/ui/input";
+import { FieldLabel, Label } from "@/components/ui/label";
+
+interface Props {
+  userId: string;
+  /** Identificador que usa el script para localizar el panel tras abrir el diálogo. */
+  panelId: string;
+  /** Solo ROOT ve "Forzar de todos modos" cuando hay bloqueo (T113). */
+  canForce?: boolean;
+  /** En el diálogo de edición el panel arranca oculto hasta desmarcar "Usuario activo". */
+  hidden?: boolean;
+}
+
+const { userId, panelId, canForce = false, hidden = false } = Astro.props;
+---
+
+{/* Lógica en usuarios.astro (script): GET last-contact, bloqueo por pendientes o reporte activo (FR-005a) y anulación de ROOT (T113). */}
+<div class={hidden ? "hidden" : ""} data-deactivation-panel={panelId} data-last-contact-url={`/api/admin/users/${userId}/last-contact`}>
+  <dl class="mt-4 grid gap-2 rounded-xl border bg-muted/40 p-4 text-sm" aria-live="polite">
+    <div class="flex justify-between gap-3"><dt class="text-muted-foreground">Último contacto</dt><dd class="font-medium" data-lc-last>Consultando…</dd></div>
+    <div class="flex justify-between gap-3"><dt class="text-muted-foreground">Registros pendientes de subir</dt><dd class="font-medium" data-lc-pending>—</dd></div>
+    <div class="flex justify-between gap-3"><dt class="text-muted-foreground">Reporte activo</dt><dd class="font-medium" data-lc-report>—</dd></div>
+  </dl>
+  <p class="mt-3 hidden text-sm font-medium text-destructive" role="alert" data-lc-blocked>No se puede desactivar mientras tenga datos pendientes de subir o un reporte activo.</p>
+  <p class="mt-3 hidden text-sm font-medium text-destructive" role="alert" data-lc-error>No fue posible consultar el último contacto. Cierra el diálogo e inténtalo de nuevo.</p>
+  {canForce && (
+    <div class="mt-3 hidden rounded-xl border border-destructive/40 p-3" data-force-wrap>
+      <label class="flex min-h-11 items-start gap-3">
+        <input class="mt-0.5 size-5 shrink-0 accent-primary" type="checkbox" data-force-toggle />
+        <span class="text-sm font-medium">Forzar de todos modos (administrador raíz)</span>
+      </label>
+      <Label className="mt-2 block"><FieldLabel>Motivo (mínimo 10 caracteres)</FieldLabel><Input name="force_reason" minLength={10} maxLength={500} disabled data-force-reason /></Label>
+      <p class="mt-2 text-xs text-muted-foreground">El usuario quedará marcado como "Posibles datos sin subir" y la acción se registra en el historial.</p>
+    </div>
+  )}
+  <label class="mt-4 flex min-h-12 items-start gap-3 rounded-xl border bg-card p-3">
+    <input class="mt-0.5 size-5 shrink-0 accent-primary" type="checkbox" name="confirm_offline_risk" value="1" disabled data-retire-confirm />
+    <span class="text-sm font-medium">Entiendo que puede haber datos en dispositivos sin conexión</span>
+  </label>
+</div>

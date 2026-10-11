@@ -1,7 +1,11 @@
 ---
 import "../styles/global.css";
+import { ClientRouter } from "astro:transitions";
 import ConnectionStatus from "../components/ConnectionStatus.astro";
-import { roleLabels, type Profile } from "../lib/types";
+import AppShell from "../components/shell/AppShell";
+import AdminDialogHost from "../components/AdminDialogHost";
+import FlashToast from "../components/FlashToast";
+import type { Profile } from "../lib/types";
 
 interface Props {
   title: string;
@@ -11,14 +15,10 @@ interface Props {
 
 const { title, description, profile = null } = Astro.props;
 const pathname = Astro.url.pathname;
-const isCurrent = (href: string) => href === "/dashboard"
-  ? pathname === href
-  : pathname === href || pathname.startsWith(`${href}/`);
-const navItems = [
-  { href: "/dashboard", label: "Dashboard" },
-  { href: "/reportes", label: "Reportes" },
-  ...(profile?.role === "ADMINISTRATOR" ? [{ href: "/administracion", label: "Administración" }] : []),
-];
+// El primitive Sidebar persiste su estado en la cookie `sidebar_state`; el SSR la lee para no saltar al hidratar.
+const defaultOpen = Astro.cookies.get("sidebar_state")?.value !== "false";
+const flashOk = Astro.url.searchParams.get("ok");
+const flashError = Astro.url.searchParams.get("error");
 ---
 
 <!doctype html>
@@ -28,7 +28,7 @@ const navItems = [
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content={description} />
     <meta name="generator" content={Astro.generator} />
-    <meta name="theme-color" content="#172554" />
+    <meta name="theme-color" content="#ffffff" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
@@ -36,58 +36,73 @@ const navItems = [
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon-180.png" />
+    <script is:inline>
+      (function () {
+        var root = document.documentElement;
+        var media = window.matchMedia("(prefers-color-scheme: dark)");
+        function stored() {
+          try {
+            var v = localStorage.getItem("theme");
+            if (v === "light" || v === "dark" || v === "system") return v;
+          } catch (e) {}
+          return "system";
+        }
+        function apply() {
+          var t = stored();
+          var dark = t === "dark" || (t === "system" && media.matches);
+          root.classList.toggle("dark", dark);
+          var meta = document.querySelector('meta[name="theme-color"]');
+          if (meta) meta.setAttribute("content", dark ? "#0a1023" : "#ffffff");
+        }
+        apply();
+        var listener = function () { if (stored() === "system") apply(); };
+        if (media.addEventListener) media.addEventListener("change", listener);
+        else if (media.addListener) media.addListener(listener);
+        // ClientRouter reemplaza los atributos de <html>: conserva la clase "dark" y el theme-color.
+        document.addEventListener("astro:before-swap", function (event) {
+          event.newDocument.documentElement.classList.toggle("dark", root.classList.contains("dark"));
+        });
+        document.addEventListener("astro:after-swap", apply);
+      })();
+    </script>
     <title>{title}</title>
+    <ClientRouter />
   </head>
-  <body>
-    {profile && (
-      <header class="sticky top-0 z-30 bg-brand-950 text-white shadow-md">
-        <div class="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 sm:px-6">
-          <a href="/dashboard" class="flex min-h-14 min-w-0 items-center gap-3 font-semibold tracking-tight">
-            <span class="grid size-8 shrink-0 place-items-center rounded-md bg-accent-500 text-slate-950" aria-hidden="true">
-              <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V10l5 3V10l5 3V5h4v16" /></svg>
-            </span>
-            <span class="truncate">Reporte de Producción</span>
-          </a>
-          <nav class="hidden items-stretch gap-1 self-stretch text-sm sm:flex" aria-label="Navegación principal">
-            {navItems.map((item) => (
-              <a class:list={["relative inline-flex items-center px-3 font-medium transition-colors duration-150", isCurrent(item.href) ? "text-white after:absolute after:inset-x-3 after:bottom-0 after:h-[3px] after:rounded-t after:bg-accent-400" : "text-brand-200 hover:text-white"]} href={item.href} aria-current={isCurrent(item.href) ? "page" : undefined}>{item.label}</a>
-            ))}
-          </nav>
-          <div class="hidden items-center gap-3 text-sm sm:flex">
-            <span class="hidden text-right leading-tight lg:block">
-              <span class="block font-semibold text-white">{profile.full_name}</span>
-              <span class="text-xs text-brand-200">{roleLabels[profile.role]}</span>
-            </span>
-            <form method="POST" action="/api/auth/logout">
-              <button class="inline-flex min-h-11 items-center gap-2 rounded-lg border border-white/20 px-3 py-2 font-semibold text-white transition-colors duration-150 hover:bg-white/10" type="submit">
-                <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3" /></svg>
-                Salir
-              </button>
-            </form>
-          </div>
-          <button class="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg border border-white/20 px-3 font-semibold text-white transition-colors duration-150 hover:bg-white/10 sm:hidden" type="button" aria-expanded="false" aria-controls="mobile-navigation" data-mobile-menu-toggle>
-            Menú
-            <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" d="M4 7h16M4 12h16M4 17h16" /></svg>
-          </button>
-        </div>
-        <nav id="mobile-navigation" class="hidden border-t border-white/10 px-4 pb-4 pt-3 sm:hidden" aria-label="Navegación principal" data-mobile-menu>
-          <div class="mb-3 rounded-lg bg-white/5 p-3 text-sm">
-            <span class="block font-semibold text-white">{profile.full_name}</span>
-            <span class="text-brand-200">{roleLabels[profile.role]}</span>
-          </div>
-          <div class="grid gap-1">
-            {navItems.map((item) => (
-              <a class:list={["flex min-h-12 items-center rounded-lg border-l-[3px] px-3 py-2 font-medium transition-colors duration-150", isCurrent(item.href) ? "border-accent-400 bg-white/10 text-white" : "border-transparent text-brand-100 hover:bg-white/5"]} href={item.href} aria-current={isCurrent(item.href) ? "page" : undefined}>{item.label}</a>
-            ))}
-            <form method="POST" action="/api/auth/logout"><button class="flex min-h-12 w-full items-center rounded-lg px-3 py-2 font-semibold text-red-300 transition-colors duration-150 hover:bg-white/5" type="submit">Salir</button></form>
-          </div>
-        </nav>
-      </header>
-    )}
-    <ConnectionStatus />
-    <slot />
+  <body data-shell={profile ? "" : undefined} data-user-id={profile?.id} data-user-role={profile?.role}>
+    {profile && <>
+      <a class="skip-link" href="#main-content">Saltar al contenido</a>
+      <AppShell profile={profile} pathname={pathname} defaultOpen={defaultOpen} client:load transition:persist="app-shell" />
+    </>}
+    <div id="main-content" tabindex="-1">
+      <ConnectionStatus />
+      <slot />
+    </div>
+    {(profile?.role === "ROOT" || profile?.role === "ADMINISTRATOR") && <AdminDialogHost client:load transition:persist="admin-dialog-host" />}
+    {profile && <FlashToast ok={flashOk} error={flashError} client:load />}
   </body>
 </html>
+
+<style is:global>
+  /* El shell (sidebar, barra superior, barra inferior) es fijo: el contenido reserva el espacio aquí.
+     Las páginas con elementos sticky deben usar top-14 para no quedar bajo la barra superior. */
+  html { scroll-padding-top: 4.5rem; }
+  body[data-shell] #main-content {
+    min-width: 0;
+    padding-top: calc(3.5rem + env(safe-area-inset-top));
+    padding-bottom: calc(4rem + env(safe-area-inset-bottom));
+  }
+  @media (min-width: 1024px) {
+    body[data-shell] #main-content {
+      padding-bottom: 0;
+      padding-left: 16rem;
+      transition: padding-left 200ms linear;
+    }
+    body[data-shell]:has([data-slot="sidebar"][data-state="collapsed"]) #main-content { padding-left: 3rem; }
+  }
+  @media print {
+    body[data-shell] #main-content { padding: 0; }
+  }
+</style>
 
 <script>
   import {
@@ -95,20 +110,67 @@ const navItems = [
     MUTATION_REQUIRES_CONNECTION,
     showConnectivityNotice,
   } from "../lib/connectivity";
+  import { runOfflineBootstrap } from "../lib/offline/bootstrap";
 
-  const toggle = document.querySelector<HTMLElement>("[data-mobile-menu-toggle]");
-  const menu = document.querySelector<HTMLElement>("[data-mobile-menu]");
-  toggle?.addEventListener("click", () => {
-    const expanded = toggle.getAttribute("aria-expanded") === "true";
-    toggle.setAttribute("aria-expanded", String(!expanded));
-    menu?.classList.toggle("hidden", expanded);
+  // Phase 8: confirma/descarta la matrícula del acceso sin conexión y refresca en silencio la consulta de managers y
+  // VIEWER. Se ejecuta en cada página (ClientRouter incluido); nunca bloquea ni lanza.
+  const bootOfflineAccess = () => {
+    void runOfflineBootstrap({
+      pathname: location.pathname,
+      search: location.search,
+      userId: document.body.dataset.userId || null,
+      role: document.body.dataset.userRole || null,
+    });
+  };
+  document.addEventListener("astro:page-load", bootOfflineAccess);
+  bootOfflineAccess();
+
+  // Este módulo se ejecuta UNA sola vez (ClientRouter no re-ejecuta scripts empaquetados),
+  // por lo que los listeners globales de abajo no se duplican al navegar.
+  const UNSAVED_MESSAGE = "Hay cambios sin guardar. ¿Salir de todas formas?";
+  const hasUnsavedChanges = () => document.querySelector('[data-unsaved-changes="true"]') !== null;
+  let lastConfirmedLeave = 0;
+  const recentlyConfirmed = () => Date.now() - lastConfirmedLeave < 1_500;
+
+  // Cancelación limpia para clics en enlaces (antes de que ClientRouter navegue).
+  document.addEventListener("click", (event) => {
+    if (event.defaultPrevented || !hasUnsavedChanges()) return;
+    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    const target = event.target;
+    const link = target instanceof Element ? target.closest<HTMLAnchorElement>("a[href]") : null;
+    if (!link || link.hasAttribute("download") || (link.target && link.target !== "_self")) return;
+    const url = new URL(link.href, location.href);
+    if (url.origin !== location.origin) return; // lo cubre beforeunload
+    if (url.pathname === location.pathname && url.search === location.search) return;
+    if (confirm(UNSAVED_MESSAGE)) lastConfirmedLeave = Date.now();
+    else { event.preventDefault(); event.stopImmediatePropagation(); }
+  }, true);
+
+  // Red de seguridad para cualquier otra navegación (p. ej. atrás/adelante).
+  // Nota: Astro responde a preventDefault() con una navegación completa; el aviso nativo de
+  // beforeunload (abajo) actúa entonces como segunda barrera.
+  document.addEventListener("astro:before-preparation", (event) => {
+    const navigation = event as Event & { to: URL };
+    // Descargas y endpoints API: navegación completa, nunca vía ClientRouter.
+    if (navigation.to.pathname.startsWith("/api/")) { event.preventDefault(); return; }
+    if (!hasUnsavedChanges() || recentlyConfirmed()) return;
+    if (confirm(UNSAVED_MESSAGE)) lastConfirmedLeave = Date.now();
+    else event.preventDefault();
   });
-  document.addEventListener("keydown", (event) => {
-    if (event.key !== "Escape" || toggle?.getAttribute("aria-expanded") !== "true") return;
-    toggle.setAttribute("aria-expanded", "false");
-    menu?.classList.add("hidden");
-    toggle.focus();
+
+  window.addEventListener("beforeunload", (event) => {
+    // Si el usuario acaba de confirmar con confirm() (enlaces data-astro-reload, /api/...), no preguntar dos veces.
+    if (!hasUnsavedChanges() || recentlyConfirmed()) return;
+    event.preventDefault();
+    event.returnValue = "";
   });
+
+  // Evita que el prefetch por hover dispare descargas o endpoints API.
+  const markApiLinks = () => {
+    document.querySelectorAll<HTMLAnchorElement>('a[href^="/api/"]').forEach((link) => link.setAttribute("data-astro-prefetch", "false"));
+  };
+  document.addEventListener("astro:page-load", markApiLinks);
+  markApiLinks();
 
   const guardedForms = new WeakSet<HTMLFormElement>();
   const checkingForms = new WeakSet<HTMLFormElement>();
@@ -116,7 +178,16 @@ const navItems = [
   document.addEventListener("submit", (event) => {
     const submitEvent = event as SubmitEvent;
     const form = submitEvent.target;
-    if (!(form instanceof HTMLFormElement) || form.method.toUpperCase() !== "POST") return;
+    if (!(form instanceof HTMLFormElement)) return;
+    if (form.method.toUpperCase() !== "POST") {
+      if (!event.defaultPrevented && hasUnsavedChanges()) {
+        if (confirm(UNSAVED_MESSAGE)) lastConfirmedLeave = Date.now();
+        else { event.preventDefault(); event.stopImmediatePropagation(); }
+      }
+      return;
+    }
+    // Los POST se envían siempre con recarga completa (redirect del servidor), sin ClientRouter.
+    form.setAttribute("data-astro-reload", "");
     if (guardedForms.has(form)) {
       guardedForms.delete(form);
       return;
@@ -160,6 +231,13 @@ const navItems = [
       if (!allowed) {
         showConnectivityNotice(MUTATION_REQUIRES_CONNECTION);
         return;
+      }
+
+      // Si el formulario ya no está en el documento (p. ej. estaba dentro de un menú que se cerró durante
+      // la comprobación de red), requestSubmit()/submit() no hacen nada: se reinserta, oculto, en <body>.
+      if (!form.isConnected) {
+        form.hidden = true;
+        document.body.append(form);
       }
 
       guardedForms.add(form);

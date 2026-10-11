@@ -1,29 +1,72 @@
 ---
 import AdminSearch from "../../components/AdminSearch.astro";
-import AdminFlashMessage from "../../components/AdminFlashMessage.astro";
 import AdminRecordModal from "../../components/AdminRecordModal.astro";
 import AdminReactivateAction from "../../components/AdminReactivateAction.astro";
 import AdminStatusToggle from "../../components/AdminStatusToggle.astro";
 import DestructiveAction from "../../components/DestructiveAction.astro";
+import PageHeader from "../../components/PageHeader.astro";
 import BaseLayout from "../../layouts/BaseLayout.astro";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { FieldLabel, Label } from "@/components/ui/label";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { createSupabaseServerClient } from "../../lib/supabase/server";
+import { readAllPages } from "../../lib/supabase/read-all-pages";
 const auth = Astro.locals.auth!;
 const supabase = createSupabaseServerClient(Astro.request, Astro.cookies);
-const { data } = await supabase.from("machines").select("id, code, name, description, active").order("code").order("name");
+const { data, error: readError } = await readAllPages((start, end) => supabase.from("machines").select("id, code, name, description, active").order("code").order("name").order("id").range(start, end));
 const machines = (data ?? []) as any[];
-const error = Astro.url.searchParams.get("error");
-const ok = Astro.url.searchParams.get("ok");
+const error = readError ? "No fue posible cargar todas las máquinas." : null;
 ---
 
 <BaseLayout title="Máquinas" description="Administración de máquinas" profile={auth.profile}>
-  <main class="mx-auto max-w-6xl space-y-6 px-4 py-8 sm:px-6" data-search-scope>
-    <header><a class="link text-sm" href="/administracion">← Administración</a><div class="mt-2 flex flex-wrap items-end justify-between gap-4"><h1 class="text-3xl font-bold">Máquinas</h1><AdminRecordModal id="create-machine" title="Nueva máquina" action="/api/admin/machines" submitLabel="Crear" mode="create"><div class="grid gap-4"><label><span class="field-label">Código</span><input class="field-control" name="code" required /></label><label><span class="field-label">Nombre</span><input class="field-control" name="name" required /></label><label><span class="field-label">Descripción</span><input class="field-control" name="description" /></label></div></AdminRecordModal></div></header>
-    <AdminFlashMessage error={error} ok={ok} />
-    <label class="block max-w-lg"><span class="field-label">Buscar</span><input class="field-control" type="search" enterkeyhint="search" placeholder="Buscar máquinas" data-search-input /></label>
-    <section class="panel overflow-hidden p-0"><div class="overflow-x-auto"><table class="responsive-admin-table w-full min-w-[760px] text-left text-sm"><thead class="bg-slate-50 text-slate-600"><tr><th class="p-4">Código</th><th class="p-4">Nombre</th><th class="p-4">Descripción</th><th class="p-4">Estado</th><th class="p-4 text-right">Acción</th></tr></thead><tbody>
-      {machines.map((machine) => <tr class="border-t align-top" data-search-row data-search-text={`${machine.code} ${machine.name} ${machine.description ?? ""}`}><td class="p-4 font-semibold" data-label="Código">{machine.code}</td><td class="p-4" data-label="Nombre">{machine.name}</td><td class="p-4 text-slate-600" data-label="Descripción">{machine.description || "—"}</td><td class="p-4" data-label="Estado"><AdminStatusToggle id={machine.id} action="/api/admin/machines" active={machine.active}><input type="hidden" name="code" value={machine.code} /><input type="hidden" name="name" value={machine.name} /><input type="hidden" name="description" value={machine.description ?? ""} /></AdminStatusToggle></td><td class="p-4 text-right" data-label="Acciones"><div class="flex flex-wrap items-center justify-end gap-2"><AdminRecordModal id={`edit-machine-${machine.id}`} title={`Editar: ${machine.name}`} action="/api/admin/machines" submitLabel="Guardar" mode="edit" recordId={machine.id}><div class="grid gap-4"><label><span class="field-label">Código</span><input class="field-control" name="code" value={machine.code} required /></label><label><span class="field-label">Nombre</span><input class="field-control" name="name" value={machine.name} required /></label><label><span class="field-label">Descripción</span><input class="field-control" name="description" value={machine.description ?? ""} /></label><label class="flex min-h-12 items-center gap-2"><input class="size-5" type="checkbox" name="active" checked={machine.active} /><span class="font-semibold">Activa</span></label></div></AdminRecordModal>{!machine.active && <AdminReactivateAction id={machine.id} action="/api/admin/machines" />}<DestructiveAction id={machine.id} action="/api/admin/machines" recordName={`${machine.code} · ${machine.name}`} /></div></td></tr>)}
-      {machines.length === 0 && <tr><td class="p-8 text-center text-slate-500" colspan="5">No hay máquinas configuradas.</td></tr>}
-    </tbody></table></div></section>
+  <main class="mx-auto w-full max-w-7xl space-y-6 px-4 py-4 sm:px-6 sm:py-6" data-search-scope>
+    <PageHeader title="Máquinas" back={{ href: "/administracion", label: "Administración" }}>
+      <AdminRecordModal slot="actions" id="create-machine" title="Nueva máquina" action="/api/admin/machines" submitLabel="Crear" mode="create">
+        <div class="grid gap-4">
+          <Label><FieldLabel>Código</FieldLabel><Input name="code" required /></Label>
+          <Label><FieldLabel>Nombre</FieldLabel><Input name="name" required /></Label>
+          <Label><FieldLabel>Descripción</FieldLabel><Input name="description" /></Label>
+        </div>
+      </AdminRecordModal>
+    </PageHeader>
+    {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
+    <Label className="block max-w-lg"><FieldLabel>Buscar</FieldLabel><Input type="search" enterKeyHint="search" placeholder="Buscar máquinas" data-search-input /></Label>
+    <Card className="rounded-2xl gap-0 overflow-hidden py-0">
+      <Table className="responsive-admin-table min-w-[760px]">
+        <TableHeader><TableRow><TableHead>Código</TableHead><TableHead>Nombre</TableHead><TableHead>Descripción</TableHead><TableHead>Estado</TableHead><TableHead className="text-right">Acción</TableHead></TableRow></TableHeader>
+        <TableBody>
+          {machines.map((machine) => (
+            <TableRow data-search-row data-search-text={`${machine.code} ${machine.name} ${machine.description ?? ""}`}>
+              <TableCell className="font-semibold" data-label="Código">{machine.code}</TableCell>
+              <TableCell data-label="Nombre">{machine.name}</TableCell>
+              <TableCell className="text-muted-foreground" data-label="Descripción">{machine.description || "—"}</TableCell>
+              <TableCell data-label="Estado">
+                <AdminStatusToggle id={machine.id} action="/api/admin/machines" active={machine.active}>
+                  <input type="hidden" name="code" value={machine.code} /><input type="hidden" name="name" value={machine.name} /><input type="hidden" name="description" value={machine.description ?? ""} />
+                </AdminStatusToggle>
+              </TableCell>
+              <TableCell className="text-right" data-label="Acciones">
+                <div class="flex flex-wrap items-center justify-end gap-2">
+                  <AdminRecordModal id={`edit-machine-${machine.id}`} title={`Editar: ${machine.name}`} action="/api/admin/machines" submitLabel="Guardar" mode="edit" recordId={machine.id}>
+                    <div class="grid gap-4">
+                      <Label><FieldLabel>Código</FieldLabel><Input name="code" value={machine.code} required /></Label>
+                      <Label><FieldLabel>Nombre</FieldLabel><Input name="name" value={machine.name} required /></Label>
+                      <Label><FieldLabel>Descripción</FieldLabel><Input name="description" value={machine.description ?? ""} /></Label>
+                      <Label className="flex min-h-12 items-center gap-2"><input class="size-5 accent-primary" type="checkbox" name="active" checked={machine.active} /><span class="font-semibold">Activa</span></Label>
+                    </div>
+                  </AdminRecordModal>
+                  {!machine.active && <AdminReactivateAction id={machine.id} action="/api/admin/machines" />}
+                  <DestructiveAction id={machine.id} action="/api/admin/machines" recordName={`${machine.code} · ${machine.name}`} />
+                </div>
+              </TableCell>
+            </TableRow>
+          ))}
+          {machines.length === 0 && <TableRow><TableCell className="p-8 text-center text-muted-foreground" colSpan={5}>No hay máquinas configuradas.</TableCell></TableRow>}
+        </TableBody>
+      </Table>
+    </Card>
     <AdminSearch />
   </main>
 </BaseLayout>

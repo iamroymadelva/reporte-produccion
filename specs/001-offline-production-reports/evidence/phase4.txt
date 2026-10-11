@@ -1,0 +1,192 @@
+PHASE 4 (US4) EVIDENCE - generated 2026-10-09T20:21:45-05:00
+
+=== FAILING FIRST (tests written before implementation) ===
+--- pgTAP (T031/T032) before migrations 20261011000200/300 ---
+Connecting to local database...
+psql:/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/user_management_matrix.test.sql:30: ERROR:  function "public.manage_user_assignments(uuid,uuid,jsonb,jsonb)" does not exist
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/user_management_matrix.test.sql ........ 
+# Failed test 1: "Existe manage_user_assignments"
+# Failed test 2: "replace_operator_assignments fue eliminada"
+Dubious, test returned 3 (wstat 768, 0x300)
+Failed 2/2 subtests 
+psql:/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/catalog_delete_or_deactivate.test.sql:39: ERROR:  La máquina no está asignada al Operador
+CONTEXT:  PL/pgSQL function private.validate_production_report() line 110 at RAISE
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/catalog_delete_or_deactivate.test.sql .. 
+# Failed test 1: "Existe delete_or_deactivate"
+Dubious, test returned 3 (wstat 768, 0x300)
+Failed 1/1 subtests 
+
+Test Summary Report
+-------------------
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/user_management_matrix.test.sql      (Wstat: 768 (exited 3) Tests: 2 Failed: 2)
+  Failed tests:  1-2
+  Non-zero exit status: 3
+  Parse errors: No plan found in TAP output
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/catalog_delete_or_deactivate.test.sql (Wstat: 768 (exited 3) Tests: 1 Failed: 1)
+  Failed test:  1
+  Non-zero exit status: 3
+  Parse errors: No plan found in TAP output
+Files=2, Tests=3,  0 wallclock secs ( 0.04 usr  0.05 sys +  0.05 cusr  0.05 csys =  0.19 CPU)
+Result: FAIL
+error running container: exit 1
+--- bun test tests/user-admin.test.ts (T033/T111) before routes ---
+error: Cannot find module '../src/pages/api/admin/users/index' from tests/user-admin.test.ts
+ 0 pass
+ 1 fail
+ 1 error
+Ran 1 test across 1 file.
+
+=== GATES (after implementation) ===
+--- bun run db:reset ---
+Seeding globals from roles.sql...
+Applying migration 20261011000100_auth_lockout.sql...
+Applying migration 20261011000200_user_management.sql...
+Applying migration 20261011000300_catalog_delete_or_deactivate.sql...
+Seeding data from supabase/seed.sql...
+Finished supabase db reset on branch redesign/ui-ux.
+--- bun run db:test ---
+$ supabase test db --local
+Connecting to local database...
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/active_report_limits.test.sql .......... ok
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/catalog_delete_or_deactivate.test.sql .. ok
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/catalog_uniqueness.test.sql ............ ok
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/change_events.test.sql ................. ok
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/critical_constraints.test.sql .......... ok
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/device_time_events.test.sql ............ ok
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/final_demo_readiness.test.sql .......... ok
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/helpers/auth_as.sql .................... ok
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/login_lockout.test.sql ................. ok
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/notification_pagination.test.sql ....... ok
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/notification_transitions.test.sql ...... ok
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/notifications.test.sql ................. ok
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/operator_workflow.test.sql ............. ok
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/report_audit_visibility.test.sql ....... ok
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/report_cancellation.test.sql ........... ok
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/report_pagination_large.test.sql ....... ok
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/report_shift_assignment.test.sql ....... ok
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/rls_matrix.test.sql .................... ok
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/roles_root_invariant.test.sql .......... ok
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/shift_resolution.test.sql .............. ok
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/user_management_matrix.test.sql ........ ok
+All tests successful.
+Files=21, Tests=511,  7 wallclock secs ( 0.33 usr  0.24 sys +  0.68 cusr  0.61 csys =  1.86 CPU)
+Result: PASS
+
+--- bun test (run 1) ---
+bun test v1.4.2 (744846f84)
+
+ 154 pass
+ 0 fail
+ 605 expect() calls
+Ran 154 tests across 9 files. [15.50s]
+--- bun test (run 2) ---
+bun test v1.4.2 (744846f84)
+
+ 154 pass
+ 0 fail
+ 605 expect() calls
+Ran 154 tests across 9 files. [14.26s]
+--- bunx astro check ---
+
+Result (139 files): 
+- 0 errors
+- 0 warnings
+- 4 hints
+
+--- bun run build ---
+20:24:58 [build] Waiting for integration "@astrojs/vercel", hook "astro:build:done"...
+20:25:29 [@astrojs/vercel] Copying static files to .vercel/output/static
+20:25:29 [build] Server built in 41.50s
+20:25:29 [build] Complete!
+
+=== REAL SMOKE (bun run dev against local Supabase 127.0.0.1:54321, env exported from .env.development.local; dev server PID 31692, stopped by PID) ===
+- login coord1/Planta2026! -> 303 /
+- GET /administracion/usuarios -> 200 (retire/reset/last-contact markup present)
+- POST /api/admin/users (coord1, OPERATOR smoke.op1, assignment M-01 x first shift, password Humo12345) -> 303 ok=Usuario creado.
+- duplicate username smoke.op1 -> 303 error=Ya existe un usuario con este nombre de usuario.
+- coord1 creating VIEWER -> 403 {"error":"Solo el administrador raiz puede crear este rol."}; creating ADMINISTRATOR -> 403 (same)
+- login smoke.op1/Humo12345 -> 303 /, GET /reportes -> 200
+- DB: profiles smoke.op1 OPERATOR active created_by=coord1; auth.users email smoke.op1@usuarios.reporte-produccion.invalid; audit USER_CREATED actor_role ADMINISTRATOR; 1 active assignment; no smoke.aud/smoke.adm rows
+- GET last-contact (operator) -> 200 {"lastSeenAt":null,"pendingCount":0,"activeReportId":null}; (auditor1) -> 403
+- intent=reset_password -> 303 ok=Contrasena restablecida; login with new password OK
+- remove without confirm_offline_risk -> error "Marca "Entiendo que puede haber datos en dispositivos sin conexion"..."
+- smoke.op2: device-status pendingCount=2 -> 204; last-contact -> pendingCount 2; remove with confirm -> error "El usuario tiene datos pendientes de subir o un reporte activo."; op2 still active and can log in
+- smoke.op1 (no pending) remove with confirm -> ok "Usuario retirado y acceso revocado."; login afterwards rejected
+- Observed: device-status with a session taken BEFORE a password reset of that same user returned 401 (Supabase invalidates the sessions on password change); a fresh login returned 204.
+
+=== CORRECTIONS ROUND (MAJOR-1, MAJOR-2, MINOR-5, MINOR-6, T113) ===
+--- bun run db:reset ---
+Applying migration 20261011000100_auth_lockout.sql...
+Applying migration 20261011000200_user_management.sql...
+Applying migration 20261011000300_catalog_delete_or_deactivate.sql...
+Finished supabase db reset on branch redesign/ui-ux.
+--- bun run db:test ---
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/catalog_delete_or_deactivate.test.sql .. ok
+psql:/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/notifications.test.sql:2: NOTICE:  extension "pgtap" already exists, skipping
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/notifications.test.sql ................. ok
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/user_management_matrix.test.sql ........ ok
+All tests successful.
+Files=21, Tests=525,  6 wallclock secs ( 0.28 usr  0.22 sys +  0.51 cusr  0.44 csys =  1.45 CPU)
+Result: PASS
+--- bun test (run 1) ---
+
+ 161 pass
+ 0 fail
+ 619 expect() calls
+Ran 161 tests across 9 files. [16.22s]
+--- bun test (run 2) ---
+
+ 161 pass
+ 0 fail
+ 619 expect() calls
+Ran 161 tests across 9 files. [13.14s]
+--- astro check ---
+Result (140 files): 
+- 0 errors
+- 0 warnings
+- 4 hints
+
+--- build ---
+20:42:58 [build] Server built in 36.26s
+20:42:58 [build] Complete!
+--- render smoke (dev PID 17668, killed by PID; cookie sb-127-auth-token, local Supabase) ---
+root: /administracion/usuarios 200, force markup (data-force-toggle) + apply_validity present; coord1: no force markup.
+
+=== CORRECTIONS ROUND 2 (MAJOR-A: direct writes locked) ===
+--- bun run db:reset ---
+Applying migration 20261011000100_auth_lockout.sql...
+Applying migration 20261011000200_user_management.sql...
+Applying migration 20261011000210_lock_user_tables.sql...
+Applying migration 20261011000300_catalog_delete_or_deactivate.sql...
+Finished supabase db reset on branch redesign/ui-ux.
+--- bun run db:test ---
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/final_demo_readiness.test.sql .......... ok
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/rls_matrix.test.sql .................... ok
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/user_management_matrix.test.sql ........ ok
+All tests successful.
+Files=21, Tests=535,  7 wallclock secs ( 0.34 usr  0.15 sys +  0.51 cusr  0.45 csys =  1.45 CPU)
+Result: PASS
+--- bun test (1) ---
+
+ 161 pass
+ 0 fail
+ 619 expect() calls
+Ran 161 tests across 9 files. [15.17s]
+--- bun test (2) ---
+
+ 161 pass
+ 0 fail
+ 619 expect() calls
+Ran 161 tests across 9 files. [15.18s]
+--- astro check ---
+Result (140 files): 
+- 0 errors
+- 0 warnings
+- 4 hints
+
+--- build ---
+20:54:04 [build] Server built in 37.31s
+20:54:04 [build] Complete!
+--- smoke after lock (dev PID 35912, killed by PID; cookie sb-127-auth-token; local) ---
+coord1 via app: create user ok, update ok, remove ok, reactivate ok (RPC/trigger unaffected by revoked grants).
+src grep: no insert/update/delete/upsert on profiles or operator_machine_assignments in src/ (only selects).

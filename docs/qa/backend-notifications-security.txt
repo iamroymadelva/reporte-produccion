@@ -1,0 +1,136 @@
+BEGIN
+CREATE EXTENSION
+SET
+ plan  
+-------
+ 1..20
+(1 row)
+
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+              set_config              
+--------------------------------------
+ 2e10e34e-0898-4933-8940-8f896a9801f5
+(1 row)
+
+                   ok                    
+-----------------------------------------
+ ok 1 - El evento tiene una sola entrega
+(1 row)
+
+                 ok                  
+-------------------------------------
+ ok 2 - El navegador no crea eventos
+(1 row)
+
+                                     ok                                     
+----------------------------------------------------------------------------
+ ok 3 - La lectura directa de entregas permanece cerrada; sólo RPC autoriza
+(1 row)
+
+                                  ok                                   
+-----------------------------------------------------------------------
+ ok 4 - El navegador no modifica destinatarios ni lectura directamente
+(1 row)
+
+                             ok                             
+------------------------------------------------------------
+ ok 5 - Solo el servidor ejecuta el reemplazo transaccional
+(1 row)
+
+SET
+SET
+                          is                          
+------------------------------------------------------
+ ok 6 - Otro usuario no ve entregas del administrador
+(1 row)
+
+                         is                          
+-----------------------------------------------------
+ ok 7 - No puede marcar como leída una entrega ajena
+(1 row)
+
+SET
+                  ok                   
+---------------------------------------
+ ok 8 - El destinatario ve el contador
+(1 row)
+
+                      ok                      
+----------------------------------------------
+ ok 9 - El destinatario puede marcar su aviso
+(1 row)
+
+                             is                             
+------------------------------------------------------------
+ ok 10 - Marcar todo es idempotente tras lectura individual
+(1 row)
+
+RESET
+SET
+SET
+                          ok                           
+-------------------------------------------------------
+ ok 11 - La sustitución idéntica no añade asignaciones
+(1 row)
+
+                       is                       
+------------------------------------------------
+ ok 12 - La sustitución idéntica no crea avisos
+(1 row)
+
+                      ok                      
+----------------------------------------------
+ ok 13 - La sustitución detecta una baja neta
+(1 row)
+
+                    is                    
+------------------------------------------
+ ok 14 - Una baja neta crea un solo aviso
+(1 row)
+
+                        is                        
+--------------------------------------------------
+ ok 15 - La baja no enlaza a una máquina revocada
+(1 row)
+
+                     throws_ok                     
+---------------------------------------------------
+ ok 16 - Máquina inexistente revierte la operación
+(1 row)
+
+                     is                      
+---------------------------------------------
+ ok 17 - Fallo de asignación no agrega aviso
+(1 row)
+
+RESET
+      set_config      
+----------------------
+ Operador de prueba 1
+(1 row)
+
+CREATE FUNCTION
+CREATE TRIGGER
+SET
+                             throws_ok                             
+-------------------------------------------------------------------
+ ok 18 - Fallo al emitir aviso revierte escrituras previas del RPC
+(1 row)
+
+                          is                           
+-------------------------------------------------------
+ ok 19 - Perfil recupera su valor tras fallo del aviso
+(1 row)
+
+                            ok                             
+-----------------------------------------------------------
+ ok 20 - Asignación recupera su valor tras fallo del aviso
+(1 row)
+
+ finish 
+--------
+(0 rows)
+
+ROLLBACK

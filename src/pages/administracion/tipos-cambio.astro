@@ -1,0 +1,9 @@
+---
+import CatalogAdminPage from "../../components/CatalogAdminPage.astro";
+import { createSupabaseServerClient } from "../../lib/supabase/server";
+import { readAllPages } from "../../lib/supabase/read-all-pages";
+const auth = Astro.locals.auth!;
+const supabase = createSupabaseServerClient(Astro.request, Astro.cookies);
+const { data, error: readError } = await readAllPages((start, end) => supabase.from("change_types").select("id, code, name, active").order("sort_order").order("name").order("id").range(start, end));
+---
+<CatalogAdminPage profile={auth.profile} title="Tipos de cambio" description="Tipos de cambio que el operario puede registrar en un reporte." catalog="change_types" action="/api/admin/change-types" items={data as any[]} error={readError ? "No fue posible cargar todos los tipos de cambio." : null} />

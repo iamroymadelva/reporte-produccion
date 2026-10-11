@@ -1,8 +1,9 @@
 ---
 import CatalogAdminPage from "../../components/CatalogAdminPage.astro";
 import { createSupabaseServerClient } from "../../lib/supabase/server";
+import { readAllPages } from "../../lib/supabase/read-all-pages";
 const auth = Astro.locals.auth!;
 const supabase = createSupabaseServerClient(Astro.request, Astro.cookies);
-const { data } = await supabase.from("dosifier_types").select("id, code, name, active").order("name").order("code");
+const { data, error: readError } = await readAllPages((start, end) => supabase.from("dosifier_types").select("id, code, name, active").order("name").order("code").order("id").range(start, end));
 ---
-<CatalogAdminPage profile={auth.profile} title="Tipos de dosificador" description="Tipos de dosificador disponibles en los reportes." catalog="dosifier_types" items={(data ?? []) as any[]} error={Astro.url.searchParams.get("error")} ok={Astro.url.searchParams.get("ok")} />
+<CatalogAdminPage profile={auth.profile} title="Tipos de dosificador" description="Tipos de dosificador disponibles en los reportes." catalog="dosifier_types" items={data as any[]} error={readError ? "No fue posible cargar todos los dosificadores." : null} />

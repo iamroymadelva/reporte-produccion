@@ -1,11 +1,16 @@
 ---
 import AdminSearch from "./AdminSearch.astro";
-import AdminFlashMessage from "./AdminFlashMessage.astro";
 import AdminRecordModal from "./AdminRecordModal.astro";
 import AdminReactivateAction from "./AdminReactivateAction.astro";
 import AdminStatusToggle from "./AdminStatusToggle.astro";
 import DestructiveAction from "./DestructiveAction.astro";
+import PageHeader from "./PageHeader.astro";
 import BaseLayout from "../layouts/BaseLayout.astro";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { FieldLabel, Label } from "@/components/ui/label";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { Profile } from "../lib/types";
 
 interface CatalogItem { id: string; code: string; name: string; active: boolean }
@@ -14,60 +19,58 @@ interface Props {
   title: string;
   description: string;
   catalog: string;
+  /** Ruta POST del catálogo; por defecto /api/admin/catalogs/[catalog]. */
+  action?: string;
   items: CatalogItem[];
+  /** Error de carga de datos (los resultados ?ok/?error de las acciones se muestran como toast). */
   error?: string | null;
-  ok?: string | null;
 }
 
-const { profile, title, description, catalog, items, error, ok } = Astro.props;
-const action = `/api/admin/catalogs/${catalog}`;
+const { profile, title, description, catalog, items, error, action: customAction } = Astro.props;
+const action = customAction ?? `/api/admin/catalogs/${catalog}`;
 ---
 
 <BaseLayout title={title} description={description} profile={profile}>
-  <main class="mx-auto max-w-6xl space-y-6 px-4 py-8 sm:px-6" data-search-scope>
-    <header>
-      <a class="link text-sm" href="/administracion">← Administración</a>
-      <div class="mt-2 flex flex-wrap items-end justify-between gap-4">
-        <div><h1 class="page-title mt-0">{title}</h1><p class="mt-2 text-slate-600">{description}</p></div>
-        <AdminRecordModal id={`create-${catalog}`} title={`Nuevo: ${title}`} action={action} submitLabel="Crear" mode="create">
-          <div class="grid gap-4">
-            <label><span class="field-label">Código</span><input class="field-control" name="code" required /></label>
-            <label><span class="field-label">Nombre</span><input class="field-control" name="name" required /></label>
-          </div>
-        </AdminRecordModal>
-      </div>
-    </header>
-    <AdminFlashMessage error={error} ok={ok} />
+  <main class="mx-auto w-full max-w-7xl space-y-6 px-4 py-4 sm:px-6 sm:py-6" data-search-scope>
+    <PageHeader title={title} description={description} back={{ href: "/administracion", label: "Administración" }}>
+      <AdminRecordModal slot="actions" id={`create-${catalog}`} title={`Nuevo: ${title}`} action={action} submitLabel="Crear" mode="create">
+        <div class="grid gap-4">
+          <Label><FieldLabel>Código</FieldLabel><Input name="code" required /></Label>
+          <Label><FieldLabel>Nombre</FieldLabel><Input name="name" required /></Label>
+        </div>
+      </AdminRecordModal>
+    </PageHeader>
 
-    <label class="block max-w-lg"><span class="field-label">Buscar</span><input class="field-control" type="search" enterkeyhint="search" placeholder={`Buscar en ${title.toLocaleLowerCase("es-CO")}`} data-search-input /></label>
+    {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
 
-    <section class="panel overflow-hidden p-0">
-      <div class="overflow-x-auto">
-        <table class="responsive-admin-table w-full min-w-[680px] text-left text-sm">
-          <thead class="bg-slate-50 text-slate-600"><tr><th class="p-4">Código</th><th class="p-4">Nombre</th><th class="p-4">Estado</th><th class="p-4 text-right">Acción</th></tr></thead>
-          <tbody>
-            {items.map((item) => (
-              <tr class="border-t align-top" data-search-row data-search-text={`${item.code} ${item.name} ${item.active ? "activo" : "inactivo"}`}>
-                <td class="p-4 font-semibold" data-label="Código">{item.code}</td><td class="p-4" data-label="Nombre">{item.name}</td>
-                <td class="p-4" data-label="Estado"><AdminStatusToggle id={item.id} action={action} active={item.active}><input type="hidden" name="code" value={item.code} /><input type="hidden" name="name" value={item.name} /></AdminStatusToggle></td>
-                <td class="p-4 text-right" data-label="Acciones"><div class="flex flex-wrap items-center justify-end gap-2">
-                  <AdminRecordModal id={`edit-${catalog}-${item.id}`} title={`Editar: ${item.name}`} action={action} submitLabel="Guardar" mode="edit" recordId={item.id}>
-                    <div class="grid gap-4">
-                      <label><span class="field-label">Código</span><input class="field-control" name="code" value={item.code} required /></label>
-                      <label><span class="field-label">Nombre</span><input class="field-control" name="name" value={item.name} required /></label>
-                      <label class="flex min-h-12 items-center gap-2"><input class="size-5" type="checkbox" name="active" checked={item.active} /><span class="font-semibold">Activo</span></label>
-                    </div>
-                  </AdminRecordModal>
-                  {!item.active && <AdminReactivateAction id={item.id} action={action} />}
-                  <DestructiveAction id={item.id} action={action} recordName={`${item.code} · ${item.name}`} />
-                </div></td>
-              </tr>
-            ))}
-            {items.length === 0 && <tr><td class="p-8 text-center text-slate-500" colspan="4">No hay valores configurados.</td></tr>}
-          </tbody>
-        </table>
-      </div>
-    </section>
+    <Label className="block max-w-lg"><FieldLabel>Buscar</FieldLabel><Input type="search" enterKeyHint="search" placeholder={`Buscar en ${title.toLocaleLowerCase("es-CO")}`} data-search-input /></Label>
+
+    <Card className="rounded-2xl gap-0 overflow-hidden py-0">
+      <Table className="responsive-admin-table min-w-[680px]">
+        <TableHeader><TableRow><TableHead>Código</TableHead><TableHead>Nombre</TableHead><TableHead>Estado</TableHead><TableHead className="text-right">Acción</TableHead></TableRow></TableHeader>
+        <TableBody>
+          {items.map((item) => (
+            <TableRow data-search-row data-search-text={`${item.code} ${item.name} ${item.active ? "activo" : "inactivo"}`}>
+              <TableCell className="font-semibold" data-label="Código">{item.code}</TableCell>
+              <TableCell data-label="Nombre">{item.name}</TableCell>
+              <TableCell data-label="Estado"><AdminStatusToggle id={item.id} action={action} active={item.active}><input type="hidden" name="code" value={item.code} /><input type="hidden" name="name" value={item.name} /></AdminStatusToggle></TableCell>
+              <TableCell className="text-right" data-label="Acciones"><div class="flex flex-wrap items-center justify-end gap-2">
+                <AdminRecordModal id={`edit-${catalog}-${item.id}`} title={`Editar: ${item.name}`} action={action} submitLabel="Guardar" mode="edit" recordId={item.id}>
+                  <div class="grid gap-4">
+                    <Label><FieldLabel>Código</FieldLabel><Input name="code" value={item.code} required /></Label>
+                    <Label><FieldLabel>Nombre</FieldLabel><Input name="name" value={item.name} required /></Label>
+                    <Label className="flex min-h-12 items-center gap-2"><input class="size-5 accent-primary" type="checkbox" name="active" checked={item.active} /><span class="font-semibold">Activo</span></Label>
+                  </div>
+                </AdminRecordModal>
+                {!item.active && <AdminReactivateAction id={item.id} action={action} />}
+                <DestructiveAction id={item.id} action={action} recordName={`${item.code} · ${item.name}`} />
+              </div></TableCell>
+            </TableRow>
+          ))}
+          {items.length === 0 && <TableRow><TableCell className="p-8 text-center text-muted-foreground" colSpan={4}>No hay valores configurados.</TableCell></TableRow>}
+        </TableBody>
+      </Table>
+    </Card>
     <AdminSearch />
   </main>
 </BaseLayout>

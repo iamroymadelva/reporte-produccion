@@ -1,0 +1,153 @@
+BEGIN
+CREATE EXTENSION
+SET
+ plan  
+-------
+ 1..22
+(1 row)
+
+INSERT 0 1
+INSERT 0 1
+SET
+INSERT 0 1
+               is               
+--------------------------------
+ ok 1 - Crear borrador no avisa
+(1 row)
+
+INSERT 0 1
+                is                 
+-----------------------------------
+ ok 2 - Inicio crea un solo evento
+(1 row)
+
+                         is                         
+----------------------------------------------------
+ ok 3 - Inicio se entrega a administradores activos
+(1 row)
+
+UPDATE 2
+SET
+UPDATE 1
+                        is                         
+---------------------------------------------------
+ ok 4 - Cierre actualiza estado del aviso original
+(1 row)
+
+                   ok                    
+-----------------------------------------
+ ok 5 - Cierre conserva lectura de todos
+(1 row)
+
+                is                
+----------------------------------
+ ok 6 - Cierre no crea otro aviso
+(1 row)
+
+INSERT 0 1
+UPDATE 2
+UPDATE 1
+                     is                     
+--------------------------------------------
+ ok 7 - Anulación actualiza aviso de parada
+(1 row)
+
+                ok                 
+-----------------------------------
+ ok 8 - Anulación conserva lectura
+(1 row)
+
+UPDATE 1
+                     is                     
+--------------------------------------------
+ ok 9 - Cancelar reporte crea un solo aviso
+(1 row)
+
+                     is                      
+---------------------------------------------
+ ok 10 - Cancelación llega a administradores
+(1 row)
+
+                         is                          
+-----------------------------------------------------
+ ok 11 - El aviso conserva el actor de la transición
+(1 row)
+
+SET
+UPDATE 1
+UPDATE 1
+                               is                               
+----------------------------------------------------------------
+ ok 12 - Correcciones del reporte en una transacción se agrupan
+(1 row)
+
+                 is                  
+-------------------------------------
+ ok 13 - Autor recibe una corrección
+(1 row)
+
+UPDATE 1
+                     is                      
+---------------------------------------------
+ ok 14 - Cambio simple de categoría no avisa
+(1 row)
+
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+UPDATE 1
+UPDATE 1
+                is                
+----------------------------------
+ ok 15 - Envío real crea un aviso
+(1 row)
+
+UPDATE 1
+                              is                               
+---------------------------------------------------------------
+ ok 16 - Categoría aislada de otras correcciones no crea aviso
+(1 row)
+
+ALTER TABLE
+INSERT 0 1
+ALTER TABLE
+UPDATE 1
+                                     is                                      
+-----------------------------------------------------------------------------
+ ok 17 - Cerrar parada de reporte finalizado avisa aun sin corrección previa
+(1 row)
+
+DELETE 1
+                            is                            
+----------------------------------------------------------
+ ok 18 - Eliminar parada agrupa corrección del mismo lote
+(1 row)
+
+INSERT 0 1
+                                       is                                       
+--------------------------------------------------------------------------------
+ ok 19 - Insertar parada en el mismo lote conserva una sola corrección al autor
+(1 row)
+
+UPDATE 1
+                               ok                               
+----------------------------------------------------------------
+ ok 20 - Un administrador degradado pierde aviso administrativo
+(1 row)
+
+                                  ok                                  
+----------------------------------------------------------------------
+ ok 21 - La bandeja oculta eventos administrativos tras cambio de rol
+(1 row)
+
+                           ok                           
+--------------------------------------------------------
+ ok 22 - No se marca un aviso cuyo permiso fue revocado
+(1 row)
+
+ finish 
+--------
+(0 rows)
+
+ROLLBACK

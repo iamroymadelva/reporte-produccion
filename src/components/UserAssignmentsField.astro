@@ -1,0 +1,66 @@
+---
+import { Input } from "@/components/ui/input";
+import { FieldLabel, Label } from "@/components/ui/label";
+
+interface MachineOption { id: string; code: string; name: string }
+interface ShiftOption { id: string; name: string | null; start_time: string; end_time: string }
+
+interface Props {
+  machines: MachineOption[];
+  shifts: ShiftOption[];
+  /** Pares ya asignados con el formato `machine_id:shift_id`. */
+  selected?: string[];
+  validFrom?: string | null;
+  validTo?: string | null;
+  /** Edición: la vigencia solo se envía si se marca "Aplicar esta vigencia a todas las asignaciones". */
+  optIn?: boolean;
+}
+
+function shiftLabel(shift: ShiftOption) {
+  return shift.name?.trim() || `${shift.start_time.slice(0, 5)}–${shift.end_time.slice(0, 5)}`;
+}
+
+const { machines, shifts, selected = [], validFrom = null, validTo = null, optIn = false } = Astro.props;
+const chosen = new Set(selected);
+---
+
+<fieldset class="mt-4">
+  <legend class="field-label mb-1 block text-sm font-semibold text-foreground">Asignaciones (máquina × turno)</legend>
+  <p class="mb-3 text-sm text-muted-foreground">Marca los turnos en los que el operario trabaja cada máquina. Solo se listan máquinas y turnos activos.</p>
+  {machines.length === 0 || shifts.length === 0 ? (
+    <p class="rounded-xl border bg-muted/40 p-3 text-sm text-muted-foreground">No hay máquinas o turnos activos para asignar.</p>
+  ) : (
+    <div class="overflow-x-auto rounded-xl border">
+      <table class="w-full min-w-[420px] text-sm">
+        <thead class="bg-muted/50">
+          <tr>
+            <th class="px-3 py-2 text-left font-semibold" scope="col">Máquina</th>
+            {shifts.map((shift) => <th class="px-3 py-2 text-center font-semibold" scope="col">{shiftLabel(shift)}</th>)}
+          </tr>
+        </thead>
+        <tbody>
+          {machines.map((machine) => (
+            <tr class="border-t">
+              <th class="px-3 py-2 text-left font-medium" scope="row">{machine.code} · {machine.name}</th>
+              {shifts.map((shift) => (
+                <td class="px-3 py-1 text-center">
+                  <label class="inline-flex min-h-11 min-w-11 items-center justify-center">
+                    <input class="size-5 accent-primary" type="checkbox" name="assignments" value={`${machine.id}:${shift.id}`} checked={chosen.has(`${machine.id}:${shift.id}`)} aria-label={`${machine.code} en turno ${shiftLabel(shift)}`} />
+                  </label>
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )}
+  {optIn && <p class="mt-3 text-sm text-muted-foreground">Al guardar, las asignaciones de máquinas o turnos que ya no están activos no aparecen aquí y se desactivan. Las fechas de vigencia de las asignaciones que conservas no cambian, salvo que marques la casilla de abajo.</p>}
+  {optIn && (
+    <label class="mt-3 flex min-h-11 items-center gap-3"><input class="size-5 accent-primary" type="checkbox" name="apply_validity" value="1" /><span class="text-sm font-semibold">Aplicar esta vigencia a todas las asignaciones</span></label>
+  )}
+  <div class="mt-3 grid gap-3 sm:grid-cols-2">
+    <Label><FieldLabel>Vigente desde</FieldLabel><Input type="date" name="valid_from" value={validFrom ?? ""} /></Label>
+    <Label><FieldLabel>Vigente hasta (opcional)</FieldLabel><Input type="date" name="valid_to" value={validTo ?? ""} /></Label>
+  </div>
+</fieldset>

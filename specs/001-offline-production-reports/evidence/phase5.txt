@@ -1,0 +1,151 @@
+PHASE 5 (US2) EVIDENCE - generated 2026-10-10T07:06:11-05:00
+
+=== FAILING FIRST (tests written before implementation) ===
+--- pgTAP (T042/T043/T044/T056) with migrations only up to 20261011000300 (no approve/cancel/correct RPC, no full audit trigger) ---
+Failed 16/27 subtests 
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/approval.test.sql                    (Wstat: 0 Tests: 17 Failed: 16)
+  Failed tests:  1-16
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/cancellation_rules.test.sql          (Wstat: 0 Tests: 24 Failed: 22)
+  Failed tests:  3-24
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/correct_report.test.sql              (Wstat: 0 Tests: 44 Failed: 40)
+  Failed tests:  1-21, 23-33, 36-37, 39-44
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/full_audit.test.sql                  (Wstat: 0 Tests: 27 Failed: 16)
+  Failed tests:  1-4, 6-16, 27
+Result: FAIL
+
+--- bun test tests/report-filters.test.ts tests/report-export.test.ts (T045/T046) against the pre-phase code ---
+error: expect(received).toBe(expected)
+(fail) GET /api/reports/export > VIEWER y ROOT también pueden exportar [23.14ms]
+ 2 pass
+ 6 fail
+Ran 8 tests across 2 files. [16.41s]
+
+=== GATES (after implementation) ===
+--- bun run db:reset ---
+Seeding data from supabase/seed.sql...
+Restarting containers...
+Finished supabase db reset on branch redesign/ui-ux.
+{"target":"local","version":"","message":"Reset local database."}
+--- bun run db:test ---
+$ supabase test db --local
+Connecting to local database...
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/active_report_limits.test.sql .......... ok
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/approval.test.sql ...................... ok
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/cancellation_rules.test.sql ............ ok
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/catalog_delete_or_deactivate.test.sql .. ok
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/catalog_uniqueness.test.sql ............ ok
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/change_events.test.sql ................. ok
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/correct_report.test.sql ................ ok
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/critical_constraints.test.sql .......... ok
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/device_time_events.test.sql ............ ok
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/final_demo_readiness.test.sql .......... ok
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/full_audit.test.sql .................... ok
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/helpers/auth_as.sql .................... ok
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/login_lockout.test.sql ................. ok
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/notification_pagination.test.sql ....... ok
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/notification_transitions.test.sql ...... ok
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/notifications.test.sql ................. ok
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/operator_workflow.test.sql ............. ok
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/report_audit_visibility.test.sql ....... ok
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/report_cancellation.test.sql ........... ok
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/report_pagination_large.test.sql ....... ok
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/report_shift_assignment.test.sql ....... ok
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/rls_matrix.test.sql .................... ok
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/roles_root_invariant.test.sql .......... ok
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/shift_resolution.test.sql .............. ok
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/user_management_matrix.test.sql ........ ok
+All tests successful.
+Files=25, Tests=649,  6 wallclock secs ( 0.31 usr  0.22 sys +  0.60 cusr  0.54 csys =  1.67 CPU)
+Result: PASS
+A new version of Supabase CLI is available: v2.120.0 (currently installed v2.116.0)
+We recommend updating regularly for new features and bug fixes: https://supabase.com/docs/guides/cli/getting-started#updating-the-supabase-cli
+
+--- bun test (run 1) ---
+bun test v1.4.2 (744846f84)
+
+ 190 pass
+ 0 fail
+ 747 expect() calls
+Ran 190 tests across 12 files. [13.49s]
+--- bun test (run 2) ---
+bun test v1.4.2 (744846f84)
+
+ 190 pass
+ 0 fail
+ 747 expect() calls
+Ran 190 tests across 12 files. [14.16s]
+--- bunx astro check ---
+Result (148 files): 
+- 0 errors
+- 0 warnings
+- 4 hints
+
+--- bun run build ---
+[2m07:09:11[22m [34m[vite][39m [32m✓ built in 12.55s[39m
+[2m07:09:11[22m [34m[build][39m Rearranging server assets...
+[2m07:09:11[22m [34m[build][39m [32m✓ Completed in 18.44s.[39m
+[2m07:09:11[22m [34m[@astrojs/vercel][39m Bundling function ..\..\..\..\dist\server\entry.mjs
+[2m07:09:14[22m [34m[build][39m Waiting for integration [1m"@astrojs/vercel"[22m, hook [1m"astro:build:done"[22m...
+[2m07:09:47[22m [34m[@astrojs/vercel][39m Copying static files to .vercel/output/static
+[2m07:09:47[22m [34m[build][39m Server built in [1m55.82s[22m
+[2m07:09:47[22m [34m[build][39m [1mComplete![22m
+
+=== SMOKE REAL (bun run dev, Supabase local, cookie sb-127-auth-token; dev PID 18008 killed afterwards) ===
+SMOKE login op1: 303
+SMOKE login coord1: 303
+SMOKE cookie names: sb-127-auth-token 
+SMOKE create redirect: http://localhost:4321/reportes/16162b4f-7159-4cd1-bab3-f3100fed5131
+SMOKE coord PATCH on DRAFT: {"error":"Usa Corregir con motivo"} HTTP 403
+SMOKE coord approve on DRAFT: {"error":"Solo se pueden aprobar reportes enviados.","code":"NOT_SUBMITTED"} HTTP 409
+SMOKE coord cancel on DRAFT (not off-shift): {"error":"El coordinador solo puede cancelar reportes abiertos fuera de turno.","code":"NOT_CANCELLABLE"} HTTP 409
+SMOKE op PATCH: {"ok":true,"report":{"id":"16162b4f-7159-4cd1-bab3-f3100fed5131","updated_at":"2026-10-10T12:05:14.001485+00:00"}} HTTP 200
+SMOKE op submit: {"ok":true} HTTP 200
+SMOKE op approve (forbidden): {"error":"Solo un coordinador o administrador raíz puede aprobar reportes."} HTTP 403
+SMOKE coord PATCH on SUBMITTED: {"error":"Usa Corregir con motivo"} HTTP 403
+SMOKE coord approve: {"ok":true,"report":{"id":"16162b4f-7159-4cd1-bab3-f3100fed5131","report_date":"2026-10-10","production_order":"OP-900","machine_id":"30000000-0000-0000-0000-000000000001","line_id":"40000000-0000-0000-0000-000000000001","client_id":"50000
+SMOKE coord approve again: {"error":"Solo se pueden aprobar reportes enviados.","code":"NOT_SUBMITTED"} HTTP 409
+SMOKE coord correct short reason: {"error":"El motivo de la corrección debe tener al menos 5 caracteres."} HTTP 400
+SMOKE coord correct: {"ok":true,"report":{"id":"16162b4f-7159-4cd1-bab3-f3100fed5131","report_date":"2026-10-10","production_order":"OP-900","machine_id":"30000000-0000-0000-0000-000000000001","line_id":"40000000-0000-000
+SMOKE op correct (forbidden): {"error":"Solo un coordinador o administrador raíz puede corregir reportes."} HTTP 403
+SMOKE export filtered: HTTP 200 bytes 14365
+SMOKE export empty: HTTP 204 bytes 0
+SMOKE export operator: HTTP 403
+SMOKE list page coord: HTTP 200
+SMOKE list page empty: 1
+SMOKE detail page: HTTP 200
+SMOKE dashboard: HTTP 200
+SMOKE xlsx workbook.xml sheets: SEGUIMIENTO PRODUCCIÓN | DETALLE PARADAS | CAMBIOS | HISTORIAL | CATÁLOGO PARADAS
+SMOKE audit rows (report_audit_log) of the smoke report:
+  report.insert INSERT OPERATOR | status STATUS OPERATOR | status STATUS ADMINISTRATOR reason='Aprobación y cierre del reporte' | lot UPDATE ADMINISTRATOR reason='Error de digitacion' | units_produced UPDATE ADMINISTRATOR reason='Error de digitacion'
+SMOKE manager DRAFT detail: read-only notice present, no editor, no off-shift cancel button (not off-shift)
+
+=== CORRECTIONS ROUND (auditor NO-GO) ===
+Changes: MAJOR-1 stop invariant in prepare_stop_event (non-DRAFT reports: non-cancelled stops must be closed+categorized, 22023) + approve_report P0007 INVALID_STOPS (+ report-rpc.ts mapping); MINOR-2 vacuous lives_ok replaced by 0-row assertions; MINOR-3 migration 20261011000510_off_shift_legacy_drafts.sql (shift_id null => started_at/created_at + 12h + grace) for function and view; MINOR-4 contracts/database-rpc.md updated. Legacy fixtures in notification_transitions.test.sql adapted (open stop in finalized report now built with session_replication_role=replica; other insert made closed).
+--- bun run db:reset ---
+Resetting local database...
+Finished supabase db reset on branch redesign/ui-ux.
+{"target":"local","version":"","message":"Reset local database."}
+--- bun run db:test ---
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/approval.test.sql ...................... ok
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/cancellation_rules.test.sql ............ ok
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/correct_report.test.sql ................ ok
+/Users/ACER/Desktop/PROJECTS/empacando/reporte-produccion/supabase/tests/full_audit.test.sql .................... ok
+All tests successful.
+Files=25, Tests=660,  5 wallclock secs ( 0.29 usr  0.20 sys +  0.55 cusr  0.39 csys =  1.43 CPU)
+Result: PASS
+--- bun test run 1 ---
+ 190 pass
+ 0 fail
+Ran 190 tests across 12 files. [13.44s]
+--- bun test run 2 ---
+ 190 pass
+ 0 fail
+Ran 190 tests across 12 files. [13.21s]
+--- astro check ---
+- 0 errors
+- 0 warnings
+- 4 hints
+--- build ---
+[2m07:22:36[22m [34m[build][39m [32m✓ Completed in 859ms.[39m
+[2m07:22:41[22m [34m[build][39m [32m✓ Completed in 5.44s.[39m
+[2m07:23:09[22m [34m[build][39m [1mComplete![22m

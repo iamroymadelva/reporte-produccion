@@ -1,5 +1,5 @@
 import { formatDate, formatDateTime, formatNumber, formatPercent } from "./format";
-import { statusLabels } from "./types";
+import { roleLabels, statusLabels, type AppRole } from "./types";
 import { stopDuration } from "./stop-events";
 
 export type ReportAuditRow = {
@@ -10,6 +10,13 @@ export type ReportAuditRow = {
   old_value: unknown;
   new_value: unknown;
   user?: { full_name?: string | null } | null;
+  entity_type?: "report" | "stop" | "change" | null;
+  action?: string | null;
+  actor_role?: string | null;
+  reason?: string | null;
+  captured_offline?: boolean | null;
+  captured_at?: string | null;
+  received_at?: string | null;
 };
 
 export type AuditCatalogs = Partial<Record<string, Map<string, string>>>;
@@ -27,6 +34,13 @@ export type AuditDisplayEntry = {
   changedAt: string;
   stopNumber?: number;
   details: AuditDetail[];
+  actorRole?: string | null;
+  /** Rol del autor en español ("Coordinador", "Auditor", ...); nulo si la fila no lo registró. */
+  actorRoleLabel?: string | null;
+  entityType?: "report" | "stop" | "change" | null;
+  reason?: string | null;
+  capturedOffline?: boolean;
+  receivedAt?: string | null;
 };
 
 type JsonRecord = Record<string, unknown>;
@@ -59,7 +73,12 @@ const fieldLabels: Record<string, string> = {
   cancellation_reason: "Motivo de cancelación",
   cancelled_at: "Fecha de cancelación",
   cancelled_by: "Cancelado por",
+  approved_by: "Aprobado por",
+  approved_at: "Fecha de aprobación",
+  approver_full_name: "Nombre del aprobador",
 };
+
+export const reportFieldLabels: Readonly<Record<string, string>> = fieldLabels;
 
 const relationFields = new Set([
   "machine_id",
@@ -69,7 +88,7 @@ const relationFields = new Set([
   "shift_id",
   "dosifier_type_id",
 ]);
-const dateTimeFields = new Set(["started_at", "ended_at", "submitted_at", "cancelled_at"]);
+const dateTimeFields = new Set(["started_at", "ended_at", "submitted_at", "cancelled_at", "approved_at"]);
 const percentageFields = new Set(["process_performance", "operator_performance"]);
 
 function asRecord(value: unknown): JsonRecord | null {
@@ -168,9 +187,32 @@ function stopTitle(fieldName: string, previous: JsonRecord | null, next: JsonRec
   return "Corrección de parada";
 }
 
+function changeDetails(previous: JsonRecord | null, next: JsonRecord | null) {
+  const details: AuditDetail[] = [];
+  const insertion = !previous && Boolean(next);
+  const typeName = (payload: JsonRecord | null) => {
+    const snapshot = asRecord(payload?.change_type);
+    return snapshot && typeof snapshot.name === "string" ? snapshot.name : "—";
+  };
+  const push = (label: string, before: string, after: string) => {
+    if (insertion) details.push({ label, next: after });
+    else if (before !== after) details.push({ label, previous: before, next: after });
+  };
+  push("Tipo de cambio", typeName(previous), typeName(next));
+  push("Descripción", String(previous?.description ?? "—"), String(next?.description ?? "—"));
+  push(
+    "Hora del cambio",
+    formatDateTime(typeof previous?.occurred_at === "string" ? previous.occurred_at : null),
+    formatDateTime(typeof next?.occurred_at === "string" ? next.occurred_at : null),
+  );
+  return details;
+}
+
 function reportTitle(row: ReportAuditRow) {
+  if (row.field_name === "report.insert") return "Reporte creado";
   if (row.field_name === "status") {
     if (row.new_value === "SUBMITTED") return "Reporte enviado";
+    if (row.new_value === "CLOSED") return "Reporte cerrado (aprobado)";
     if (row.new_value === "CANCELLED") return "Reporte cancelado";
     return "Cambio de estado del reporte";
   }
@@ -212,14 +254,36 @@ export function describeAuditRows(
 ) {
   const catalogs = options.catalogs ?? {};
   const stopNumbers = buildStopNumberMap(options.stops ?? [], rows);
-  return rows.map<AuditDisplayEntry>((row) => {
+  return sortAuditRowsAscending(rows).map<AuditDisplayEntry>((row) => {
     const actor = row.user?.full_name?.trim() || row.changed_by;
+    const context = {
+      actorRole: row.actor_role ?? null,
+      actorRoleLabel: row.actor_role ? (roleLabels[row.actor_role as AppRole] ?? row.actor_role) : null,
+      entityType: row.entity_type ?? null,
+      reason: row.reason ?? null,
+      capturedOffline: Boolean(row.captured_offline),
+      receivedAt: row.received_at ?? null,
+    };
+    if (row.field_name === "report.insert") {
+      return { id: row.id, title: "Reporte creado", actor, changedAt: row.changed_at, details: [], ...context };
+    }
+    if (row.field_name.startsWith("change_event.")) {
+      return {
+        id: row.id,
+        title: row.field_name === "change_event.insert" ? "Cambio registrado" : "Corrección de cambio",
+        actor,
+        changedAt: row.changed_at,
+        details: changeDetails(asRecord(row.old_value), asRecord(row.new_value)),
+        ...context,
+      };
+    }
     if (!row.field_name.startsWith("stop_event.")) {
       return {
         id: row.id,
         title: reportTitle(row),
         actor,
         changedAt: row.changed_at,
+        ...context,
         details: [{
           label: fieldLabels[row.field_name] ?? row.field_name,
           previous: auditValue(row.field_name, row.old_value, catalogs),
@@ -238,6 +302,30 @@ export function describeAuditRows(
       changedAt: row.changed_at,
       stopNumber: stopId ? stopNumbers.get(stopId) : undefined,
       details: stopDetails(previous, next, catalogs),
+      ...context,
     };
   });
+}
+
+function auditTime(value: string) {
+  const time = Date.parse(value);
+  return Number.isNaN(time) ? 0 : time;
+}
+
+/** Orden cronológico ascendente (T062): por fecha del cambio y, a igualdad, por id. No muta la entrada. */
+export function sortAuditRowsAscending<T extends { id: number | string; changed_at: string }>(rows: T[]): T[] {
+  return [...rows].sort((left, right) => {
+    const byTime = auditTime(left.changed_at) - auditTime(right.changed_at);
+    if (byTime !== 0) return byTime;
+    const leftId = Number(left.id);
+    const rightId = Number(right.id);
+    if (Number.isFinite(leftId) && Number.isFinite(rightId)) return leftId - rightId;
+    return String(left.id).localeCompare(String(right.id));
+  });
+}
+
+/** Distintivo "Capturado sin conexión" con la hora de llegada; null si la fila no se capturó offline. */
+export function offlineBadgeLabel(entry: Pick<AuditDisplayEntry, "capturedOffline" | "receivedAt">) {
+  if (!entry.capturedOffline) return null;
+  return entry.receivedAt ? `Capturado sin conexión · llegó ${formatDateTime(entry.receivedAt)}` : "Capturado sin conexión";
 }

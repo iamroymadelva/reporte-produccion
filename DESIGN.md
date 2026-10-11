@@ -39,12 +39,14 @@ componente debe usar valores hexadecimales sueltos ni la paleta `emerald` como c
 | `brand-900` | `#1E3A8A` | Hover de primario, títulos de marca |
 | `brand-950` | `#172554` | Barra de navegación, `theme-color` |
 
-### Acento (`accent`, ámbar de señalización)
+### Acento / CTA (`--cta`, ámbar de señalización)
 
 | Token | Hex | Uso |
 | --- | --- | --- |
-| `accent-400` | `#FBBF24` | Indicador de navegación activa sobre `brand-950` |
-| `accent-500` | `#F59E0B` | CTA de creación (`.button-accent`) con texto `slate-950` (8.3:1) |
+| `--cta` (oscuro) / `accent-400` | `#FBBF24` | CTA en modo oscuro; indicador de navegación activa (`--sidebar-primary`) |
+| `--cta` (claro) / `accent-500` | `#F59E0B` | CTA de creación (`<Button variant="accent">`, `bg-cta text-cta-foreground`) con texto `#0F172A` (8.3:1) |
+
+> `--accent` / `--accent-foreground` son **neutros de interacción** (semántica shadcn: hover/foco en menús, select, skeleton, ghost): `#F1F5F9`/`#0F172A` en claro, `#1E293B`/`#F8FAFC` en oscuro. El ámbar de marca vive en `--cta` y `--sidebar-primary`, no en `accent`.
 
 > El ámbar **nunca** lleva texto blanco (contraste 2.1:1). Siempre texto `slate-950`.
 
@@ -74,28 +76,27 @@ restablecida, mensajes `ok`). El color nunca es el único indicador: todo estado
 
 | Rol | Fuente | Pesos |
 | --- | --- | --- |
-| Interfaz y títulos | **Fira Sans** | 400, 500, 600, 700 |
-| Datos numéricos, folios, KPIs, códigos de máquina | **Fira Code** (`font-mono`) | 500, 600 |
+| Interfaz y títulos | **Geist Variable** (`--font-sans`) | 100–900 (variable) |
+| Datos numéricos, folios, códigos de máquina | **Geist Mono Variable** (`--font-mono`, `font-mono`) | 100–900 (variable) |
 
-Las fuentes se sirven localmente con `@fontsource` (subconjunto latino), no desde Google
-Fonts: la app es PWA con soporte sin conexión y el service worker cachea `/_astro/`.
-
-> Desviación consciente de UI/UX Pro Max: la herramienta sugiere Fira Code para títulos.
-> Aquí se reserva para cifras y folios (donde aporta alineación tabular) y los títulos usan
-> Fira Sans, más legible en español con acentos y en pantallas pequeñas.
+Se sirven localmente con `@fontsource-variable/geist` y `@fontsource-variable/geist-mono`
+(importadas en `global.css`), no desde Google Fonts: la app es PWA con soporte sin conexión y el
+service worker cachea `/_astro/`. Misma familia tipográfica que barstock.
 
 | Escala | Clase | Uso |
 | --- | --- | --- |
-| Eyebrow | `.eyebrow` (12px, 600, mayúsculas, `tracking-wider`, `brand-700`) | Contexto sobre el H1 |
-| H1 | `text-2xl sm:text-3xl font-bold tracking-tight` | Título de página |
-| H2 | `text-lg font-semibold` | Título de sección / panel |
+| H1 | `text-xl font-bold tracking-tight lg:text-3xl` | Título de página (único por vista) |
+| Descripción | `text-sm text-muted-foreground` | Bajo el H1 |
+| Título de card | `text-base font-semibold leading-none` / `CardTitle` | Paneles y secciones |
 | Cuerpo | 16px, `leading-relaxed` | Mínimo 16px en móvil |
-| KPI | `font-mono text-3xl font-semibold tabular-nums` | Indicadores |
+| KPI | `text-2xl font-bold tabular-nums` | Indicadores (sin eyebrow) |
+
+Ya no existe eyebrow: `PageHeader.astro` no admite esa prop.
 
 ## 4. Espaciado, forma y elevación
 
 - Escala base de 4px (Tailwind). Contenedor: `max-w-7xl`, gutter `px-4 sm:px-6`.
-- Radios: controles y botones `rounded-lg` (8px); paneles `rounded-xl` (12px); badges `rounded-full`.
+- Radios: botones y controles `rounded-md`; `Card` base `rounded-xl` y **en páginas `rounded-2xl`**; badges `rounded-full`.
 - Elevación: una sola sombra (`shadow-sm`) para paneles; `shadow-xl` solo para modales y avisos flotantes.
 - Bordes de 1px `slate-200` separan; no usar sombras para separar filas.
 
@@ -104,21 +105,30 @@ Fonts: la app es PWA con soporte sin conexión y el service worker cachea `/_ast
 | Clase | Descripción |
 | --- | --- |
 | `.button-primary` | Fondo `brand-800`, texto blanco, alto 48px |
-| `.button-accent` | Fondo `accent-500`, texto `slate-950`. **Un solo uso por vista** (crear reporte) |
+| `<Button variant="accent">` | Fondo `--cta`, texto `--cta-foreground`. **Un solo uso por vista** (crear reporte) |
 | `.button-secondary` | Blanco, borde `slate-300`; estado activo con `aria-current`/`.is-active` |
 | `.button-danger` | Fondo `red-700`, texto blanco |
 | `.field-label` / `.field-control` | Etiqueta siempre visible; foco `brand-600` con anillo `brand-100` |
-| `.panel` | Superficie blanca, borde `slate-200`, `rounded-xl`, `shadow-sm` |
-| `.eyebrow` | Rótulo superior de página |
+| `Card` | `bg-card text-card-foreground flex flex-col gap-6 rounded-xl border py-6 shadow-sm`; en páginas `rounded-2xl`, con `CardHeader`/`CardTitle`/`CardDescription` y tablas dentro |
 | `.link` | Enlace de acción `brand-700`, subrayado en hover |
 | `.data-table` | Encabezado `slate-50` en mayúsculas 12px, filas con hover `slate-50` |
-| `.kpi-card` | Panel blanco con franja izquierda de 4px del color semántico |
+| KPI | `Card rounded-2xl` con `CardHeader` (título `text-sm font-medium` + ícono lucide `h-4 w-4` coloreado), valor `text-2xl font-bold tabular-nums` y subtítulo `text-xs text-muted-foreground`. **Sin franja lateral**; el estado se comunica con borde tintado sutil (`border-warning/20`, `border-destructive/20`, `border-stop/20`) e ícono |
 
 ## 6. Navegación
 
-- Barra superior `brand-950` con texto blanco; el ítem activo se marca con barra inferior
-  ámbar de 3px y `aria-current="page"` (no solo color).
-- Móvil (< 640px): botón "Menú" de 44px que despliega un panel con usuario, rol y enlaces.
+- **Sidebar claro** en modo claro (`--sidebar #fafafa`, ítem activo `bg-sidebar-accent font-medium`, marca y
+  `--sidebar-primary` en `#1e40af`); en modo oscuro conserva fondo azul marino `#0a1023`. Sin barras ni
+  indicadores ámbar. Cabecera: ícono `Factory` `size-7 text-sidebar-primary`, rótulo "PLANTA" en
+  mayúsculas pequeñas y nombre "Reporte de Producción" en `font-bold text-sidebar-primary`.
+- Grupos con etiqueta por defecto del primitive (`text-xs font-medium text-sidebar-foreground/70`); el grupo
+  de Administración es colapsable con chevron rotatorio. `aria-current="page"` en el ítem activo.
+- Pie: botón fantasma con `Avatar` (`bg-sidebar-accent`), nombre `font-medium truncate` y rol `text-xs text-muted-foreground`.
+  Menú de cuenta: Notificaciones, alternar tema (ítem simple "Modo claro" con `Sun` / "Modo oscuro" con `Moon`)
+  y "Cerrar sesión" en `text-destructive`.
+- Barra superior: `sticky`-equivalente fija (por `transition:persist`) `h-14 border-b bg-card/95 backdrop-blur px-4 gap-3`.
+  Insignia de campana `bg-destructive text-destructive-foreground` (se oculta con 0 sin leer).
+- Móvil (< 1024px): `BottomNav` de 4 pestañas (Dashboard, Reportes, Notificaciones, Más), activa en `text-primary`.
+- Contenedor de página: `mx-auto w-full max-w-7xl space-y-6 px-4 py-4 sm:px-6 sm:py-6` sobre `bg-background`.
 
 ## 7. Responsividad
 
@@ -155,3 +165,18 @@ Reglas: sin scroll horizontal de página (`overflow-x: clip` en `body`), respeta
 
 - Los íconos PWA (`public/icons/*`) y `public/branding/` conservan la paleta verde anterior;
   regenerarlos en azul `brand-800` / ámbar cuando se apruebe el rediseño.
+
+## 11. Paridad visual con barstock (iteración 2)
+
+Se adoptó el estilo de barstock en todo salvo la paleta (primario azul `#1e40af` / `#60a5fa` en oscuro,
+CTA ámbar y semánticos propios en lugar del verde emerald):
+
+- **Tipografía** Geist / Geist Mono (§3). **Radios**: `rounded-md` en botones, `rounded-2xl` en cards de página.
+- **Botones**: `rounded-md text-sm font-medium`. **Única desviación**: altura táctil mínima `min-h-11` (44px) en
+  `default` y `min-h-12` (48px) en `lg` (barstock usa 36/40px) por el uso en planta con tablets y guantes.
+- **Sidebar claro** y estructura de cabecera/pie (§6). **KPI sin franja lateral** (§5).
+- **Encabezados** `PageHeader`: sin eyebrow; enlace "volver" pequeño `text-sm text-muted-foreground` con `ArrowLeft` sobre el título.
+- **Login y páginas públicas** (`iniciar-sesion`, `recuperar-contrasena`, `configurar-contrasena`, `auth/confirmar`):
+  fondo degradado con tokens `--auth-from/--auth-via/--auth-to` (`from-auth-from via-auth-via to-auth-to`), `Card w-full max-w-md shadow-2xl`,
+  logo `p-4 rounded-2xl bg-primary shadow-lg` con `Factory`, título centrado `text-2xl font-bold`, `CardFooter` con botón `w-full` `lg`.
+  El H1 de la tarjeta es el único de la página.

@@ -1,78 +1,230 @@
 ---
 import AdminSearch from "../../components/AdminSearch.astro";
-import AdminFlashMessage from "../../components/AdminFlashMessage.astro";
 import AdminRecordModal from "../../components/AdminRecordModal.astro";
-import DestructiveAction from "../../components/DestructiveAction.astro";
+import PageHeader from "../../components/PageHeader.astro";
+import UserAssignmentsField from "../../components/UserAssignmentsField.astro";
+import UserDeactivationPanel from "../../components/UserDeactivationPanel.astro";
+import UserPasswordResetAction from "../../components/UserPasswordResetAction.astro";
 import UserReactivateAction from "../../components/UserReactivateAction.astro";
+import UserRetireAction from "../../components/UserRetireAction.astro";
 import BaseLayout from "../../layouts/BaseLayout.astro";
-import { createSupabaseAdminClient, createSupabaseServerClient } from "../../lib/supabase/server";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { FieldLabel, Label } from "@/components/ui/label";
+import { NativeSelect } from "@/components/ui/native-select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { createSupabaseServerClient } from "../../lib/supabase/server";
+import { readAllPages } from "../../lib/supabase/read-all-pages";
 import { roleLabels, type AppRole } from "../../lib/types";
+import { canManage, creatableRoles, MIN_PASSWORD_LENGTH } from "../../lib/user-admin";
 const auth = Astro.locals.auth!;
+const actorRole = auth.profile.role;
 const supabase = createSupabaseServerClient(Astro.request, Astro.cookies);
-const [{ data: profilesData }, { data: machinesData }, { data: assignmentsData }] = await Promise.all([
-  supabase.from("profiles").select("id, full_name, role, job_title, active, removed_at, removed_by").order("full_name"),
-  supabase.from("machines").select("id, code, name, active").eq("active", true).order("code").order("name"),
-  supabase.from("operator_machine_assignments").select("operator_id, machine_id, active"),
+const [{ data: profilesData, error: profilesError }, { data: machinesData, error: machinesError }, { data: shiftsData, error: shiftsError }, { data: assignmentsData, error: assignmentsError }] = await Promise.all([
+  readAllPages((start, end) => supabase.from("profiles").select("id, username, full_name, role, job_title, active, removed_at, removed_by, possible_unsynced_data").order("full_name").order("id").range(start, end)),
+  readAllPages((start, end) => supabase.from("machines").select("id, code, name, active").eq("active", true).order("code").order("name").order("id").range(start, end)),
+  readAllPages((start, end) => supabase.from("shifts").select("id, name, start_time, end_time, active, sort_order").eq("active", true).order("sort_order").order("start_time").order("id").range(start, end)),
+  readAllPages((start, end) => supabase.from("operator_machine_assignments").select("id, operator_id, machine_id, shift_id, valid_from, valid_to").eq("active", true).order("operator_id").order("machine_id").order("shift_id").range(start, end)),
 ]);
-let authUsers: any[] = [];
-let configurationError = "";
-try {
-  const admin = createSupabaseAdminClient();
-  const perPage = 1000;
-  for (let page = 1; ; page += 1) {
-    const { data, error } = await admin.auth.admin.listUsers({ page, perPage });
-    if (error) throw error;
-    authUsers.push(...data.users);
-    if (data.users.length < perPage) break;
-  }
-} catch {
-  configurationError = "No fue posible consultar los correos de los usuarios.";
-}
 const profiles = (profilesData ?? []) as any[];
 const machines = (machinesData ?? []) as any[];
+const shifts = (shiftsData ?? []) as any[];
 const assignments = (assignmentsData ?? []) as any[];
-const emailById = new Map(authUsers.map((user) => [user.id, user.email]));
-const error = Astro.url.searchParams.get("error") ?? configurationError;
-const ok = Astro.url.searchParams.get("ok");
+const machineById = new Map(machines.map((machine) => [machine.id, machine]));
+const shiftLabel = (shift: any) => shift.name?.trim() || `${String(shift.start_time).slice(0, 5)}–${String(shift.end_time).slice(0, 5)}`;
+const shiftById = new Map(shifts.map((shift) => [shift.id, shift]));
+const error = (profilesError || machinesError || shiftsError || assignmentsError) ? "No fue posible cargar todos los usuarios y asignaciones." : null;
+const createRoles = creatableRoles(actorRole);
+const allRoles = Object.keys(roleLabels) as AppRole[];
 ---
 
 <BaseLayout title="Usuarios" description="Administración de usuarios y asignaciones" profile={auth.profile}>
-  <main class="mx-auto max-w-7xl space-y-6 px-4 py-8 sm:px-6" data-search-scope>
-    <header><a class="link text-sm" href="/administracion">← Administración</a><div class="mt-2 flex flex-wrap items-end justify-between gap-4"><h1 class="text-3xl font-bold">Usuarios y asignaciones</h1><AdminRecordModal id="create-user" title="Nuevo usuario" action="/api/admin/users/invite" submitLabel="Crear usuario" mode="create" size="large"><div class="grid gap-4 md:grid-cols-3"><label><span class="field-label">Nombre completo</span><input class="field-control" name="full_name" required /></label><label><span class="field-label">Correo</span><input class="field-control" type="email" inputmode="email" autocomplete="email" name="email" required /></label><label><span class="field-label">Rol</span><select class="field-control" name="role"><option value="OPERATOR">Operario</option><option value="VIEWER">Consulta</option><option value="ADMINISTRATOR">Administrador</option></select></label></div></AdminRecordModal></div></header>
-    <AdminFlashMessage error={error} ok={ok} />
-    <label class="block max-w-lg"><span class="field-label">Buscar</span><input class="field-control" type="search" enterkeyhint="search" placeholder="Buscar usuarios" data-search-input /></label>
-    <section class="panel overflow-hidden p-0"><div class="overflow-x-auto"><table class="responsive-admin-table responsive-admin-table--wide w-full min-w-[1040px] text-left text-sm"><thead class="bg-slate-50 text-slate-600"><tr><th class="p-4">Nombre</th><th class="p-4">Correo</th><th class="p-4">Cargo</th><th class="p-4">Rol</th><th class="p-4">Máquinas</th><th class="p-4">Estado</th><th class="p-4 text-right">Acción</th></tr></thead><tbody>
-      {profiles.map((profile) => {
-        const selected = new Set(assignments.filter((item) => item.operator_id === profile.id && item.active).map((item) => item.machine_id));
-        const assigned = machines.filter((machine) => selected.has(machine.id));
-        const email = emailById.get(profile.id) ?? "No disponible";
-        const retired = !profile.active && Boolean(profile.removed_at);
-        const status = retired ? "Retirado" : profile.active ? "Activo" : "Inactivo";
-        return <tr class="border-t align-top" data-search-row data-search-text={`${profile.full_name} ${email} ${profile.job_title ?? ""} ${roleLabels[profile.role as AppRole]} ${status} ${assigned.map((machine) => `${machine.code} ${machine.name}`).join(" ")}`}>
-          <td class="p-4 font-semibold" data-label="Nombre">{profile.full_name}</td>
-          <td class="p-4" data-label="Correo">{email}</td>
-          <td class="p-4" data-label="Cargo">{profile.job_title || "—"}</td>
-          <td class="p-4" data-label="Rol">{roleLabels[profile.role as AppRole]}</td>
-          <td class="p-4" data-label="Máquinas">{assigned.length ? assigned.map((machine) => machine.code).join(", ") : "—"}</td>
-          <td class="p-4" data-label="Estado"><span class={`rounded-full px-3 py-1 font-semibold ${profile.active ? "bg-emerald-100 text-emerald-800" : retired ? "bg-red-100 text-red-800" : "bg-slate-100 text-slate-600"}`}>{status}</span></td>
-          <td class="p-4 text-right" data-label="Acciones"><div class="flex flex-wrap items-center justify-end gap-2">
-            {retired ? (
-              <UserReactivateAction userId={profile.id} userName={profile.full_name} role={profile.role as AppRole} machines={machines} />
-            ) : (
-              <>
-                <AdminRecordModal id={`edit-user-${profile.id}`} title="Editar usuario" action={`/api/admin/users/${profile.id}`} submitLabel="Guardar cambios" mode="edit" size="large">
-                  <div class="grid gap-3 sm:grid-cols-2"><label><span class="field-label">Nombre</span><input class="field-control" name="full_name" value={profile.full_name} required /></label><label><span class="field-label">Correo</span><input class="field-control" type="email" inputmode="email" autocomplete="email" name="email" value={email} required /></label><label><span class="field-label">Cargo</span><input class="field-control" name="job_title" value={profile.job_title ?? ""} /></label><label><span class="field-label">Rol</span><select class="field-control" name="role">{(Object.keys(roleLabels) as AppRole[]).map((role) => <option value={role} selected={role === profile.role}>{roleLabels[role]}</option>)}</select></label></div>
-                  <fieldset class="mt-4"><legend class="field-label">Máquinas asignadas</legend><div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{machines.map((machine) => <label class="flex min-h-12 items-center gap-3 rounded-xl border p-3"><input class="size-5" type="checkbox" name="machine_ids" value={machine.id} checked={selected.has(machine.id)} /><span>{machine.code} · {machine.name}</span></label>)}</div></fieldset>
-                  <label class="mt-4 flex min-h-12 items-center gap-3"><input class="size-5" type="checkbox" name="active" checked={profile.active} /><span class="font-semibold">Usuario activo</span></label>
-                </AdminRecordModal>
-                {profile.id !== auth.user.id && <DestructiveAction id={profile.id} action={`/api/admin/users/${profile.id}`} recordName={`${profile.full_name} · ${email}`} title="Retirar usuario" description="Se revocará su acceso, se desactivarán sus asignaciones y desaparecerá de la gestión activa. Su identidad histórica se conservará en los reportes y auditorías." buttonLabel="Retirar" confirmLabel="Retirar usuario" intent="remove" />}
-              </>
-            )}
-          </div></td>
-        </tr>;
-      })}
-      {profiles.length === 0 && <tr><td class="p-8 text-center text-slate-500" colspan="7">No hay usuarios configurados.</td></tr>}
-    </tbody></table></div></section>
+  <main class="mx-auto w-full max-w-7xl space-y-6 px-4 py-4 sm:px-6 sm:py-6" data-search-scope>
+    <PageHeader title="Usuarios y asignaciones" back={{ href: "/administracion", label: "Administración" }}>
+      <AdminRecordModal slot="actions" id="create-user" title="Nuevo usuario" action="/api/admin/users" submitLabel="Crear usuario" mode="create" size="large" description="Crea el usuario con una contraseña inicial que se la comunicas directamente.">
+        <div class="grid gap-4 md:grid-cols-2">
+          <Label><FieldLabel>Usuario</FieldLabel><Input name="username" autoComplete="off" autoCapitalize="none" spellCheck={false} pattern="[a-z0-9._\-]{3,32}" minLength={3} maxLength={32} required /><span class="mt-1 block text-xs text-muted-foreground">3 a 32 caracteres: minúsculas, números, punto, guion o guion bajo. No se puede cambiar después.</span></Label>
+          <Label><FieldLabel>Nombre completo</FieldLabel><Input name="full_name" required /></Label>
+          <Label><FieldLabel>Cargo</FieldLabel><Input name="job_title" /></Label>
+          <Label><FieldLabel>Rol</FieldLabel><NativeSelect name="role">{createRoles.map((role) => <option value={role}>{roleLabels[role]}</option>)}</NativeSelect></Label>
+          <Label><FieldLabel>Contraseña inicial</FieldLabel><Input type="password" name="password" autoComplete="new-password" minLength={MIN_PASSWORD_LENGTH} required /></Label>
+          <Label><FieldLabel>Confirmar contraseña</FieldLabel><Input type="password" name="password_confirm" autoComplete="new-password" minLength={MIN_PASSWORD_LENGTH} required /></Label>
+        </div>
+        <UserAssignmentsField machines={machines} shifts={shifts} />
+      </AdminRecordModal>
+    </PageHeader>
+    {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
+    <Label className="block max-w-lg"><FieldLabel>Buscar</FieldLabel><Input type="search" enterKeyHint="search" placeholder="Buscar usuarios" data-search-input /></Label>
+    <Card className="rounded-2xl gap-0 overflow-hidden py-0">
+      <Table className="responsive-admin-table responsive-admin-table--wide min-w-[1040px]">
+        <TableHeader><TableRow><TableHead>Usuario</TableHead><TableHead>Nombre</TableHead><TableHead>Rol</TableHead><TableHead>Estado</TableHead><TableHead>Asignaciones</TableHead><TableHead className="text-right">Acción</TableHead></TableRow></TableHeader>
+        <TableBody>
+          {profiles.map((profile) => {
+            const own = assignments.filter((item) => item.operator_id === profile.id);
+            const selected = own.map((item) => `${item.machine_id}:${item.shift_id}`);
+            const byMachine = new Map<string, string[]>();
+            for (const item of own) {
+              const machine = machineById.get(item.machine_id);
+              const shift = shiftById.get(item.shift_id);
+              if (!machine || !shift) continue;
+              byMachine.set(machine.code, [...(byMachine.get(machine.code) ?? []), shiftLabel(shift)]);
+            }
+            const assignedText = [...byMachine.entries()].map(([code, labels]) => `${code} (${labels.join(", ")})`).join("; ");
+            const retired = !profile.active && Boolean(profile.removed_at);
+            const status = retired ? "Retirado" : profile.active ? "Activo" : "Inactivo";
+            const manageable = canManage(actorRole, profile.role as AppRole);
+            const isSelf = profile.id === auth.user.id;
+            const roleOptions = actorRole === "ROOT" ? allRoles : (["OPERATOR"] as AppRole[]);
+            return (
+              <TableRow data-search-row data-search-text={`${profile.username} ${profile.full_name} ${profile.job_title ?? ""} ${roleLabels[profile.role as AppRole]} ${status} ${assignedText}`}>
+                <TableCell className="font-mono font-semibold" data-label="Usuario">{profile.username}</TableCell>
+                <TableCell data-label="Nombre">{profile.full_name}{profile.job_title && <span class="block text-xs text-muted-foreground">{profile.job_title}</span>}</TableCell>
+                <TableCell data-label="Rol">{roleLabels[profile.role as AppRole]}</TableCell>
+                <TableCell data-label="Estado"><Badge variant={profile.active ? "submitted" : retired ? "cancelled" : "neutral"}>{status}</Badge>{profile.possible_unsynced_data && <Badge variant="cancelled" className="ml-1">Posibles datos sin subir</Badge>}</TableCell>
+                <TableCell data-label="Asignaciones">{assignedText || "—"}</TableCell>
+                <TableCell className="text-right" data-label="Acciones">
+                  <div class="flex flex-wrap items-center justify-end gap-2">
+                    {!manageable ? null : retired ? (
+                      <UserReactivateAction userId={profile.id} userName={profile.full_name} role={profile.role as AppRole} machines={machines} shifts={shifts} />
+                    ) : (
+                      <>
+                        <AdminRecordModal id={`edit-user-${profile.id}`} title="Editar usuario" action={`/api/admin/users/${profile.id}`} submitLabel="Guardar cambios" mode="edit" size="large">
+                          <input type="hidden" name="intent" value="update" />
+                          <div class="grid gap-3 sm:grid-cols-2">
+                            <Label><FieldLabel>Usuario</FieldLabel><Input value={profile.username} readOnly disabled /></Label>
+                            <Label><FieldLabel>Nombre</FieldLabel><Input name="full_name" value={profile.full_name} required /></Label>
+                            <Label><FieldLabel>Cargo</FieldLabel><Input name="job_title" value={profile.job_title ?? ""} /></Label>
+                            <Label><FieldLabel>Rol</FieldLabel><NativeSelect name="role">{roleOptions.map((role) => <option value={role} selected={role === profile.role}>{roleLabels[role]}</option>)}</NativeSelect></Label>
+                          </div>
+                          <UserAssignmentsField machines={machines} shifts={shifts} selected={selected} optIn />
+                          <Label className="mt-4 flex min-h-12 items-center gap-3"><input class="size-5 accent-primary" type="checkbox" name="active" checked={profile.active} data-initial-active={profile.active ? "1" : "0"} /><span class="font-semibold">Usuario activo</span></Label>
+                          <UserDeactivationPanel userId={profile.id} panelId={`edit-user-${profile.id}`} canForce={actorRole === "ROOT"} hidden />
+                        </AdminRecordModal>
+                        <UserPasswordResetAction userId={profile.id} userName={profile.full_name} username={profile.username} />
+                        {!isSelf && <UserRetireAction userId={profile.id} recordName={`${profile.full_name} · ${profile.username}`} canForce={actorRole === "ROOT"} />}
+                      </>
+                    )}
+                  </div>
+                </TableCell>
+              </TableRow>
+            );
+          })}
+          {profiles.length === 0 && <TableRow><TableCell className="p-8 text-center text-muted-foreground" colSpan={6}>No hay usuarios configurados.</TableCell></TableRow>}
+        </TableBody>
+      </Table>
+    </Card>
     <AdminSearch />
   </main>
 </BaseLayout>
+
+<script>
+  // FR-005a / T113: al abrir "Retirar usuario", o al desmarcar "Usuario activo" en la edición, se consulta el
+  // último contacto, los pendientes y el reporte activo. AdminDialogHost pinta las plantillas de forma asíncrona.
+  type LastContact = { lastSeenAt: string | null; pendingCount: number; activeReportId: string | null };
+
+  const scopeOf = (panel: HTMLElement) => panel.closest("form") ?? panel;
+
+  // Estado de los controles según bloqueo y anulación de ROOT.
+  function refresh(panel: HTMLElement) {
+    const scope = scopeOf(panel);
+    const confirm = panel.querySelector<HTMLInputElement>("[data-retire-confirm]");
+    const submit = scope.querySelector<HTMLButtonElement>("button[type=submit]");
+    const forceWrap = panel.querySelector<HTMLElement>("[data-force-wrap]");
+    const toggle = panel.querySelector<HTMLInputElement>("[data-force-toggle]");
+    const reason = panel.querySelector<HTMLInputElement>("[data-force-reason]");
+    const loaded = panel.dataset.loaded === "1";
+    const blocked = panel.dataset.blocked === "1";
+    forceWrap?.classList.toggle("hidden", !blocked);
+    const forced = blocked && Boolean(toggle?.checked);
+    if (toggle && !blocked) toggle.checked = false;
+    if (reason) { reason.disabled = !forced; reason.required = forced; }
+    const allowed = loaded && (!blocked || forced);
+    if (confirm) { confirm.disabled = !allowed; confirm.required = allowed && !panel.classList.contains("hidden"); }
+    if (submit) submit.disabled = !allowed;
+  }
+
+  function fill(panel: HTMLElement, data: LastContact | null) {
+    const set = (selector: string, text: string) => { const el = panel.querySelector<HTMLElement>(selector); if (el) el.textContent = text; };
+    if (!data) {
+      set("[data-lc-last]", "No disponible");
+      panel.querySelector("[data-lc-error]")?.classList.remove("hidden");
+      panel.dataset.loaded = "0";
+      refresh(panel);
+      return;
+    }
+    set("[data-lc-last]", data.lastSeenAt ? new Date(data.lastSeenAt).toLocaleString("es-CO", { timeZone: "America/Bogota", dateStyle: "medium", timeStyle: "short" }) : "Sin contacto registrado");
+    set("[data-lc-pending]", String(data.pendingCount));
+    set("[data-lc-report]", data.activeReportId ? "Sí" : "No");
+    const blocked = data.pendingCount > 0 || Boolean(data.activeReportId);
+    panel.querySelector("[data-lc-blocked]")?.classList.toggle("hidden", !blocked);
+    panel.dataset.blocked = blocked ? "1" : "0";
+    panel.dataset.loaded = "1";
+    refresh(panel);
+  }
+
+  async function load(panel: HTMLElement) {
+    const url = panel.dataset.lastContactUrl;
+    if (!url) return;
+    panel.dataset.loaded = "0";
+    refresh(panel);
+    try {
+      const response = await fetch(url, { headers: { Accept: "application/json" }, credentials: "same-origin" });
+      if (!response.ok) throw new Error(String(response.status));
+      fill(panel, (await response.json()) as LastContact);
+    } catch {
+      fill(panel, null);
+    }
+  }
+
+  // Diálogo "Retirar usuario": el panel aparece cuando el host pinta la plantilla.
+  document.addEventListener("click", (event) => {
+    const trigger = event.target instanceof Element ? event.target.closest<HTMLElement>("button[data-last-contact-url]") : null;
+    if (!trigger?.dataset.modalOpen) return;
+    const selector = `[data-deactivation-panel="${trigger.dataset.modalOpen}"]`;
+    const tryLoad = () => {
+      const panel = document.querySelector<HTMLElement>(selector);
+      if (!panel) return false;
+      void load(panel);
+      return true;
+    };
+    if (tryLoad()) return;
+    const observer = new MutationObserver(() => { if (tryLoad()) observer.disconnect(); });
+    observer.observe(document.body, { childList: true, subtree: true });
+    window.setTimeout(() => observer.disconnect(), 5000);
+  });
+
+  document.addEventListener("change", (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLInputElement)) return;
+    // "Forzar de todos modos" (solo ROOT).
+    if (target.matches("[data-force-toggle]")) {
+      const panel = target.closest<HTMLElement>("[data-deactivation-panel]");
+      if (panel) refresh(panel);
+      return;
+    }
+    // Edición: desmarcar "Usuario activo" (estaba activo) muestra el panel y consulta el último contacto.
+    if (target.name === "active" && target.dataset.initialActive === "1") {
+      const form = target.closest("form");
+      const panel = form?.querySelector<HTMLElement>("[data-deactivation-panel]");
+      if (!form || !panel) return;
+      const submit = form.querySelector<HTMLButtonElement>("button[type=submit]");
+      if (target.checked) {
+        panel.classList.add("hidden");
+        panel.dataset.blocked = "0";
+        const toggle = panel.querySelector<HTMLInputElement>("[data-force-toggle]");
+        if (toggle) toggle.checked = false;
+        const confirm = panel.querySelector<HTMLInputElement>("[data-retire-confirm]");
+        if (confirm) { confirm.checked = false; confirm.disabled = true; confirm.required = false; }
+        const reason = panel.querySelector<HTMLInputElement>("[data-force-reason]");
+        if (reason) { reason.disabled = true; reason.required = false; reason.value = ""; }
+        panel.querySelector("[data-force-wrap]")?.classList.add("hidden");
+        if (submit) submit.disabled = false;
+      } else {
+        panel.classList.remove("hidden");
+        void load(panel);
+      }
+    }
+  });
+</script>

@@ -1,11 +1,15 @@
 import type { APIRoute } from "astro";
-import { createSupabaseServerClient } from "../../../../lib/supabase/server";
+import { isManager } from "../../../../lib/auth";
 import { json } from "../../../../lib/http";
+import { reportRpcFailure } from "../../../../lib/report-rpc";
+import { createSupabaseServerClient } from "../../../../lib/supabase/server";
 
+/** Cancela un reporte vía cancel_report: el autor (DRAFT) o un manager si está abierto fuera de turno. */
 export const POST: APIRoute = async ({ request, cookies, locals, params }) => {
   const auth = locals.auth;
-  if (!auth || auth.profile.role !== "OPERATOR" || !params.id) {
-    return json({ error: "Solo el Operario responsable puede cancelar el reporte." }, 403);
+  if (!auth || !params.id) return json({ error: "No autorizado." }, 401);
+  if (auth.profile.role !== "OPERATOR" && !isManager(auth)) {
+    return json({ error: "No tienes permiso para cancelar reportes." }, 403);
   }
 
   const body = await request.json().catch(() => null);
@@ -13,16 +17,10 @@ export const POST: APIRoute = async ({ request, cookies, locals, params }) => {
   if (!reason) return json({ error: "Debes indicar el motivo de cancelación." }, 400);
 
   const supabase = createSupabaseServerClient(request, cookies);
-  const { data, error } = await supabase
-    .from("production_reports")
-    .update({ status: "CANCELLED", cancellation_reason: reason })
-    .eq("id", params.id)
-    .eq("created_by", auth.user.id)
-    .eq("status", "DRAFT")
-    .select("id")
-    .maybeSingle();
-
-  if (error) return json({ error: error.message }, 400);
-  if (!data) return json({ error: "El reporte ya no está disponible para cancelar." }, 409);
+  const { error } = await supabase.rpc("cancel_report", { p_report_id: params.id, p_reason: reason });
+  if (error) {
+    const failure = reportRpcFailure(error);
+    return json({ error: failure.error, code: failure.code }, failure.status);
+  }
   return json({ ok: true });
 };

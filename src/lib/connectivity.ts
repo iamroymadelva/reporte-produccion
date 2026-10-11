@@ -218,3 +218,14 @@ export function subscribeConnectivityNotices(listener: (message: string) => void
   window.addEventListener(NOTICE_EVENT, handler);
   return () => window.removeEventListener(NOTICE_EVENT, handler);
 }
+
+/** Solo para pruebas: reinicia el estado global (las pruebas comparten proceso y crean un navegador nuevo por archivo). */
+export function resetConnectivityForTests() {
+  clearRetry();
+  initialized = false;
+  state = "online";
+  lastSuccessfulCheck = 0;
+  checkPromise = null;
+  retryAttempt = 0;
+  experiencedConnectionLoss = false;
+}

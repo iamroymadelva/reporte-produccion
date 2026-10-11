@@ -2,6 +2,7 @@ import type { APIRoute } from "astro";
 import { adminCatalogErrorMessage } from "../../../lib/admin-catalog-errors";
 import { createSupabaseServerClient } from "../../../lib/supabase/server";
 import { redirectWithMessage } from "../../../lib/http";
+import { deleteOrDeactivateCatalogItem } from "../../../lib/admin-catalog-delete";
 
 export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   const form = await request.formData();
@@ -15,14 +16,8 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
     return redirect(redirectWithMessage("/administracion/maquinas", "ok", "Máquina reactivada."), 303);
   }
   if (form.get("intent") === "delete") {
-    const { count, error: referenceError } = await supabase.from("production_reports").select("id", { count: "exact", head: true }).eq("machine_id", id);
-    if (referenceError) return redirect(redirectWithMessage("/administracion/maquinas", "error", "No fue posible verificar las referencias históricas de la máquina."), 303);
-    if ((count ?? 0) > 0) return redirect(redirectWithMessage("/administracion/maquinas", "error", "No se puede eliminar porque existen reportes históricos que la referencian. Desactívala en su lugar."), 303);
-    const { error: assignmentsError } = await supabase.from("operator_machine_assignments").delete().eq("machine_id", id);
-    if (assignmentsError) return redirect(redirectWithMessage("/administracion/maquinas", "error", "No fue posible eliminar las asignaciones de la máquina."), 303);
-    const { error } = await supabase.from("machines").delete().eq("id", id);
-    if (error) return redirect(redirectWithMessage("/administracion/maquinas", "error", "No fue posible eliminar la máquina."), 303);
-    return redirect(redirectWithMessage("/administracion/maquinas", "ok", "Máquina eliminada."), 303);
+    const result = await deleteOrDeactivateCatalogItem(supabase, "machines", id, { label: "Máquina", feminine: true });
+    return redirect(redirectWithMessage("/administracion/maquinas", result.ok ? "ok" : "error", result.message), 303);
   }
   const values = {
     code: String(form.get("code") ?? "").trim(),

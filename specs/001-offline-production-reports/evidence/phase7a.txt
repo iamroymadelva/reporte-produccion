@@ -1,0 +1,281 @@
+=== PHASE 7a EVIDENCE ===
+
+=== RED-FIRST (before T072): bun run db:test, only the new T066 files shown + summary ===
+supabase/tests/offline_flags_forced.test.sql .......... 
+# Failed test 2: "MINOR-4: un INSERT directo no puede declarar origin = offline"
+#         have: offline
+#         want: online
+# Failed test 4: "MINOR-3: un INSERT directo de parada no puede declararse captured_offline"
+#         have: true
+#         want: false
+# Failed test 5: "MINOR-3: un UPDATE no puede activar captured_offline"
+#       caught: no exception
+#       wanted: P0001
+# Failed test 6: "Una parada cerrada online con hora muy desfasada exige revisión de reloj"
+#         have: false
+#         want: true
+# Failed test 8: "MINOR-3: un INSERT directo de cambio no puede declararse captured_offline"
+#         have: true
+#         want: false
+# Failed test 9: "El cambio directo con hora desfasada exige revisión de reloj"
+#         have: false
+#         want: true
+# Failed test 11: "Con app.captured_offline = true el cambio queda como capturado sin conexión"
+#         have: false
+#         want: true
+# Failed test 12: "Lo capturado sin conexión no genera revisión de reloj"
+#         have: true
+#         want: false
+# Looks like you failed 8 tests of 12
+Failed 8/12 subtests 
+psql:supabase/tests/sync_operation.test.sql:63: ERROR:  function public.apply_sync_operation(jsonb) does not exist
+LINE 1: select is((select public.apply_sync_operation(tests.mkop('10...
+                          ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+supabase/tests/sync_operation.test.sql ................ 
+Dubious, test returned 3 (wstat 768, 0x300)
+No subtests run 
+supabase/tests/user_management_matrix.test.sql ........ ok
+supabase/tests/viewer_read_only.test.sql .............. ok
+
+Test Summary Report
+-------------------
+supabase/tests/offline_flags_forced.test.sql        (Wstat: 0 Tests: 12 Failed: 8)
+  Failed tests:  2, 4-6, 8-9, 11-12
+supabase/tests/sync_operation.test.sql              (Wstat: 768 (exited 3) Tests: 0 Failed: 0)
+  Non-zero exit status: 3
+  Parse errors: No plan found in TAP output
+Files=29, Tests=743,  7 wallclock secs ( 0.36 usr  0.18 sys +  0.76 cusr  0.48 csys =  1.78 CPU)
+Result: FAIL
+error running container: exit 1
+error: script "db:test" exited with code 1
+
+=== RED-FIRST bun test (before T073/T074): ===
+
+=== RED-FIRST bun test (before T073/T074): ===
+bun test v1.4.2 (744846f84)
+
+tests\offline-snapshot-api.test.ts:
+
+# Unhandled error between tests
+-------------------------------
+error: Cannot find module '../src/pages/api/offline/snapshot' from 'C:\Users\ACER\Desktop\PROJECTS\empacando\reporte-produccion\tests\offline-snapshot-api.test.ts'
+-------------------------------
+
+
+tests\sync-batch-api.test.ts:
+
+# Unhandled error between tests
+-------------------------------
+error: Cannot find module '../src/pages/api/sync/batch' from 'C:\Users\ACER\Desktop\PROJECTS\empacando\reporte-produccion\tests\sync-batch-api.test.ts'
+-------------------------------
+
+
+ 0 pass
+ 2 fail
+ 2 errors
+Ran 2 tests across 2 files. [129.00ms]
+
+=== GREEN: bun run db:reset (tail) ===
+Applying migration 20261013000100_offline_sync.sql...
+Applying migration 20261013000200_drop_frequent_values.sql...
+Seeding data from supabase/seed.sql...
+Restarting containers...
+Finished supabase db reset on branch redesign/ui-ux.
+{"target":"local","version":"","message":"Reset local database."}
+
+=== GREEN: bun run db:test ===
+$ supabase test db --local
+Connecting to local database...
+supabase/tests/active_report_limits.test.sql .......... ok
+supabase/tests/admin_audit_root_only.test.sql ......... ok
+supabase/tests/approval.test.sql ...................... ok
+supabase/tests/cancellation_rules.test.sql ............ ok
+supabase/tests/catalog_delete_or_deactivate.test.sql .. ok
+supabase/tests/catalog_uniqueness.test.sql ............ ok
+supabase/tests/change_events.test.sql ................. ok
+supabase/tests/correct_report.test.sql ................ ok
+supabase/tests/critical_constraints.test.sql .......... ok
+supabase/tests/device_time_events.test.sql ............ ok
+supabase/tests/final_demo_readiness.test.sql .......... ok
+supabase/tests/full_audit.test.sql .................... ok
+supabase/tests/helpers/auth_as.sql .................... ok
+supabase/tests/login_lockout.test.sql ................. ok
+supabase/tests/notification_pagination.test.sql ....... ok
+supabase/tests/notification_transitions.test.sql ...... ok
+supabase/tests/notifications.test.sql ................. ok
+supabase/tests/offline_flags_forced.test.sql .......... ok
+supabase/tests/operator_workflow.test.sql ............. ok
+supabase/tests/report_audit_visibility.test.sql ....... ok
+supabase/tests/report_cancellation.test.sql ........... ok
+supabase/tests/report_pagination_large.test.sql ....... ok
+supabase/tests/report_shift_assignment.test.sql ....... ok
+supabase/tests/rls_matrix.test.sql .................... ok
+supabase/tests/roles_root_invariant.test.sql .......... ok
+supabase/tests/shift_resolution.test.sql .............. ok
+supabase/tests/sync_operation.test.sql ................ ok
+supabase/tests/user_management_matrix.test.sql ........ ok
+supabase/tests/viewer_read_only.test.sql .............. ok
+All tests successful.
+Files=29, Tests=848, 11 wallclock secs ( 0.48 usr  0.27 sys +  0.81 cusr  0.76 csys =  2.32 CPU)
+Result: PASS
+
+=== GREEN: bun test run 1 ===
+bun test v1.4.2 (744846f84)
+
+ 236 pass
+ 0 fail
+ 926 expect() calls
+Ran 236 tests across 18 files. [16.46s]
+=== GREEN: bun test run 2 ===
+bun test v1.4.2 (744846f84)
+
+ 236 pass
+ 0 fail
+ 926 expect() calls
+Ran 236 tests across 18 files. [15.18s]
+
+=== bunx astro check ===
+
+Result (164 files): 
+- 0 errors
+- 0 warnings
+- 4 hints
+
+
+=== bun run build (tail) ===
+08:26:59 [vite] ✓ built in 2.51s
+08:26:59 [build] Rearranging server assets...
+08:26:59 [build] ✓ Completed in 10.05s.
+08:26:59 [@astrojs/vercel] Bundling function ..\..\..\..\dist\server\entry.mjs
+08:27:02 [build] Waiting for integration "@astrojs/vercel", hook "astro:build:done"...
+08:27:36 [@astrojs/vercel] Copying static files to .vercel/output/static
+08:27:36 [build] Server built in 48.08s
+08:27:36 [build] Complete!
+
+=== SMOKE (bun run dev --port 4399, cookie sb-127-auth-token, op1; dev PID killed afterwards) ===
+snapshot: 200, activeReport null, settings {offShiftGrace:02:00:00, offlineLoginWindow:7 days}; coord1 -> 403; no session batch -> 401
+batch 1st send (CREATE_REPORT, START_STOP sin categoria, CLOSE_STOP con categoria, ADD_CHANGE, SAVE_REPORT_FIELDS completo, SUBMIT_REPORT): applied x6
+batch 2nd send (same operationIds): duplicate x6 (previousStatus=applied)
+DB:
+--- reports
+d2000000-0000-4000-8000-000000000001|offline|SUBMITTED|2026-10-10 12:00:00+00|t
+--- stops
+d3000000-0000-4000-8000-000000000001|t|2026-10-10 12:10:00+00|2026-10-10 12:20:00+00|600|t|f|t
+--- changes
+d4000000-0000-4000-8000-000000000001|t|2026-10-10 12:30:00+00|t|f
+--- sync_operation_log
+CREATE_REPORT|applied
+START_STOP|applied
+CLOSE_STOP|applied
+ADD_CHANGE|applied
+SAVE_REPORT_FIELDS|applied
+SUBMIT_REPORT|applied
+--- audit (entity_type, action, captured_offline, captured_at)
+report|INSERT|report.insert|t|2026-10-10 12:00:00+00
+stop|INSERT|stop_event.insert|t|2026-10-10 12:10:00+00
+change|INSERT|change_event.insert|t|2026-10-10 12:30:00+00
+report|STATUS|status|t|2026-10-10 13:05:00+00
+--- audit offline counts
+t|19
+Online routes: POST /api/reports JSON id idempotente OK; 2o reporte -> 409 ACTIVE_REPORT_EXISTS; stop sin categoria 201; close sin categoria -> 400 CATEGORY_REQUIRED; close con categoria 200; start solapado -> 409 STOP_OVERLAP; changes 201; DB: report origin=online, stop/change captured_offline=false.
+
+=================== CORRECTIONS ROUND (NO-GO fixes) ===================
+
+--- RED-FIRST pgTAP (before migration changes): sync_operation.test.sql failed 28 of 108 (tests 71-75, 77-80, 84-89, 91-92, 94-99, 104-108); excerpt:
+$ supabase test db --local
+Connecting to local database...
+psql:supabase/tests/sync_operation.test.sql:558: ERROR:  NOT_FOUND
+DETAIL:  Elemento de cuarentena no encontrado.
+CONTEXT:  PL/pgSQL function public.review_quarantine(uuid,boolean,text) line 24 at RAISE
+supabase/tests/sync_operation.test.sql ................ 
+# Failed test 71: "Un inicio posterior a la revocación no cuenta como revocada después de la captura"
+#         have: NULL
+#         want: NO_ASSIGNMENT
+# Failed test 72: "CREATE_REPORT con asignación revocada después de la captura: applied"
+#         have: rejected
+#         want: applied
+# Failed test 73: "Asignación revocada después de la captura: el reporte existe"
+#         have: 0
+#         want: 1
+# Failed test 74: "El reporte queda marcado para revisión (cuarentena ASSIGNMENT_REVOKED)"
+#         have: NULL
+#         want: ASSIGNMENT_REVOKED
+# Failed test 75: "Asignación revocada: el coordinador recibe OFFLINE_DATA_REVIEW"
+#         have: 0
+#         want: 1
+# Failed test 77: "ADD_CHANGE online desfasado: applied"
+#         have: rejected
+#         want: applied
+# Failed test 78: "ADD_CHANGE online desfasado: clock_skew_review"
+#         have: NULL
+#         want: true
+# Failed test 79: "capturedOffline = false se respeta"
+#         have: NULL
+#         want: false
+# Failed test 80: "El coordinador recibe CLOCK_SKEW_REVIEW"
+#         have: 0
+#         want: 1
+# Failed test 84: "startedAt en el futuro: rejected VALIDATION"
+#         have: NULL
+#         want: VALIDATION
+# Failed test 85: "El mensaje indica que la hora del dispositivo está en el futuro"
+#     (test result was NULL)
+# Failed test 86: "capturedAt en el futuro: rejected VALIDATION"
+#         have: NULL
+#         want: VALIDATION
+# Failed test 87: "startedAt posterior a capturedAt + 5 min: rejected VALIDATION"
+#         have: NULL
+#         want: VALIDATION
+# Failed test 88: "Las horas inválidas no crean el reporte"
+#         have: 1
+#         want: 0
+# Failed test 89: "Captura offline de hace 2 horas: applied"
+#         have: duplicate
+#         want: applied
+# Failed test 91: "START_STOP con startedAt posterior a capturedAt + 5 min: rejected VALIDATION"
+#         have: STOP_ALREADY_OPEN
+#         want: VALIDATION
+# Failed test 92: "endedAt en el futuro: rejected VALIDATION"
+#         have: NULL
+#         want: VALIDATION
+# Failed test 94: "Los cierres con horas inválidas no cierran la parada"
+#         have: 2026-10-10 14:36:08+00
+#         want: NULL
+# Failed test 95: "occurredAt posterior a capturedAt + 5 min: rejected VALIDATION"
+
+--- RED-FIRST bun (before batch.ts changes), summary of the failing run: tests/sync-batch-api.test.ts -> 7 pass, 2 fail (seq obligatorio/duplicado y 413: 'Expected: 413 Received: 200')
+
+--- GREEN db:reset + db:test
+{"target":"local","version":"","message":"Reset local database."}
+supabase/tests/roles_root_invariant.test.sql .......... ok
+supabase/tests/shift_resolution.test.sql .............. ok
+supabase/tests/sync_operation.test.sql ................ ok
+supabase/tests/user_management_matrix.test.sql ........ ok
+supabase/tests/viewer_read_only.test.sql .............. ok
+All tests successful.
+Files=29, Tests=876, 12 wallclock secs ( 0.49 usr  0.28 sys +  0.78 cusr  0.74 csys =  2.29 CPU)
+Result: PASS
+--- GREEN bun test x2
+bun test v1.4.2 (744846f84)
+
+ 238 pass
+ 0 fail
+ 934 expect() calls
+Ran 238 tests across 18 files. [16.19s]
+bun test v1.4.2 (744846f84)
+
+ 238 pass
+ 0 fail
+ 934 expect() calls
+Ran 238 tests across 18 files. [14.18s]
+--- astro check
+Result (164 files): 
+- 0 errors
+- 0 warnings
+- 4 hints
+
+--- build
+08:42:45 [@astrojs/vercel] Copying static files to .vercel/output/static
+08:42:45 [build] Server built in 51.79s
+08:42:45 [build] Complete!

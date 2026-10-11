@@ -4,158 +4,144 @@
 
 ## 1. Objetivo
 
-La aplicación permite registrar, consultar y consolidar la producción diaria y las paradas de mantenimiento por máquina. Cada persona debe usar su propia cuenta y realizar únicamente las acciones disponibles para su rol.
+La aplicación permite registrar, consultar y consolidar la producción por turno y las paradas y cambios de cada máquina, incluso cuando se pierde la conexión. Cada persona debe usar su propia cuenta y realizar únicamente las acciones disponibles para su rol.
 
 ## 2. Roles disponibles
 
 | Rol | Uso principal |
 | --- | --- |
-| Administrador | Consulta todos los reportes, administra usuarios y catálogos, realiza correcciones permitidas y exporta información. |
-| Operario | Crea y completa reportes de sus máquinas asignadas, registra paradas y finaliza sus borradores. |
-| Consulta | Consulta reportes enviados y exporta la información que tiene autorizada. |
+| Administrador raíz | Todo lo del coordinador, más la gestión de coordinadores y auditores y el historial administrativo. |
+| Coordinador | Supervisa los reportes en tiempo real, los aprueba y cierra, corrige reportes enviados o cerrados con un motivo, administra operarios, máquinas, asignaciones y catálogos, y exporta a Excel. |
+| Operario | Inicia y trabaja sus propios reportes de las máquinas asignadas en su turno, también sin conexión. |
+| Auditor | Consulta todos los reportes y su historial de cambios, y exporta. No puede modificar nada. |
 
 ## 3. Iniciar sesión
 
 1. Abra **Iniciar sesión**.
-2. Ingrese su correo electrónico y contraseña.
-3. Seleccione **Ingresar**.
+2. Escriba su **usuario** (el nombre de usuario que le asignó su coordinador o el administrador) y su contraseña.
+3. Seleccione **Iniciar sesión**.
 
-El sistema abrirá el **Dashboard** correspondiente a su rol. Si su usuario está inactivo o retirado, no podrá acceder aunque conserve una contraseña.
+El sistema abrirá la pantalla de su rol (el operario entra a **Turno**). Si escribe mal los datos verá siempre el mismo mensaje, "Usuario o contraseña incorrectos". Tras **5 intentos fallidos seguidos** el usuario se bloquea **15 minutos**, incluso con la contraseña correcta. Un usuario desactivado o retirado no puede ingresar.
 
-## 4. Recuperar contraseña
+**No existe recuperación de contraseña por correo ni invitaciones.** Si olvidó su contraseña o está bloqueado por error, pida a su coordinador (operarios) o al administrador raíz (coordinadores y auditores) que la restablezca; le darán una contraseña nueva.
 
-1. En **Iniciar sesión**, seleccione **¿Olvidaste tu contraseña?**.
-2. Ingrese su correo en **Recuperar contraseña**.
-3. Seleccione **Enviar instrucciones**.
-4. Revise su correo y abra el enlace recibido.
-5. Escriba y confirme una nueva contraseña de al menos ocho caracteres.
+## 4. Panel principal (coordinador, raíz y auditor)
 
-El mensaje de la solicitud es neutral y no confirma si el correo existe.
+El **Dashboard** se actualiza **sin recargar la página** y muestra:
 
-## 5. Configurar contraseña desde una invitación
+- Reportes **en curso**, **enviados**, **cerrados**, **cancelados**, **en parada** y **abiertos fuera de turno** (cada tarjeta lleva a la lista filtrada).
+- **Máquinas en parada** ahora mismo y **conflictos de sincronización** pendientes de revisar.
+- **Operarios en línea**: "En línea", "En línea con pendientes" o "Sin conexión" con la última vez. Es solo un indicador orientativo.
+- Una tabla con los reportes recientes.
 
-Abra el enlace de invitación enviado a su correo. Después de la verificación, la aplicación mostrará **Configurar contraseña**. Ingrese la misma contraseña en **Nueva contraseña** y **Confirmar contraseña**, con un mínimo de ocho caracteres, y seleccione **Guardar contraseña**.
+Debajo del título verá "Actualización en vivo". Si el tiempo real no está disponible, verá "Actualización automática cada 8 s" y el tablero sigue funcionando.
 
-El enlace puede vencer o dejar de ser válido. En ese caso, comuníquese con la persona administradora.
-
-## 6. Panel principal
-
-El **Dashboard** resume la actividad de hoy según el rol:
-
-- El Administrador ve reportes en curso, enviados, cancelados y con parada activa.
-- El Operario ve esos indicadores únicamente para sus propios reportes.
-- Consulta ve **Reportes enviados hoy**.
-
-La tabla de reportes recientes muestra como máximo diez registros, del más nuevo al más antiguo. Los datos disponibles siempre respetan los permisos de la cuenta.
-
-## 7. Estados de un reporte
+## 5. Estados de un reporte
 
 ```mermaid
 stateDiagram-v2
-    [*] --> En_curso
-    En_curso --> Enviado: Finalizar reporte y sin parada abierta
-    En_curso --> Cancelado: Motivo y sin parada abierta
-    Enviado --> [*]
-    Cancelado --> [*]
+    [*] --> Activo
+    Activo --> Enviado: Operario envía
+    Activo --> Cancelado: Motivo
+    Enviado --> Cerrado: Coordinador aprueba
+    Enviado --> Enviado: Corrección con motivo
+    Cerrado --> Cerrado: Corrección con motivo
 ```
 
-- **En curso:** borrador operativo que su Operario responsable todavía puede completar.
-- **Enviado:** reporte finalizado para consulta. No regresa al flujo normal de edición.
-- **Cancelado:** borrador cerrado con un motivo. No regresa al flujo normal de edición.
+- **Activo:** el operario lo está diligenciando. **Solo su operario puede editarlo**; coordinadores y auditores lo ven en tiempo real. Si sigue abierto 2 horas después de terminar el turno aparece como **Abierto fuera de turno**.
+- **Enviado:** el operario lo finalizó. El operario ya no lo edita.
+- **Cerrado (aprobado):** el coordinador lo aprobó. Todos los roles ven **quién lo aprobó y cuándo**.
+- **Cancelado:** quedó anulado con un motivo.
 
-## 8. Flujo del Operario
+## 6. Flujo del operario: pantalla «Turno»
 
-### Máquinas y borradores
+Su reporte se trabaja en **Turno** (`/turno`), que funciona también **sin conexión** una vez que la abrió con conexión al menos una vez (se descargan sus máquinas asignadas y los catálogos).
 
-El Operario solo puede crear reportes para máquinas activas que tenga asignadas. Puede mantener un máximo de cinco reportes en curso y una máquina solo puede tener un reporte en curso a la vez.
+1. Elija su **máquina asignada** del turno actual y pulse **Iniciar reporte**. El turno y la fecha operativa los asigna el sistema según la hora de inicio; usted no los escribe. Si no tiene máquina verá «Solicita una asignación a tu coordinador».
+2. Solo puede tener **un reporte activo a la vez**. Al enviarlo o cancelarlo puede iniciar otro.
+3. **Iniciar parada** es de un toque; la categoría es opcional al iniciar, pero **Cerrar parada** exige elegirla. Una parada iniciada por error se puede **Cancelar parada** con un motivo. No puede haber paradas solapadas ni más de una abierta.
+4. **Cambios:** elija el tipo (producto, formato, lote u otro), escriba una descripción y pulse **Registrar cambio**.
+5. **Datos de producción:** todos los campos son obligatorios salvo Observaciones; se guardan solos.
+6. La hora de cada parada y cada cambio es la del reloj de su dispositivo en ese momento y no se puede editar. **Revise que la hora de su dispositivo sea correcta.**
+7. **Enviar reporte** exige que no haya paradas abiertas ni paradas sin categoría y que los campos obligatorios estén completos (se resaltan los que faltan). **Cancelar reporte** pide un motivo.
 
-### Crear y completar un reporte
+Arriba verá siempre el estado de conexión y los pendientes, por ejemplo «Sin conexión — guardado en este dispositivo · 3 pendientes».
 
-1. En **Reportes**, seleccione la acción para crear un reporte.
-2. Elija una máquina disponible y confirme la fecha operativa.
-3. Complete los datos de producción que correspondan al trabajo realizado.
+### Trabajar sin conexión y subir los datos
 
-El reporte guarda cambios automáticamente después de una breve pausa y también permite guardar de forma manual. Antes de enviarlos al servidor, el editor de un reporte en curso propio conserva una copia de seguridad en este dispositivo. Distinga **Guardado en servidor** de **Guardado en este dispositivo** o **Cambios pendientes de sincronizar**.
+- Todo lo que registre sin conexión se guarda en su dispositivo, aunque cierre la aplicación o se reinicie.
+- Al volver la conexión aparece el **resumen de pendientes** (reportes, paradas, cambios y envíos). **Nada se sube hasta que pulse «Confirmar y subir».** Con **Posponer** todo se conserva y se vuelve a ofrecer al reconectar, al iniciar sesión o desde el indicador.
+- Si la conexión se corta a mitad de la subida, lo ya aceptado queda subido y el resto sigue pendiente; nada se duplica.
+- Si algún dato es rechazado o queda en conflicto (por ejemplo, el reporte fue cancelado por el coordinador porque quedó abierto fuera de turno), seguirá visible con el motivo y el coordinador lo revisará; solo se descarta si usted lo confirma.
+- Si su sesión venció, sus datos se conservan: inicie sesión de nuevo y súbalos.
+- **Cerrar sesión con datos sin subir** pide confirmación; los datos quedan en el dispositivo asociados a su usuario y otro usuario del mismo dispositivo no puede verlos ni subirlos.
+- Si tiene pendientes de más de 7 días verá un aviso: súbalos cuanto antes.
+- Instale la aplicación en la pantalla de inicio. En iPhone/iPad el sistema puede borrar los datos de un sitio sin uso durante varios días: **no deje datos sin subir**.
 
-Si se pierde la conexión mientras el editor ya está abierto, puede continuar completando los campos normales y usar **Guardar en este dispositivo**. Iniciar, detener, cancelar o cambiar la categoría de una parada, enviar o cancelar el reporte y guardar Cliente/Producto como valor frecuente siguen necesitando conexión. Recuperar la conexión no envía por sí solo los cambios pendientes en esta etapa: continúe editando o seleccione **Guardar ahora**.
+### Iniciar sesión sin conexión
 
-Si cierra la aplicación, los cambios locales pueden restaurarse al volver a abrir el mismo borrador con conexión y la misma cuenta autenticada. Una recarga mientras continúa completamente offline muestra la página de contingencia; no existe un editor autenticado totalmente offline. Si el reporte cambió o fue finalizado en el servidor, la aplicación conserva los datos locales y avisa que requieren revisión, pero todavía no ofrece combinación de conflictos.
+- Puede entrar **sin conexión** con su usuario y contraseña solo si inició sesión **con conexión** en este mismo dispositivo en los últimos 7 días. Si no, verá «Necesitas conexión para entrar».
+- Con la contraseña equivocada 5 veces el acceso se bloquea 15 minutos en ese dispositivo.
+- Al volver la conexión debe **iniciar sesión de nuevo con conexión** antes de poder subir lo capturado. Si su usuario fue desactivado mientras tanto, sus datos se conservan en el dispositivo; un coordinador puede reactivarlo para que usted mismo los suba.
+- Cada inicio de sesión sin conexión queda registrado en el historial de auditoría cuando se sincroniza.
 
-Los campos de cliente y producto permiten texto libre. Cuando corresponde, la interfaz puede ofrecer guardar ese valor como frecuente para volver a utilizarlo. Esta acción no sustituye la revisión del dato escrito.
+## 7. Consultar reportes
 
-Todos los campos de entrada del Operario son obligatorios excepto **Observaciones**. La máquina y el Operario responsable se derivan del reporte. Producto y Cliente aceptan texto libre con sugerencias; Área / Línea, Turno y Tipo de dosificador se seleccionan del catálogo. Los valores numéricos admiten cero y no admiten negativos; Unidades producidas debe ser entero.
+La lista **Reportes** (coordinador, raíz y auditor) se actualiza sola y muestra folio, fecha, máquina, orden de producción, operario, estado y la acción **Abrir**. El operario solo ve sus propios reportes.
 
-Ingrese **Hora inicio**, **Hora finalización** y **Horas programadas** manualmente. Los campos de fecha y hora permiten indicar el día siguiente para trabajos que cruzan medianoche. **Usar hora actual** completa la fecha y hora local y permite editarlas después. Elegir un turno no cambia las horas programadas ni los horarios ingresados. Los indicadores de gestión no se muestran en la pantalla del Operario.
+Al abrir un reporte, coordinador, raíz y auditor ven el detalle completo y su **historial de cambios en orden cronológico** (quién, cuándo, qué campo, valor anterior y nuevo, motivo y si el dato se capturó sin conexión). Si otra persona modifica el reporte mientras lo mira, el historial se actualiza sin recargar.
 
-### Registrar una parada
+### Filtros
 
-1. Elija una categoría de parada.
-2. Seleccione **Iniciar parada**, revise la categoría y confirme.
-3. Mientras esté activa, verá el contador. Puede cambiar la categoría con confirmación; el inicio y el contador se conservan.
-4. Seleccione **Detener**, revise la categoría y el tiempo transcurrido y confirme **Detener parada**. Cancelar el diálogo mantiene la parada activa.
+Puede combinar: **Desde** y **Hasta** (fecha operativa del reporte), **Máquina**, **Turno**, **Operario** (coordinador, raíz y auditor), **Estado** (Activo, Enviado, Cerrado, Cancelado), **Con parada activa** y **Abiertos fuera de turno**. Los atajos **Día**, **Semana** y **Mes** rellenan el rango. La zona horaria operativa es `America/Bogota`. Si ningún reporte cumple el filtro verá «No hay reportes…».
 
-Si inició una parada por error, use **Cancelar parada**, escriba un motivo y confirme. La parada queda marcada **Cancelada**, con su motivo, en su posición cronológica del historial. No cuenta para las estadísticas. El Operario no puede modificar, reabrir ni borrar paradas cerradas o canceladas; las correcciones posteriores corresponden al Administrador.
+## 8. Aprobar y corregir (coordinador y raíz)
 
-Solo puede existir una parada abierta por reporte. Las paradas no pueden superponerse. El tiempo se establece con el reloj del servidor. **Número de paradas** y **Tiempo total de parada** cuentan exclusivamente paradas cerradas válidas, de todas las categorías; excluyen las activas y canceladas. No se muestran totales por categoría al Operario.
+- **Aprobar y cerrar:** en un reporte **Enviado**. No se puede aprobar un reporte activo, cancelado o con datos en conflicto sin resolver; la pantalla indica el motivo.
+- **Corregir:** en un reporte **Enviado** o **Cerrado** modifique el dato y guarde; la ventana **Corregir reporte** pide un **motivo obligatorio** (mínimo 5 caracteres) y queda registrado con su nombre y rol.
+- **Cancelar (abierto fuera de turno):** solo aparece cuando un reporte activo lleva más de 2 horas abierto después de terminar su turno; pide un motivo.
+- **Conflictos de sincronización:** en el detalle puede **Marcar revisado** o **Aplicar con motivo** los datos capturados sin conexión que no se pudieron aplicar.
+- Un reporte **Activo** no tiene controles de edición para coordinadores ni auditores.
 
-### Enviar un reporte
+Aprobar, corregir, cancelar y exportar requieren conexión.
 
-Complete los campos obligatorios y detenga o cancele cualquier parada activa. **Enviar reporte** resalta los campos faltantes y lleva al primero. Con la información completa, revise la confirmación y seleccione **Enviar reporte**. El estado cambiará a **Enviado**. Puede seguir consultándolo, pero no editarlo, cancelarlo ni cambiar su estado.
+## 9. Auditor
 
-### Cancelar un reporte
+El auditor ve todos los reportes (activos, enviados, cerrados y cancelados) y su historial, puede filtrar y descargar el Excel, pero **no tiene ningún control de edición**: cualquier intento de modificar es rechazado.
 
-Un reporte en curso propio puede cancelarse si no tiene una parada abierta. Seleccione **Cancelar reporte**, escriba el motivo y confirme. La cancelación libera la máquina y el cupo de borrador.
+## 10. Consulta sin conexión (coordinador, raíz y auditor)
 
-## 9. Consultar reportes
-
-La lista **Reportes de producción** muestra folio, fecha, máquina, O.P., Operario, Estado, información de producción y la acción **Abrir**. En teléfono y tableta, las tarjetas de Administrador y Consulta resumen además producto, turno, número de paradas válidas y tiempo total. La visibilidad depende del rol: el Administrador consulta todos, el Operario consulta los propios y Consulta ve los enviados.
-
-Al abrir un reporte, Administrador y Consulta pueden revisar **Auditoría de correcciones**. Cada evento indica quién realizó el cambio, cuándo ocurrió y los valores anterior y nuevo. Los eventos de paradas identifican su número cronológico. Las correcciones administrativas de un reporte enviado o cancelado se registran cuando el Administrador selecciona **Guardar cambios**; escribir en un reporte en curso no genera un historial por cada carácter. Consulta puede leer este historial, pero no editar el reporte; Operario no ve esta sección administrativa.
-
-## 10. Filtros
-
-Puede limitar la tabla visible por:
-
-- **Día:** una fecha exacta.
-- **Semana:** desde el lunes hasta el domingo de la semana elegida.
-- **Mes:** el mes calendario elegido.
-- **Estado:** En curso, Enviado o Cancelado.
-- **Parada activa:** reportes con una parada aún abierta.
-
-La zona horaria operativa es `America/Bogota`. Los filtros afectan la lista mostrada y, para los roles autorizados, se conservan al usar **Exportar Excel**.
+Sin conexión verá **Consulta sin conexión**: el último resumen descargado, de solo lectura y marcado con su hora («Datos de HH:MM»). Exportar, corregir, aprobar, cancelar y administrar requieren conexión y aparecen deshabilitados.
 
 ## 11. Exportación Excel
 
-Solo **Administrador** y **Consulta** pueden exportar. Consulta continúa limitado a reportes enviados por sus permisos.
+Coordinador, raíz y auditor pueden **Exportar Excel** respetando exactamente los filtros activos. El archivo contiene:
 
-El archivo contiene:
-
-- **SEGUIMIENTO PRODUCCIÓN:** resumen del reporte, producción y métricas.
-- **DETALLE PARADAS:** una fila por evento, incluyendo el estado de las paradas abiertas sin asignarles duración.
+- **SEGUIMIENTO PRODUCCIÓN:** resumen del reporte, producción, métricas y aprobación (aprobador y fecha).
+- **DETALLE PARADAS:** una fila por evento; las paradas abiertas no suman duración.
+- **CAMBIOS:** los cambios registrados.
+- **HISTORIAL:** el historial de cambios de esos reportes.
 - **CATÁLOGO PARADAS:** relación entre códigos y categorías.
 
-Las columnas `P-1`, `P-2` y sucesivas representan el tiempo cerrado de cada categoría de parada. El formato `[h]:mm:ss` permite mostrar acumulados mayores a 24 horas. Si el volumen supera los límites admitidos, la aplicación muestra un mensaje en lugar de entregar un archivo incompleto.
+Las columnas `P-1`, `P-2`… son el tiempo cerrado por categoría de parada. Si el filtro no devuelve reportes no se genera archivo. Si el volumen supera los límites (1 000 reportes) se pide un período más corto.
 
-## 12. Comportamiento de reportes finalizados
-
-Los reportes **Enviados** y **Cancelados** son de consulta para el flujo normal. El Operario no puede reabrirlos ni continuar editándolos. El Administrador dispone únicamente de las correcciones que la aplicación y la base de datos permiten; estas no crean una nueva transición de estado.
-
-## 13. Mensajes y errores frecuentes
+## 12. Mensajes y errores frecuentes
 
 | Mensaje o situación | Acción recomendada |
 | --- | --- |
-| La máquina no aparece | Confirme que esté activa y asignada, y que no tenga otro reporte en curso. |
-| Se alcanzó el límite de borradores | Finalice o cancele uno de sus reportes en curso. |
-| No se puede enviar o cancelar | Cierre la parada activa; para enviar, confirme además la hora de finalización. |
-| El guardado no se confirma | Conserve la página abierta, revise la conexión y vuelva a guardar. |
-| El enlace de invitación o recuperación es inválido | Solicite una nueva invitación o recuperación. |
-| No se puede exportar | Confirme el rol, reduzca el periodo o revise el mensaje específico. |
+| «Usuario o contraseña incorrectos» | Revise el usuario y la contraseña. Tras 5 fallos espere 15 minutos o pida el restablecimiento. |
+| «Solicita una asignación a tu coordinador» | No tiene máquina asignada en el turno actual. |
+| «Ya tienes un reporte activo» | Envíe o cancele el reporte activo antes de iniciar otro. |
+| No puede enviar | Cierre o cancele la parada abierta, asigne categoría a todas las paradas y complete los campos obligatorios. |
+| «Necesitas conexión para entrar» | Inicie sesión una vez con conexión en este dispositivo. |
+| «Inicia sesión en línea para subir» | Inicie sesión con conexión para poder confirmar la subida. |
+| No se puede exportar | Confirme el rol, reduzca el período o revise el mensaje específico. |
+| Un coordinador no puede desactivar a un operario | El operario tiene un reporte activo o datos pendientes de subir. |
 
-## 14. Buenas prácticas de uso
+## 13. Buenas prácticas de uso
 
 - Use únicamente su cuenta y mantenga la contraseña privada.
-- Verifique máquina, fecha y O.P. antes de registrar producción.
+- Mantenga la hora de su dispositivo en automático.
 - Inicie y cierre las paradas cuando realmente ocurran.
-- Revise las categorías y observaciones antes de finalizar.
-- No cierre la página hasta confirmar que los cambios fueron guardados.
+- Suba sus datos pendientes en cuanto tenga conexión.
 - Exporte y comparta información solo con personas autorizadas.

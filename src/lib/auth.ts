@@ -28,3 +28,20 @@ export async function getAuthContext(request: Request, cookies: AstroCookies): P
 export function hasRole(auth: AuthContext | null, ...roles: AppRole[]) {
   return Boolean(auth && roles.includes(auth.profile.role));
 }
+
+/** Manager = administrador raíz o coordinador (ADMINISTRATOR). */
+export function isManagerRole(role: AppRole | null | undefined) {
+  return role === "ROOT" || role === "ADMINISTRATOR";
+}
+
+export function isRootRole(role: AppRole | null | undefined) {
+  return role === "ROOT";
+}
+
+export function isManager(auth: AuthContext | null) {
+  return isManagerRole(auth?.profile.role);
+}
+
+export function isRoot(auth: AuthContext | null) {
+  return isRootRole(auth?.profile.role);
+}

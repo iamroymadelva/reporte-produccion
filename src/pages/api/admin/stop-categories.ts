@@ -2,6 +2,7 @@ import type { APIRoute } from "astro";
 import { adminCatalogErrorMessage } from "../../../lib/admin-catalog-errors";
 import { createSupabaseServerClient } from "../../../lib/supabase/server";
 import { redirectWithMessage } from "../../../lib/http";
+import { deleteOrDeactivateCatalogItem } from "../../../lib/admin-catalog-delete";
 
 export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   const form = await request.formData();
@@ -15,12 +16,8 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
     return redirect(redirectWithMessage("/administracion/paradas", "ok", "Categoría de parada reactivada."), 303);
   }
   if (form.get("intent") === "delete") {
-    const { error } = await supabase.from("stop_categories").delete().eq("id", id);
-    if (error) {
-      const message = error.code === "23503" ? "No se puede eliminar porque existen reportes históricos que la referencian. Desactívala en su lugar." : "No fue posible eliminar la categoría de parada.";
-      return redirect(redirectWithMessage("/administracion/paradas", "error", message), 303);
-    }
-    return redirect(redirectWithMessage("/administracion/paradas", "ok", "Categoría eliminada."), 303);
+    const result = await deleteOrDeactivateCatalogItem(supabase, "stop_categories", id, { label: "Categoría de parada", feminine: true });
+    return redirect(redirectWithMessage("/administracion/paradas", result.ok ? "ok" : "error", result.message), 303);
   }
   const values = {
     code: String(form.get("code") ?? "").trim(),

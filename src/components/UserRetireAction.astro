@@ -1,0 +1,43 @@
+---
+import { UserMinus, X } from "lucide-react";
+import { buttonVariants } from "@/components/ui/button";
+import UserDeactivationPanel from "./UserDeactivationPanel.astro";
+
+interface Props {
+  userId: string;
+  recordName: string;
+  canForce?: boolean;
+}
+
+const { userId, recordName, canForce = false } = Astro.props;
+const dialogId = `retire-user-${userId.replace(/[^a-zA-Z0-9_-]/g, "-")}`;
+---
+
+{/* El script de usuarios.astro detecta [data-last-contact-url] en el botón, espera a que AdminDialogHost pinte la
+    plantilla y rellena [data-deactivation-panel] con GET /api/admin/users/[id]/last-contact (FR-005a). */}
+<button class={buttonVariants({ variant: "ghost", className: "min-w-11 px-3 text-destructive hover:bg-destructive/10 hover:text-destructive" })} type="button" title="Retirar usuario" aria-label="Retirar usuario" data-modal-open={dialogId} data-last-contact-url={`/api/admin/users/${userId}/last-contact`}>
+  <UserMinus className="pointer-events-none size-5" aria-hidden="true" />
+  <span class="admin-action-text">Retirar usuario</span>
+</button>
+
+<template id={dialogId} data-admin-dialog-template data-dialog-title="Retirar usuario" data-dialog-description="Revoca el acceso del usuario tras comprobar que no tiene datos pendientes." data-dialog-kind="alert">
+  <section class="p-6" aria-labelledby={`${dialogId}-title`}>
+    <div class="flex items-start justify-between gap-3">
+      <h2 id={`${dialogId}-title`} class="text-2xl font-bold text-foreground">Retirar usuario</h2>
+      <button class={buttonVariants({ variant: "ghost", size: "icon-touch" })} type="button" title="Cerrar" aria-label="Cerrar" data-modal-close>
+        <X className="size-5" aria-hidden="true" />
+      </button>
+    </div>
+    <p class="mt-4 text-foreground">Registro: <strong>{recordName}</strong></p>
+    <p class="mt-3 leading-7 text-muted-foreground">Se revocará su acceso, se desactivarán sus asignaciones y desaparecerá de la gestión activa. Su identidad histórica se conservará en los reportes y auditorías.</p>
+    <form class="safe-bottom" method="POST" action={`/api/admin/users/${userId}`}>
+      <input type="hidden" name="id" value={userId} />
+      <input type="hidden" name="intent" value="remove" />
+      <UserDeactivationPanel userId={userId} panelId={dialogId} canForce={canForce} />
+      <div class="mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+        <button class={buttonVariants({ variant: "outline", size: "lg" })} type="button" data-modal-close>Cancelar</button>
+        <button class={buttonVariants({ variant: "destructive", size: "lg" })} type="submit" disabled data-retire-submit>Retirar usuario</button>
+      </div>
+    </form>
+  </section>
+</template>

@@ -1,0 +1,80 @@
+import { useEffect, useRef, useState } from "react";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogContent, AlertDialogDescription, AlertDialogTitle } from "@/components/ui/alert-dialog";
+
+type ActiveDialog = { html: string; title: string; description: string; alert: boolean; large: boolean; titleId: string | null };
+
+/*
+ * Si la plantilla trae su propio encabezado visible (h2 con id), ese h2 es el titulo accesible del dialogo:
+ * se pasa su id como aria-labelledby al contenido (Radix lo deja prevalecer) y no se renderiza un
+ * DialogTitle sr-only duplicado (doble anuncio). Sin h2 con id se conserva el DialogTitle sr-only.
+ */
+
+/*
+ * Contrato de los <template> (Fase 4): data-dialog-title, data-dialog-description (opcionales),
+ * data-dialog-kind="alert", data-dialog-size="large". El contenido del template trae su propio
+ * boton de cierre ([data-admin-modal-close] / [data-modal-close] / [data-user-reactivate-close]),
+ * por eso DialogContent se renderiza con showCloseButton={false}.
+ * Los formularios inyectados via dangerouslySetInnerHTML son POST nativos: el interceptor global
+ * de BaseLayout les anade data-astro-reload para que ClientRouter no los gestione.
+ */
+// Solo se sobrescribe aria-labelledby cuando hay h2 visible (un undefined explícito anularía el de Radix).
+const labelledBy = (id: string | null) => (id ? { "aria-labelledby": id } : {});
+
+export default function AdminDialogHost() {
+  const [active, setActive] = useState<ActiveDialog | null>(null);
+  const opener = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    const open = (event: MouseEvent) => {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      const control = target.closest<HTMLElement>("[data-admin-modal-open], [data-modal-open], [data-user-reactivate-open]");
+      if (!control) return;
+      const id = control.dataset.adminModalOpen ?? control.dataset.modalOpen ?? control.dataset.userReactivateOpen;
+      const template = id && document.getElementById(id);
+      if (!(template instanceof HTMLTemplateElement)) return;
+      opener.current = control;
+      const alert = template.dataset.dialogKind === "alert";
+      setActive({
+        html: template.innerHTML,
+        title: template.dataset.dialogTitle ?? control.getAttribute("aria-label") ?? control.textContent?.trim() ?? "Acción",
+        description: template.dataset.dialogDescription ?? (alert ? "Confirma la acción sobre el registro seleccionado." : "Formulario de administración."),
+        alert,
+        large: template.dataset.dialogSize === "large",
+        titleId: template.content.querySelector("h2[id]")?.id || null,
+      });
+    };
+    document.addEventListener("click", open);
+    return () => document.removeEventListener("click", open);
+  }, []);
+
+  // Con ClientRouter el host persiste: cierra el dialogo al navegar.
+  useEffect(() => {
+    const close = () => setActive(null);
+    document.addEventListener("astro:before-swap", close);
+    return () => document.removeEventListener("astro:before-swap", close);
+  }, []);
+
+  const close = () => setActive(null);
+  const handleClick = (event: React.MouseEvent) => {
+    if (event.target instanceof Element && event.target.closest("[data-admin-modal-close], [data-modal-close], [data-user-reactivate-close]")) close();
+  };
+  const restoreFocus = (event: Event) => { event.preventDefault(); opener.current?.focus(); };
+  if (!active) return null;
+  const width = active.large ? "sm:max-w-4xl" : "sm:max-w-xl";
+  if (active.alert) return <AlertDialog open onOpenChange={(next) => { if (!next) close(); }}>
+    <AlertDialogContent className={`max-h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] overflow-y-auto p-0 ${width}`} onCloseAutoFocus={restoreFocus} onClickCapture={handleClick} {...labelledBy(active.titleId)}>
+      {!active.titleId && <AlertDialogTitle className="sr-only">{active.title}</AlertDialogTitle>}
+      <AlertDialogDescription className="sr-only">{active.description}</AlertDialogDescription>
+      <div dangerouslySetInnerHTML={{ __html: active.html }} />
+    </AlertDialogContent>
+  </AlertDialog>;
+  return <Dialog open onOpenChange={(next) => { if (!next) close(); }}>
+    <DialogContent showCloseButton={false} className={`max-h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] overflow-y-auto p-0 ${width}`} onCloseAutoFocus={restoreFocus} onClickCapture={handleClick} {...labelledBy(active.titleId)}>
+      {!active.titleId && <DialogTitle className="sr-only">{active.title}</DialogTitle>}
+      <DialogDescription className="sr-only">{active.description}</DialogDescription>
+      <div dangerouslySetInnerHTML={{ __html: active.html }} />
+    </DialogContent>
+  </Dialog>;
+}

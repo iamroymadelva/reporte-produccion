@@ -1,0 +1,50 @@
+import {
+  CircleCheckIcon,
+  InfoIcon,
+  Loader2Icon,
+  OctagonXIcon,
+  TriangleAlertIcon,
+} from "lucide-react"
+import { Toaster as Sonner, type ToasterProps } from "sonner"
+
+import { useTheme } from "@/lib/theme"
+
+const Toaster = ({ ...props }: ToasterProps) => {
+  const { resolvedTheme } = useTheme()
+
+  return (
+    <Sonner
+      theme={resolvedTheme}
+      className="toaster group"
+      containerAriaLabel="Notificaciones"
+      toastOptions={{
+        closeButtonAriaLabel: "Cerrar notificación",
+        classNames: {
+          toast: "!bg-card !text-card-foreground !border-border",
+          success: "!border-success/40 !text-success-text",
+          error: "!border-destructive/40 !text-destructive-text",
+          warning: "!border-warning/40 !text-warning-text",
+          info: "!border-info/40 !text-info-text",
+        },
+      }}
+      icons={{
+        success: <CircleCheckIcon className="size-4" />,
+        info: <InfoIcon className="size-4" />,
+        warning: <TriangleAlertIcon className="size-4" />,
+        error: <OctagonXIcon className="size-4" />,
+        loading: <Loader2Icon className="size-4 animate-spin" />,
+      }}
+      style={
+        {
+          "--normal-bg": "var(--popover)",
+          "--normal-text": "var(--popover-foreground)",
+          "--normal-border": "var(--border)",
+          "--border-radius": "var(--radius)",
+        } as React.CSSProperties
+      }
+      {...props}
+    />
+  )
+}
+
+export { Toaster }

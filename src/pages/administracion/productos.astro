@@ -1,8 +1,9 @@
 ---
 import CatalogAdminPage from "../../components/CatalogAdminPage.astro";
 import { createSupabaseServerClient } from "../../lib/supabase/server";
+import { readAllPages } from "../../lib/supabase/read-all-pages";
 const auth = Astro.locals.auth!;
 const supabase = createSupabaseServerClient(Astro.request, Astro.cookies);
-const { data } = await supabase.from("products").select("id, code, name, active").order("name").order("code");
+const { data, error: readError } = await readAllPages((start, end) => supabase.from("products").select("id, code, name, active").order("name").order("code").order("id").range(start, end));
 ---
-<CatalogAdminPage profile={auth.profile} title="Productos frecuentes" description="Valores sugeridos al escribir un Producto en el reporte." catalog="products" items={(data ?? []) as any[]} error={Astro.url.searchParams.get("error")} ok={Astro.url.searchParams.get("ok")} />
+<CatalogAdminPage profile={auth.profile} title="Productos frecuentes" description="Valores sugeridos al escribir un Producto en el reporte." catalog="products" items={data as any[]} error={readError ? "No fue posible cargar todos los productos." : null} />

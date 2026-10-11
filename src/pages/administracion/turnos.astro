@@ -1,31 +1,74 @@
 ---
 import AdminSearch from "../../components/AdminSearch.astro";
-import AdminFlashMessage from "../../components/AdminFlashMessage.astro";
 import AdminRecordModal from "../../components/AdminRecordModal.astro";
 import AdminReactivateAction from "../../components/AdminReactivateAction.astro";
 import AdminStatusToggle from "../../components/AdminStatusToggle.astro";
 import DestructiveAction from "../../components/DestructiveAction.astro";
+import PageHeader from "../../components/PageHeader.astro";
 import BaseLayout from "../../layouts/BaseLayout.astro";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { FieldLabel, Label } from "@/components/ui/label";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { createSupabaseServerClient } from "../../lib/supabase/server";
+import { readAllPages } from "../../lib/supabase/read-all-pages";
 const auth = Astro.locals.auth!;
 const supabase = createSupabaseServerClient(Astro.request, Astro.cookies);
-const { data } = await supabase.from("shifts").select("id, name, start_time, end_time, active").order("start_time").order("end_time");
+const { data, error: readError } = await readAllPages((start, end) => supabase.from("shifts").select("id, name, start_time, end_time, active").order("start_time").order("end_time").order("id").range(start, end));
 const shifts = (data ?? []) as any[];
-const error = Astro.url.searchParams.get("error");
-const ok = Astro.url.searchParams.get("ok");
+const error = readError ? "No fue posible cargar todos los turnos." : null;
 const shortTime = (value: string) => value.slice(0, 5);
 const label = (shift: any) => shift.name ? `${shift.name} · ${shortTime(shift.start_time)} - ${shortTime(shift.end_time)}` : `${shortTime(shift.start_time)} - ${shortTime(shift.end_time)}`;
 ---
 
 <BaseLayout title="Turnos" description="Administración de turnos" profile={auth.profile}>
-  <main class="mx-auto max-w-6xl space-y-6 px-4 py-8 sm:px-6" data-search-scope>
-    <header><a class="link text-sm" href="/administracion">← Administración</a><div class="mt-2 flex flex-wrap items-end justify-between gap-4"><div><h1 class="text-3xl font-bold">Turnos</h1><p class="mt-2 text-slate-600">Los rangos pueden cruzar medianoche.</p></div><AdminRecordModal id="create-shift" title="Nuevo turno" action="/api/admin/shifts" submitLabel="Crear" mode="create"><div class="grid gap-4"><label><span class="field-label">Nombre</span><input class="field-control" name="name" /></label><label><span class="field-label">Hora de inicio *</span><input class="field-control" type="time" name="start_time" required /></label><label><span class="field-label">Hora de finalización *</span><input class="field-control" type="time" name="end_time" required /></label></div></AdminRecordModal></div></header>
-    <AdminFlashMessage error={error} ok={ok} />
-    <label class="block max-w-lg"><span class="field-label">Buscar</span><input class="field-control" type="search" enterkeyhint="search" placeholder="Buscar turnos" data-search-input /></label>
-    <section class="panel overflow-hidden p-0"><div class="overflow-x-auto"><table class="responsive-admin-table w-full min-w-[720px] text-left text-sm"><thead class="bg-slate-50 text-slate-600"><tr><th class="p-4">Turno</th><th class="p-4">Hora de inicio</th><th class="p-4">Hora de finalización</th><th class="p-4">Estado</th><th class="p-4 text-right">Acción</th></tr></thead><tbody>
-      {shifts.map((shift) => <tr class="border-t align-top" data-search-row data-search-text={`${label(shift)} ${shift.active ? "activo" : "inactivo"}`}><td class="p-4 font-semibold" data-label="Turno">{label(shift)}</td><td class="p-4" data-label="Inicio">{shortTime(shift.start_time)}</td><td class="p-4" data-label="Final">{shortTime(shift.end_time)}</td><td class="p-4" data-label="Estado"><AdminStatusToggle id={shift.id} action="/api/admin/shifts" active={shift.active}><input type="hidden" name="name" value={shift.name ?? ""} /><input type="hidden" name="start_time" value={shortTime(shift.start_time)} /><input type="hidden" name="end_time" value={shortTime(shift.end_time)} /></AdminStatusToggle></td><td class="p-4 text-right" data-label="Acciones"><div class="flex flex-wrap items-center justify-end gap-2"><AdminRecordModal id={`edit-shift-${shift.id}`} title={`Editar: ${label(shift)}`} action="/api/admin/shifts" submitLabel="Guardar" mode="edit" recordId={shift.id}><div class="grid gap-4"><label><span class="field-label">Nombre</span><input class="field-control" name="name" value={shift.name ?? ""} placeholder={label(shift)} /></label><label><span class="field-label">Hora de inicio *</span><input class="field-control" type="time" name="start_time" value={shortTime(shift.start_time)} required /></label><label><span class="field-label">Hora de finalización *</span><input class="field-control" type="time" name="end_time" value={shortTime(shift.end_time)} required /></label><label class="flex min-h-12 items-center gap-2"><input class="size-5" type="checkbox" name="active" checked={shift.active} /><span class="font-semibold">Activo</span></label></div></AdminRecordModal>{!shift.active && <AdminReactivateAction id={shift.id} action="/api/admin/shifts" />}<DestructiveAction id={shift.id} action="/api/admin/shifts" recordName={label(shift)} /></div></td></tr>)}
-      {shifts.length === 0 && <tr><td class="p-8 text-center text-slate-500" colspan="5">No hay turnos configurados.</td></tr>}
-    </tbody></table></div></section>
+  <main class="mx-auto w-full max-w-7xl space-y-6 px-4 py-4 sm:px-6 sm:py-6" data-search-scope>
+    <PageHeader title="Turnos" description="Los rangos pueden cruzar medianoche." back={{ href: "/administracion", label: "Administración" }}>
+      <AdminRecordModal slot="actions" id="create-shift" title="Nuevo turno" action="/api/admin/shifts" submitLabel="Crear" mode="create">
+        <div class="grid gap-4">
+          <Label><FieldLabel>Nombre</FieldLabel><Input name="name" /></Label>
+          <Label><FieldLabel>Hora de inicio *</FieldLabel><Input type="time" name="start_time" required /></Label>
+          <Label><FieldLabel>Hora de finalización *</FieldLabel><Input type="time" name="end_time" required /></Label>
+        </div>
+      </AdminRecordModal>
+    </PageHeader>
+    {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
+    <Label className="block max-w-lg"><FieldLabel>Buscar</FieldLabel><Input type="search" enterKeyHint="search" placeholder="Buscar turnos" data-search-input /></Label>
+    <Card className="rounded-2xl gap-0 overflow-hidden py-0">
+      <Table className="responsive-admin-table min-w-[720px]">
+        <TableHeader><TableRow><TableHead>Turno</TableHead><TableHead>Hora de inicio</TableHead><TableHead>Hora de finalización</TableHead><TableHead>Estado</TableHead><TableHead className="text-right">Acción</TableHead></TableRow></TableHeader>
+        <TableBody>
+          {shifts.map((shift) => (
+            <TableRow data-search-row data-search-text={`${label(shift)} ${shift.active ? "activo" : "inactivo"}`}>
+              <TableCell className="font-semibold" data-label="Turno">{label(shift)}</TableCell>
+              <TableCell data-label="Inicio">{shortTime(shift.start_time)}</TableCell>
+              <TableCell data-label="Final">{shortTime(shift.end_time)}</TableCell>
+              <TableCell data-label="Estado">
+                <AdminStatusToggle id={shift.id} action="/api/admin/shifts" active={shift.active}>
+                  <input type="hidden" name="name" value={shift.name ?? ""} /><input type="hidden" name="start_time" value={shortTime(shift.start_time)} /><input type="hidden" name="end_time" value={shortTime(shift.end_time)} />
+                </AdminStatusToggle>
+              </TableCell>
+              <TableCell className="text-right" data-label="Acciones">
+                <div class="flex flex-wrap items-center justify-end gap-2">
+                  <AdminRecordModal id={`edit-shift-${shift.id}`} title={`Editar: ${label(shift)}`} action="/api/admin/shifts" submitLabel="Guardar" mode="edit" recordId={shift.id}>
+                    <div class="grid gap-4">
+                      <Label><FieldLabel>Nombre</FieldLabel><Input name="name" value={shift.name ?? ""} placeholder={label(shift)} /></Label>
+                      <Label><FieldLabel>Hora de inicio *</FieldLabel><Input type="time" name="start_time" value={shortTime(shift.start_time)} required /></Label>
+                      <Label><FieldLabel>Hora de finalización *</FieldLabel><Input type="time" name="end_time" value={shortTime(shift.end_time)} required /></Label>
+                      <Label className="flex min-h-12 items-center gap-2"><input class="size-5 accent-primary" type="checkbox" name="active" checked={shift.active} /><span class="font-semibold">Activo</span></Label>
+                    </div>
+                  </AdminRecordModal>
+                  {!shift.active && <AdminReactivateAction id={shift.id} action="/api/admin/shifts" />}
+                  <DestructiveAction id={shift.id} action="/api/admin/shifts" recordName={label(shift)} />
+                </div>
+              </TableCell>
+            </TableRow>
+          ))}
+          {shifts.length === 0 && <TableRow><TableCell className="p-8 text-center text-muted-foreground" colSpan={5}>No hay turnos configurados.</TableCell></TableRow>}
+        </TableBody>
+      </Table>
+    </Card>
     <AdminSearch />
   </main>
 </BaseLayout>

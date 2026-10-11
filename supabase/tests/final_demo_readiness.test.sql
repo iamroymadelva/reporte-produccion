@@ -20,9 +20,10 @@ where id = '10000000-0000-0000-0000-000000000104';
 insert into public.machines (id, code, name) values
   ('32000000-0000-0000-0000-000000000001', 'F-01', 'Máquina folio 1'),
   ('32000000-0000-0000-0000-000000000002', 'F-02', 'Máquina folio 2');
-insert into public.operator_machine_assignments (operator_id, machine_id, created_by)
-select '10000000-0000-0000-0000-000000000104', id, '10000000-0000-0000-0000-000000000001'
-from public.machines where code in ('F-01', 'F-02');
+insert into public.operator_machine_assignments (operator_id, machine_id, shift_id, valid_from, created_by)
+select '10000000-0000-0000-0000-000000000104', m.id, s.id, '2000-01-01', '10000000-0000-0000-0000-000000000001'
+from public.machines m cross join public.shifts s
+where m.code in ('F-01', 'F-02') and s.active;
 
 insert into public.products (id, code, name, sort_order)
 values ('62000000-0000-0000-0000-000000000001', 'F-PROD-1', 'Producto histórico final', 990);
@@ -32,9 +33,14 @@ values ('62000000-0000-0000-0000-000000000002', 'F-PROD-2', 'Producto eliminable
 set local role authenticated;
 set local request.jwt.claims = '{"sub":"10000000-0000-0000-0000-000000000104","role":"authenticated"}';
 
-insert into public.production_reports (id, report_date, machine_id, product_id, product_name, created_by, updated_by) values
-  ('82000000-0000-0000-0000-000000000001', '2031-01-10', '32000000-0000-0000-0000-000000000001', '62000000-0000-0000-0000-000000000001', 'Producto histórico final', '10000000-0000-0000-0000-000000000104', '10000000-0000-0000-0000-000000000104'),
-  ('82000000-0000-0000-0000-000000000002', '2031-01-11', '32000000-0000-0000-0000-000000000002', null, null, '10000000-0000-0000-0000-000000000104', '10000000-0000-0000-0000-000000000104');
+-- La fecha operativa la fija el servidor desde started_at (2031-01-10 / 2031-01-11, turno Día).
+-- Un operario solo tiene un reporte activo: el primero se cancela antes de iniciar el segundo.
+insert into public.production_reports (id, started_at, machine_id, product_id, product_name, created_by, updated_by) values
+  ('82000000-0000-0000-0000-000000000001', '2031-01-10 10:00:00-05', '32000000-0000-0000-0000-000000000001', '62000000-0000-0000-0000-000000000001', 'Producto histórico final', '10000000-0000-0000-0000-000000000104', '10000000-0000-0000-0000-000000000104');
+update public.production_reports set status = 'CANCELLED', cancellation_reason = 'Liberar al operario para el segundo folio'
+where id = '82000000-0000-0000-0000-000000000001';
+insert into public.production_reports (id, started_at, machine_id, product_id, product_name, created_by, updated_by) values
+  ('82000000-0000-0000-0000-000000000002', '2031-01-11 10:00:00-05', '32000000-0000-0000-0000-000000000002', null, null, '10000000-0000-0000-0000-000000000104', '10000000-0000-0000-0000-000000000104');
 
 select is(
   (select folio from public.production_reports where id = '82000000-0000-0000-0000-000000000001'),
@@ -48,7 +54,7 @@ select is(
 );
 select throws_ok(
   $$update public.production_reports set folio = 'RPT-2031-999999'
-    where id = '82000000-0000-0000-0000-000000000001'$$,
+    where id = '82000000-0000-0000-0000-000000000002'$$,
   'P0001', 'El folio y la identidad histórica del creador son inmutables',
   'El folio no puede modificarse'
 );
@@ -59,18 +65,23 @@ select lives_ok(
   $$delete from public.products where id = '62000000-0000-0000-0000-000000000002'$$,
   'El Administrador puede eliminar un catálogo nunca referenciado'
 );
+-- El historial administrativo solo lo lee ROOT (FR-029a).
+set local request.jwt.claims = '{"sub":"10000000-0000-0000-0000-000000000004","role":"authenticated"}';
 select is(
   (select count(*) from public.administrative_audit_log
     where action = 'DELETE' and entity_id = '62000000-0000-0000-0000-000000000002'),
   1::bigint,
-  'La eliminación administrativa queda auditada'
+  'La eliminación administrativa queda auditada (visible para ROOT)'
 );
+set local request.jwt.claims = '{"sub":"10000000-0000-0000-0000-000000000001","role":"authenticated"}';
 select throws_ok(
   $$delete from public.products where id = '62000000-0000-0000-0000-000000000001'$$,
   '23503', null,
   'No se elimina un catálogo referenciado históricamente'
 );
 
+-- El retiro real lo hace manage_user_assignments (service_role); la escritura directa ya no existe para managers.
+reset role;
 update public.profiles
 set active = false, removed_at = now(), removed_by = '10000000-0000-0000-0000-000000000001'
 where id = '10000000-0000-0000-0000-000000000104';

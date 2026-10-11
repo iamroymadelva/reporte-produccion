@@ -1,5 +1,5 @@
-export type AppRole = "ADMINISTRATOR" | "OPERATOR" | "VIEWER";
-export type ReportStatus = "DRAFT" | "SUBMITTED" | "CANCELLED";
+export type AppRole = "ROOT" | "ADMINISTRATOR" | "OPERATOR" | "VIEWER";
+export type ReportStatus = "DRAFT" | "SUBMITTED" | "CLOSED" | "CANCELLED";
 
 export interface Profile {
   id: string;
@@ -17,13 +17,15 @@ export interface Option {
 }
 
 export const roleLabels: Record<AppRole, string> = {
-  ADMINISTRATOR: "Administrador",
+  ROOT: "Administrador raíz",
+  ADMINISTRATOR: "Coordinador",
   OPERATOR: "Operario",
-  VIEWER: "Consulta",
+  VIEWER: "Auditor",
 };
 
 export const statusLabels: Record<ReportStatus, string> = {
-  DRAFT: "En curso",
+  DRAFT: "Activo",
   SUBMITTED: "Enviado",
+  CLOSED: "Cerrado (aprobado)",
   CANCELLED: "Cancelado",
 };

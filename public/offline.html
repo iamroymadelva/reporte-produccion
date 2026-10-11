@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#172554" />
+    <meta name="color-scheme" content="light dark" />
     <link rel="icon" type="image/png" href="/icons/icon-192.png" />
     <title>Sin conexión · Reporte de Producción</title>
     <style>
@@ -16,6 +17,13 @@
       p { margin: 0.75rem auto 0; max-width: 25rem; color: #475569; line-height: 1.6; }
       a { display: inline-flex; min-height: 3rem; margin-top: 1.5rem; align-items: center; justify-content: center; border-radius: 0.5rem; background: #1e40af; padding: 0.75rem 1.25rem; color: white; font-weight: 700; text-decoration: none; }
       a:focus-visible { outline: 3px solid #60a5fa; outline-offset: 3px; }
+      @media (prefers-color-scheme: dark) {
+        :root { color-scheme: dark; }
+        body { background: #0b1220; color: #e2e8f0; }
+        main { border-color: #1e293b; background: #111a2e; box-shadow: 0 20px 45px rgb(0 0 0 / 0.4); }
+        p { color: #94a3b8; }
+        a { background: #60a5fa; color: #0b1220; }
+      }
     </style>
   </head>
   <body>

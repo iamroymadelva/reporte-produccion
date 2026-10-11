@@ -2,11 +2,12 @@ import type { APIRoute } from "astro";
 import { adminCatalogErrorMessage } from "../../../../lib/admin-catalog-errors";
 import { createSupabaseServerClient } from "../../../../lib/supabase/server";
 import { redirectWithMessage } from "../../../../lib/http";
+import { deleteOrDeactivateCatalogItem } from "../../../../lib/admin-catalog-delete";
 
-const catalogs: Record<string, { table: string; path: string; label: string }> = {
+const catalogs: Record<string, { table: string; path: string; label: string; feminine?: boolean }> = {
   products: { table: "products", path: "/administracion/productos", label: "Producto" },
   clients: { table: "clients", path: "/administracion/clientes", label: "Cliente" },
-  lines: { table: "lines", path: "/administracion/lineas", label: "Área / Línea" },
+  lines: { table: "lines", path: "/administracion/lineas", label: "Área / Línea", feminine: true },
   dosifier_types: { table: "dosifier_types", path: "/administracion/dosificadores", label: "Tipo de dosificador" },
 };
 
@@ -25,14 +26,8 @@ export const POST: APIRoute = async ({ request, cookies, redirect, params }) => 
     return redirect(redirectWithMessage(catalog.path, "ok", `${catalog.label} reactivado.`), 303);
   }
   if (form.get("intent") === "delete") {
-    const { error } = await supabase.from(catalog.table).delete().eq("id", id);
-    if (error) {
-      const message = error.code === "23503"
-        ? "No se puede eliminar porque existen reportes históricos que lo referencian. Desactívalo en su lugar."
-        : `No fue posible eliminar el ${catalog.label.toLocaleLowerCase("es-CO")}.`;
-      return redirect(redirectWithMessage(catalog.path, "error", message), 303);
-    }
-    return redirect(redirectWithMessage(catalog.path, "ok", `${catalog.label} eliminado.`), 303);
+    const result = await deleteOrDeactivateCatalogItem(supabase, catalog.table, id, catalog);
+    return redirect(redirectWithMessage(catalog.path, result.ok ? "ok" : "error", result.message), 303);
   }
   const values = {
     code: String(form.get("code") ?? "").trim(),

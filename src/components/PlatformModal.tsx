@@ -1,5 +1,6 @@
-import { useEffect, useId, useRef, type ReactNode, type RefObject } from "react";
-import { createPortal } from "react-dom";
+import { type ReactNode, type RefObject } from "react";
+import { Button } from "@/components/ui/button";
+import { AlertDialog, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 interface Props {
   title: string;
@@ -14,57 +15,21 @@ interface Props {
 }
 
 export default function PlatformModal({
-  title,
-  children,
-  cancelLabel = "Volver",
-  confirmLabel,
-  destructive = false,
-  confirmDisabled = false,
-  initialFocusRef,
-  onCancel,
-  onConfirm,
+  title, children, cancelLabel = "Volver", confirmLabel, destructive = false,
+  confirmDisabled = false, initialFocusRef, onCancel, onConfirm,
 }: Props) {
-  const dialogRef = useRef<HTMLDialogElement>(null);
-  const surfaceRef = useRef<HTMLElement>(null);
-  const cancelRef = useRef<HTMLButtonElement>(null);
-  const onCancelRef = useRef(onCancel);
-  const titleId = useId();
-
-  onCancelRef.current = onCancel;
-
-  useEffect(() => {
-    const previouslyFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    const dialog = dialogRef.current;
-    if (!dialog) return;
-
-    const handleClose = () => onCancelRef.current();
-    dialog.addEventListener("close", handleClose);
-    dialog.showModal();
-    const focusFrame = window.requestAnimationFrame(() => {
-      (initialFocusRef?.current ?? cancelRef.current)?.focus();
-    });
-
-    return () => {
-      window.cancelAnimationFrame(focusFrame);
-      dialog.removeEventListener("close", handleClose);
-      if (dialog.open) dialog.close();
-      previouslyFocused?.focus();
-    };
-  }, []);
-
-  return createPortal(
-    <dialog ref={dialogRef} className="m-auto max-h-[calc(100dvh-1rem)] w-[min(calc(100vw-1rem),32rem)] overflow-hidden rounded-xl bg-white p-0 shadow-2xl backdrop:bg-slate-950/55 sm:max-h-[calc(100dvh-2rem)]" aria-labelledby={titleId} onMouseDown={(event) => {
-      if (event.target === event.currentTarget) dialogRef.current?.close();
+  return <AlertDialog open onOpenChange={(open) => { if (!open) onCancel(); }}>
+    <AlertDialogContent className="max-h-[calc(100dvh-1rem)] w-[min(calc(100vw-1rem),32rem)] overflow-y-auto p-0 sm:max-h-[calc(100dvh-2rem)]" onOpenAutoFocus={(event) => {
+      if (initialFocusRef?.current) { event.preventDefault(); initialFocusRef.current.focus(); }
     }}>
-      <section ref={surfaceRef} className="grid max-h-[calc(100dvh-1rem)] grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden sm:max-h-[calc(100dvh-2rem)]">
-        <h2 id={titleId} className="px-5 pt-5 text-2xl font-bold text-slate-950 sm:px-6 sm:pt-6">{title}</h2>
-        <div className="mt-4 overflow-y-auto px-5 text-base leading-7 text-slate-600 sm:px-6">{children}</div>
-        <div className="safe-bottom mt-5 flex flex-col-reverse gap-3 border-t border-slate-200 bg-slate-50 px-5 pt-4 sm:mt-7 sm:flex-row sm:justify-end sm:px-6">
-          <button ref={cancelRef} className="button-secondary min-h-12" type="button" onClick={() => dialogRef.current?.close()}>{cancelLabel}</button>
-          <button className={`${destructive ? "button-danger" : "button-primary"} min-h-12`} type="button" disabled={confirmDisabled} onClick={onConfirm}>{confirmLabel}</button>
-        </div>
-      </section>
-    </dialog>,
-    document.body,
-  );
+      <AlertDialogHeader className="px-5 pt-5 sm:px-6 sm:pt-6">
+        <AlertDialogTitle className="text-2xl font-bold text-foreground">{title}</AlertDialogTitle>
+        <AlertDialogDescription asChild><div className="mt-3 text-base leading-7 text-foreground">{children}</div></AlertDialogDescription>
+      </AlertDialogHeader>
+      <AlertDialogFooter className="safe-bottom mt-4 border-t bg-muted/50 px-5 pt-4 sm:px-6">
+        <Button variant="outline" size="lg" type="button" onClick={onCancel}>{cancelLabel}</Button>
+        <Button variant={destructive ? "destructive" : "default"} size="lg" type="button" disabled={confirmDisabled} onClick={onConfirm}>{confirmLabel}</Button>
+      </AlertDialogFooter>
+    </AlertDialogContent>
+  </AlertDialog>;
 }

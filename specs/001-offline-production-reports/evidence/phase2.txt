@@ -1,0 +1,305 @@
+# Phase 2 (F1) evidence - generated 2026-10-09T23:59:27Z
+
+## 1. Failing-first: pgTAP T004-T010 before any migration (bun run db:test)
+$ supabase test db --local
+Connecting to local database...
+psql:active_report_limits.test.sql:21: ERROR:  column "shift_id" of relation "operator_machine_assignments" does not exist
+LINE 1: ...tor_machine_assignments (operator_id, machine_id, shift_id, ...
+                                                             ^
+active_report_limits.test.sql ...... 
+Dubious, test returned 3 (wstat 768, 0x300)
+No subtests run 
+catalog_uniqueness.test.sql ........ ok
+psql:change_events.test.sql:15: ERROR:  invalid input value for enum app_role: "ROOT"
+LINE 1: update public.profiles set role = 'ROOT', active = true wher...
+                                          ^
+change_events.test.sql ............. 
+Dubious, test returned 3 (wstat 768, 0x300)
+No subtests run 
+critical_constraints.test.sql ...... ok
+psql:device_time_events.test.sql:13: ERROR:  invalid input value for enum app_role: "ROOT"
+LINE 1: update public.profiles set role = 'ROOT', active = true wher...
+                                          ^
+device_time_events.test.sql ........ 
+Dubious, test returned 3 (wstat 768, 0x300)
+No subtests run 
+final_demo_readiness.test.sql ...... ok
+helpers/auth_as.sql ................ ok
+notification_pagination.test.sql ... ok
+notification_transitions.test.sql .. ok
+notifications.test.sql ............. ok
+operator_workflow.test.sql ......... ok
+report_audit_visibility.test.sql ... ok
+report_cancellation.test.sql ....... ok
+report_pagination_large.test.sql ... ok
+psql:report_shift_assignment.test.sql:29: ERROR:  column "shift_id" of relation "operator_machine_assignments" does not exist
+LINE 1: ...tor_machine_assignments (operator_id, machine_id, shift_id, ...
+                                                             ^
+report_shift_assignment.test.sql ... 
+Dubious, test returned 3 (wstat 768, 0x300)
+No subtests run 
+psql:rls_matrix.test.sql:13: ERROR:  invalid input value for enum app_role: "ROOT"
+LINE 1: update public.profiles set role = 'ROOT', active = true wher...
+                                          ^
+rls_matrix.test.sql ................ 
+Dubious, test returned 3 (wstat 768, 0x300)
+No subtests run 
+psql:roles_root_invariant.test.sql:48: ERROR:  invalid input value for enum app_role: "ROOT"
+LINE 1: update public.profiles set role = 'ROOT' where id = (select ...
+                                          ^
+roles_root_invariant.test.sql ...... 
+# Failed test 1: "El enum app_role incluye ROOT"
+# Failed test 2: "Existen los helpers private.is_root() y private.is_manager()"
+# Failed test 3: "El trigger ensure_active_root es una restricción DEFERRABLE INITIALLY DEFERRED"
+#         have: NULL
+#         want: true
+# Failed test 4: "Fixture: hay un único ROOT activo"
+#         have: 0
+#         want: 1
+# Failed test 6: "Al hacer commit (restricción inmediata) falla si no queda ningún ROOT activo"
+#       caught: no exception
+#       wanted: 23514
+# Failed test 8: "Degradar al último ROOT activo falla al hacer commit"
+#       caught: no exception
+#       wanted: 23514
+Dubious, test returned 3 (wstat 768, 0x300)
+Failed 6/8 subtests 
+psql:shift_resolution.test.sql:15: ERROR:  function private.current_shift_at(unknown) does not exist
+LINE 1: select is((select shift_id from private.current_shift_at('20...
+                                        ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+shift_resolution.test.sql .......... 
+# Failed test 1: "Existe private.current_shift_at(timestamptz)"
+Dubious, test returned 3 (wstat 768, 0x300)
+Failed 1/1 subtests 
+Test Summary Report
+-------------------
+active_report_limits.test.sql    (Wstat: 768 (exited 3) Tests: 0 Failed: 0)
+  Non-zero exit status: 3
+  Parse errors: No plan found in TAP output
+change_events.test.sql           (Wstat: 768 (exited 3) Tests: 0 Failed: 0)
+  Non-zero exit status: 3
+  Parse errors: No plan found in TAP output
+device_time_events.test.sql      (Wstat: 768 (exited 3) Tests: 0 Failed: 0)
+  Non-zero exit status: 3
+  Parse errors: No plan found in TAP output
+report_shift_assignment.test.sql (Wstat: 768 (exited 3) Tests: 0 Failed: 0)
+  Non-zero exit status: 3
+  Parse errors: No plan found in TAP output
+rls_matrix.test.sql              (Wstat: 768 (exited 3) Tests: 0 Failed: 0)
+  Non-zero exit status: 3
+  Parse errors: No plan found in TAP output
+roles_root_invariant.test.sql    (Wstat: 768 (exited 3) Tests: 8 Failed: 6)
+  Failed tests:  1-4, 6, 8
+  Non-zero exit status: 3
+  Parse errors: No plan found in TAP output
+shift_resolution.test.sql        (Wstat: 768 (exited 3) Tests: 1 Failed: 1)
+  Failed test:  1
+  Non-zero exit status: 3
+  Parse errors: No plan found in TAP output
+Files=18, Tests=209,  4 wallclock secs ( 0.21 usr  0.16 sys +  0.45 cusr  0.31 csys =  1.13 CPU)
+Result: FAIL
+error running container: exit 1
+error: script "db:test" exited with code 1
+
+## 2. bun run db:reset
+$ supabase db reset --local
+Resetting local database...
+Recreating database...
+Initialising schema...
+Seeding globals from roles.sql...
+Applying migration 20260830140000_initial_mvp.sql...
+Applying migration 20260830190000_catalogs_snapshots_and_submission.sql...
+Applying migration 20260830200000_add_cancelled_status.sql...
+Applying migration 20260830200100_report_cancellation.sql...
+Applying migration 20260830210000_final_demo_readiness.sql...
+Applying migration 20260831090000_catalog_normalized_uniqueness.sql...
+Applying migration 20260831120000_service_role_admin_grants.sql...
+Applying migration 20260916020525_operator_report_workflow.sql...
+Applying migration 20260927233202_report_audit_visibility_and_snapshots.sql...
+Applying migration 20260928003331_finalized_report_correction_audit.sql...
+Applying migration 20261008165311_notifications.sql...
+Applying migration 20261010000100_app_role_root.sql...
+Applying migration 20261010000200_report_status_closed.sql...
+Applying migration 20261010000300_roles_profiles_assignments.sql...
+Applying migration 20261010000400_reports_stops_device_time.sql...
+Applying migration 20261010000500_change_events.sql...
+Applying migration 20261010000600_audit_sync_tables.sql...
+Applying migration 20261010000700_target_rls.sql...
+Applying migration 20261010000800_notification_types.sql...
+Seeding data from supabase/seed.sql...
+Restarting containers...
+Finished supabase db reset on branch redesign/ui-ux.
+{"target":"local","version":"","message":"Reset local database."}
+A new version of Supabase CLI is available: v2.120.0 (currently installed v2.116.0)
+We recommend updating regularly for new features and bug fixes: https://supabase.com/docs/guides/cli/getting-started#updating-the-supabase-cli
+
+## 3. bun run db:test
+$ supabase test db --local
+Connecting to local database...
+active_report_limits.test.sql ...... ok
+catalog_uniqueness.test.sql ........ ok
+change_events.test.sql ............. ok
+critical_constraints.test.sql ...... ok
+device_time_events.test.sql ........ ok
+final_demo_readiness.test.sql ...... ok
+helpers/auth_as.sql ................ ok
+notification_pagination.test.sql ... ok
+notification_transitions.test.sql .. ok
+notifications.test.sql ............. ok
+operator_workflow.test.sql ......... ok
+report_audit_visibility.test.sql ... ok
+report_cancellation.test.sql ....... ok
+report_pagination_large.test.sql ... ok
+report_shift_assignment.test.sql ... ok
+rls_matrix.test.sql ................ ok
+roles_root_invariant.test.sql ...... ok
+shift_resolution.test.sql .......... ok
+All tests successful.
+Files=18, Tests=396,  6 wallclock secs ( 0.24 usr  0.15 sys +  0.54 cusr  0.50 csys =  1.43 CPU)
+Result: PASS
+A new version of Supabase CLI is available: v2.120.0 (currently installed v2.116.0)
+We recommend updating regularly for new features and bug fixes: https://supabase.com/docs/guides/cli/getting-started#updating-the-supabase-cli
+
+## 4. bun test
+bun test v1.4.2 (744846f84)
+
+ 69 pass
+ 0 fail
+ 352 expect() calls
+Ran 69 tests across 6 files. [17.56s]
+
+## 5. bunx astro check
+
+Result (130 files): 
+- 0 errors
+- 0 warnings
+- 4 hints
+
+
+## 6. bun run build
+19:02:14 [build] ✓ Completed in 1.31s.
+19:02:14 [build] Building server entrypoints...
+19:02:16 [vite] ✓ built in 1.71s
+19:02:19 [vite] ✓ built in 3.07s
+19:02:21 [vite] ✓ built in 2.20s
+19:02:21 [build] Rearranging server assets...
+19:02:21 [build] ✓ Completed in 7.31s.
+19:02:21 [@astrojs/vercel] Bundling function ..\..\..\..\dist\server\entry.mjs
+19:02:32 [build] Waiting for integration "@astrojs/vercel", hook "astro:build:done"...
+19:03:03 [@astrojs/vercel] Copying static files to .vercel/output/static
+19:03:03 [build] Server built in 50.12s
+19:03:03 [build] Complete!
+build exit code: 0
+
+# Corrections round - 2026-10-10T00:17:19Z
+
+## C1. Legacy-data migration reproduction (reset to 20261008165311, 3 surplus DRAFTs, one with OPEN stop; migration uses now() for both ended_at and cancelled_at)
+Finished supabase db reset on branch redesign/ui-ux.
+INSERT 0 1
+UPDATE 1
+INSERT 0 1
+INSERT 0 1
+20261010000100_app_role_root.sql exit=0
+20261010000200_report_status_closed.sql exit=0
+20261010000300_roles_profiles_assignments.sql exit=0
+20261010000400_reports_stops_device_time.sql exit=0
+20261010000500_change_events.sql exit=0
+20261010000600_audit_sync_tables.sql exit=0
+20261010000700_target_rls.sql exit=0
+20261010000800_notification_types.sql exit=0
+    id    |  status   
+----------+-----------
+ 8a000000 | CANCELLED
+ 8a000000 | CANCELLED
+ 8a000000 | DRAFT
+(3 rows)
+    id    | ended_eq_cancelled | cancelled | duration_seconds 
+----------+--------------------+-----------+------------------
+ 9a000000 |                    | f         |                 
+ 9a000000 | t                  | t         |                 
+(2 rows)
+
+## C2. bun run db:reset
+$ supabase db reset --local
+Resetting local database...
+Recreating database...
+Initialising schema...
+Seeding globals from roles.sql...
+Applying migration 20260830140000_initial_mvp.sql...
+Applying migration 20260830190000_catalogs_snapshots_and_submission.sql...
+Applying migration 20260830200000_add_cancelled_status.sql...
+Applying migration 20260830200100_report_cancellation.sql...
+Applying migration 20260830210000_final_demo_readiness.sql...
+Applying migration 20260831090000_catalog_normalized_uniqueness.sql...
+Applying migration 20260831120000_service_role_admin_grants.sql...
+Applying migration 20260916020525_operator_report_workflow.sql...
+Applying migration 20260927233202_report_audit_visibility_and_snapshots.sql...
+Applying migration 20260928003331_finalized_report_correction_audit.sql...
+Applying migration 20261008165311_notifications.sql...
+Applying migration 20261010000100_app_role_root.sql...
+Applying migration 20261010000200_report_status_closed.sql...
+Applying migration 20261010000300_roles_profiles_assignments.sql...
+Applying migration 20261010000400_reports_stops_device_time.sql...
+Applying migration 20261010000500_change_events.sql...
+Applying migration 20261010000600_audit_sync_tables.sql...
+Applying migration 20261010000700_target_rls.sql...
+Applying migration 20261010000800_notification_types.sql...
+Seeding data from supabase/seed.sql...
+Restarting containers...
+Finished supabase db reset on branch redesign/ui-ux.
+{"target":"local","version":"","message":"Reset local database."}
+A new version of Supabase CLI is available: v2.120.0 (currently installed v2.116.0)
+We recommend updating regularly for new features and bug fixes: https://supabase.com/docs/guides/cli/getting-started#updating-the-supabase-cli
+
+## C3. bun run db:test
+$ supabase test db --local
+Connecting to local database...
+active_report_limits.test.sql ...... ok
+catalog_uniqueness.test.sql ........ ok
+change_events.test.sql ............. ok
+critical_constraints.test.sql ...... ok
+device_time_events.test.sql ........ ok
+final_demo_readiness.test.sql ...... ok
+helpers/auth_as.sql ................ ok
+notification_pagination.test.sql ... ok
+notification_transitions.test.sql .. ok
+notifications.test.sql ............. ok
+operator_workflow.test.sql ......... ok
+report_audit_visibility.test.sql ... ok
+report_cancellation.test.sql ....... ok
+report_pagination_large.test.sql ... ok
+report_shift_assignment.test.sql ... ok
+rls_matrix.test.sql ................ ok
+roles_root_invariant.test.sql ...... ok
+shift_resolution.test.sql .......... ok
+All tests successful.
+Files=18, Tests=396,  6 wallclock secs ( 0.31 usr  0.19 sys +  0.56 cusr  0.39 csys =  1.45 CPU)
+Result: PASS
+A new version of Supabase CLI is available: v2.120.0 (currently installed v2.116.0)
+We recommend updating regularly for new features and bug fixes: https://supabase.com/docs/guides/cli/getting-started#updating-the-supabase-cli
+
+## C4. bun test
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+ 75 pass
+ 0 fail
+ 368 expect() calls
+Ran 75 tests across 7 files. [16.77s]
+
+## C5. bunx astro check
+
+Result (131 files): 
+- 0 errors
+- 0 warnings
+- 4 hints
+
+
+## C6. bun run build
+build exit code: 0
+19:20:22 [build] Waiting for integration "@astrojs/vercel", hook "astro:build:done"...
+19:21:14 [@astrojs/vercel] Copying static files to .vercel/output/static
+19:21:14 [build] Server built in 1m 3s
+19:21:14 [build] Complete!

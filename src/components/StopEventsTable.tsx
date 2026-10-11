@@ -1,5 +1,9 @@
 import { useMemo, useState } from "react";
+import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
 
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { StopEvent } from "../lib/stop-events";
 
 type SortKey = "sequence" | "duration" | "started_at" | "ended_at" | "category";
@@ -62,15 +66,20 @@ export default function StopEventsTable({ stops, chronologicalOnly = false }: Pr
     }
   };
 
+  const sortIcon = (key: SortKey) => {
+    const Icon = sortKey === key ? (direction === "asc" ? ArrowUp : ArrowDown) : ArrowUpDown;
+    return <Icon className="size-3.5" aria-hidden="true" />;
+  };
+
   const heading = (key: SortKey, label: string) => chronologicalOnly ? label : (
-    <button className="flex min-h-11 items-center gap-1 font-semibold hover:text-brand-700" type="button" onClick={() => changeSort(key)}>
-      {label}<span aria-hidden="true">{sortKey === key ? direction === "asc" ? "↑" : "↓" : "↕"}</span>
-    </button>
+    <Button variant="ghost" size="sm" className="-ml-3 min-h-11 text-xs font-semibold tracking-wide text-muted-foreground uppercase hover:text-primary" type="button" onClick={() => changeSort(key)}>
+      {label}{sortIcon(key)}
+    </Button>
   );
 
   return (
     <>
-      {!chronologicalOnly && <div className="flex gap-2 overflow-x-auto pb-2 md:hidden" aria-label="Ordenar historial de paradas">
+      {!chronologicalOnly && <div className="flex gap-2 overflow-x-auto pb-2 md:hidden" role="group" aria-label="Ordenar historial de paradas">
         {([
           ["sequence", "#"],
           ["category", "Categoría"],
@@ -78,55 +87,53 @@ export default function StopEventsTable({ stops, chronologicalOnly = false }: Pr
           ["ended_at", "Final"],
           ["duration", "Duración"],
         ] as Array<[SortKey, string]>).map(([key, label]) => (
-          <button key={key} className={`inline-flex min-h-11 shrink-0 items-center rounded-lg border px-3 text-sm font-semibold transition-colors duration-150 ${sortKey === key ? "border-brand-600 bg-brand-50 text-brand-800" : "border-slate-300 bg-white text-slate-700"}`} type="button" onClick={() => changeSort(key)}>
-            {label}<span className="ml-1" aria-hidden="true">{sortKey === key ? direction === "asc" ? "↑" : "↓" : "↕"}</span>
-          </button>
+          <Button key={key} variant={sortKey === key ? "secondary" : "outline"} className={sortKey === key ? "border border-primary" : undefined} type="button" aria-pressed={sortKey === key} onClick={() => changeSort(key)}>
+            {label}{sortIcon(key)}
+          </Button>
         ))}
       </div>}
-      <div className="mobile-card-list md:hidden">
+      <div className="divide-y divide-border md:hidden">
         {rows.map((stop) => (
-          <article key={stop.id} className="mobile-data-card">
+          <article key={stop.id} className="space-y-3 p-4">
             <div className="flex items-start justify-between gap-3">
-              <p className="font-bold text-slate-900">#{stop.sequence} · {stop.stop_category?.code} · {stop.stop_category?.name}</p>
-              <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-bold ${stop.ended_at ? "bg-slate-100 text-slate-700" : "bg-red-100 text-red-800"}`}>{stop.cancelled_at ? "Cancelada" : duration(stop.duration_seconds)}</span>
+              <p className="font-bold text-foreground">#{stop.sequence} · {stop.stop_category?.code} · {stop.stop_category?.name}</p>
+              <Badge variant={stop.cancelled_at ? "cancelled" : stop.ended_at ? "neutral" : "stop"}>{stop.cancelled_at ? "Cancelada" : duration(stop.duration_seconds)}</Badge>
             </div>
             <dl className="grid gap-2 text-sm">
-              <div><dt className="text-slate-500">Inicio</dt><dd className="font-medium">{dateTime(stop.started_at)}</dd></div>
-              <div><dt className="text-slate-500">Final</dt><dd className="font-medium">{dateTime(stop.ended_at)}</dd></div>
-              {stop.description && <div><dt className="text-slate-500">Descripción</dt><dd className="break-words">{stop.description}</dd></div>}
-              {stop.cancelled_at && <div><dt className="text-slate-500">Motivo de cancelación</dt><dd className="break-words">{stop.cancellation_reason}</dd></div>}
+              <div><dt className="text-muted-foreground">Inicio</dt><dd className="font-medium">{dateTime(stop.started_at)}</dd></div>
+              <div><dt className="text-muted-foreground">Final</dt><dd className="font-medium">{dateTime(stop.ended_at)}</dd></div>
+              {stop.description && <div><dt className="text-muted-foreground">Descripción</dt><dd className="break-words">{stop.description}</dd></div>}
+              {stop.cancelled_at && <div><dt className="text-muted-foreground">Motivo de cancelación</dt><dd className="break-words">{stop.cancellation_reason}</dd></div>}
             </dl>
           </article>
         ))}
-        {rows.length === 0 && <p className="p-5 text-center text-slate-500">No hay paradas registradas.</p>}
+        {rows.length === 0 && <p className="p-5 text-center text-muted-foreground">No hay paradas registradas.</p>}
       </div>
-      <div className="hidden overflow-x-auto md:block" role="region" aria-label="Historial de paradas" tabIndex={0}>
-      <table className="w-full min-w-[760px] text-left text-sm">
-        <thead className="border-b bg-slate-50 text-slate-600">
-          <tr>
-            <th className="p-3">{heading("sequence", "#")}</th>
-            <th className="p-3">{heading("category", "Categoría")}</th>
-            <th className="p-3">{heading("started_at", "Inicio")}</th>
-            <th className="p-3">{heading("ended_at", "Final")}</th>
-            <th className="p-3">{heading("duration", "Duración")}</th>
-            <th className="p-3">Descripción</th>
-          </tr>
-        </thead>
-        <tbody>
+      <Table className="min-w-[760px]" container={{ role: "region", "aria-label": "Historial de paradas", tabIndex: 0, className: "hidden md:block" }}>
+        <TableHeader>
+          <TableRow>
+            <TableHead>{heading("sequence", "#")}</TableHead>
+            <TableHead>{heading("category", "Categoría")}</TableHead>
+            <TableHead>{heading("started_at", "Inicio")}</TableHead>
+            <TableHead>{heading("ended_at", "Final")}</TableHead>
+            <TableHead>{heading("duration", "Duración")}</TableHead>
+            <TableHead>Descripción</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
           {rows.map((stop) => (
-            <tr key={stop.id} className="border-b last:border-0">
-              <td className="p-3 font-semibold">{stop.sequence}</td>
-              <td className="p-3 font-medium">{stop.stop_category?.code} · {stop.stop_category?.name}</td>
-              <td className="p-3">{dateTime(stop.started_at)}</td>
-              <td className="p-3">{dateTime(stop.ended_at)}</td>
-              <td className="p-3">{stop.cancelled_at ? "Cancelada" : duration(stop.duration_seconds)}</td>
-              <td className="p-3">{stop.cancelled_at ? `Motivo de cancelación: ${stop.cancellation_reason}` : stop.description || "—"}</td>
-            </tr>
+            <TableRow key={stop.id}>
+              <TableCell className="font-semibold">{stop.sequence}</TableCell>
+              <TableCell className="font-medium">{stop.stop_category?.code} · {stop.stop_category?.name}</TableCell>
+              <TableCell>{dateTime(stop.started_at)}</TableCell>
+              <TableCell>{dateTime(stop.ended_at)}</TableCell>
+              <TableCell>{stop.cancelled_at ? "Cancelada" : duration(stop.duration_seconds)}</TableCell>
+              <TableCell>{stop.cancelled_at ? `Motivo de cancelación: ${stop.cancellation_reason}` : stop.description || "—"}</TableCell>
+            </TableRow>
           ))}
-          {rows.length === 0 && <tr><td className="p-5 text-center text-slate-500" colSpan={6}>No hay paradas registradas.</td></tr>}
-        </tbody>
-      </table>
-      </div>
+          {rows.length === 0 && <TableRow><TableCell className="p-5 text-center text-muted-foreground" colSpan={6}>No hay paradas registradas.</TableCell></TableRow>}
+        </TableBody>
+      </Table>
     </>
   );
 }
