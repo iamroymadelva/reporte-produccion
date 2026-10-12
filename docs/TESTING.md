@@ -50,6 +50,15 @@ Contraseña de todos: `Planta2026!` (solo entorno local).
 2. En el A entra como `op1`; en el B como `coord1` (dashboard o lista de reportes).
 3. Crea/edita/envía un reporte en A: B debe actualizarse sin recargar y mostrar notificaciones.
 
+### Menú de ayuda (?)
+
+1. Entra con cada rol (`op1`, `coord1`, `auditor1`, `root`) y pulsa el **?** de la barra superior: abre `/ayuda` con solo el contenido de ese rol. Sin sesión, `/ayuda` redirige al inicio de sesión.
+2. Como `op1`, en `/turno` abre el panel **¿Necesitas ayuda?**; con DevTools → Network → **Offline** debe seguir funcionando y no generar peticiones.
+3. Revisa a 375 px que no hay desplazamiento horizontal.
+4. Para rehacer las capturas de `public/ayuda/` (datos de prueba locales): `bun run db:reset` y luego `bun scripts/capture-help.ts`. El script arranca `bun run dev` en primer plano, usa el Chrome instalado (variable `CHROME` si está en otra ruta), y al terminar ejecuta `bunx astro dev stop`.
+
+Las pruebas automáticas están en `tests/help-menu.test.tsx` (contenido por rol, navegación, acordeón accesible y panel del operario) y `tests/role-access.test.ts` (`/ayuda` exige sesión).
+
 ## Comandos de prueba automatizada
 
 ```sh

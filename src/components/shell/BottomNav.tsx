@@ -1,4 +1,4 @@
-import { Menu } from "lucide-react";
+import { CircleHelp, Menu } from "lucide-react";
 import { useSidebar } from "@/components/ui/sidebar";
 import { useNotifications } from "@/components/notifications/use-notifications";
 import { cn } from "@/lib/utils";
@@ -33,8 +33,11 @@ export function BottomNav({ pathname }: { pathname: string }) {
         </li>;
       })}
       <li className="flex">
-        <button type="button" onClick={() => setOpenMobile(true)} className={cn(tabClass, "text-muted-foreground")} aria-label="Más opciones de navegación">
-          <Menu className="size-5" aria-hidden="true" />
+        <button type="button" onClick={() => setOpenMobile(true)} className={cn(tabClass, "text-muted-foreground")} aria-label="Más opciones de navegación y ayuda">
+          <span className="relative">
+            <Menu className="size-5" aria-hidden="true" />
+            <CircleHelp className="absolute -right-3 -top-2 size-3.5 text-primary" aria-hidden="true" data-testid="more-help-icon" />
+          </span>
           <span>Más</span>
         </button>
       </li>

@@ -60,6 +60,7 @@ const matrix: Array<{ path: string; api: boolean; allowed: Role[] }> = [
   { path: "/api/dashboard/summary", api: true, allowed: ["ROOT", "ADMINISTRATOR", "VIEWER"] },
   { path: "/api/auth/session-info", api: true, allowed: roles },
   { path: "/reportes", api: false, allowed: roles },
+  { path: "/ayuda", api: false, allowed: roles },
   { path: "/api/reports/export", api: true, allowed: roles },
 ];
 
@@ -85,7 +86,7 @@ describe("middleware: rol x ruta protegida", () => {
       const result = await run(path);
       expect(result.outcome).toBe("401");
     }
-    for (const path of ["/administracion", "/administracion/historial", "/turno", "/consulta-offline"]) {
+    for (const path of ["/administracion", "/administracion/historial", "/turno", "/consulta-offline", "/ayuda"]) {
       const result = await run(path);
       expect(result.outcome).toBe("redirect");
       expect(result.location).toBe("/iniciar-sesion");
