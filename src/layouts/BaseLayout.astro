@@ -111,6 +111,11 @@ const flashError = Astro.url.searchParams.get("error");
     showConnectivityNotice,
   } from "../lib/connectivity";
   import { runOfflineBootstrap } from "../lib/offline/bootstrap";
+  import { installPasswordVisibility } from "../lib/password-visibility";
+
+  // Ojo de mostrar/ocultar contraseña (PasswordField). Se instala primero para que el reseteo al enviar
+  // (captura en window) corra antes que el manejador de envío de más abajo.
+  installPasswordVisibility();
 
   // Phase 8: confirma/descarta la matrícula del acceso sin conexión y refresca en silencio la consulta de managers y
   // VIEWER. Se ejecuta en cada página (ClientRouter incluido); nunca bloquea ni lanza.
