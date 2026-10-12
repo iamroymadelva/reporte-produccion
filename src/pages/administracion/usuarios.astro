@@ -4,6 +4,7 @@ import AdminRecordModal from "../../components/AdminRecordModal.astro";
 import PageHeader from "../../components/PageHeader.astro";
 import UserAssignmentsField from "../../components/UserAssignmentsField.astro";
 import UserDeactivationPanel from "../../components/UserDeactivationPanel.astro";
+import PasswordField from "../../components/PasswordField";
 import UserPasswordResetAction from "../../components/UserPasswordResetAction.astro";
 import UserReactivateAction from "../../components/UserReactivateAction.astro";
 import UserRetireAction from "../../components/UserRetireAction.astro";
@@ -49,8 +50,8 @@ const allRoles = Object.keys(roleLabels) as AppRole[];
           <Label><FieldLabel>Nombre completo</FieldLabel><Input name="full_name" required /></Label>
           <Label><FieldLabel>Cargo</FieldLabel><Input name="job_title" /></Label>
           <Label><FieldLabel>Rol</FieldLabel><NativeSelect name="role">{createRoles.map((role) => <option value={role}>{roleLabels[role]}</option>)}</NativeSelect></Label>
-          <Label><FieldLabel>Contraseña inicial</FieldLabel><Input type="password" name="password" autoComplete="new-password" minLength={MIN_PASSWORD_LENGTH} required /></Label>
-          <Label><FieldLabel>Confirmar contraseña</FieldLabel><Input type="password" name="password_confirm" autoComplete="new-password" minLength={MIN_PASSWORD_LENGTH} required /></Label>
+          <PasswordField id="create-user-password" label="Contraseña inicial" name="password" minLength={MIN_PASSWORD_LENGTH} />
+          <PasswordField id="create-user-password-confirm" label="Confirmar contraseña" name="password_confirm" minLength={MIN_PASSWORD_LENGTH} />
         </div>
         <UserAssignmentsField machines={machines} shifts={shifts} />
       </AdminRecordModal>

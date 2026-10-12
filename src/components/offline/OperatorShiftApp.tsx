@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import { ChevronDown, CircleHelp } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -24,7 +25,48 @@ import { resolveCurrentUser, type CurrentUser } from "@/lib/offline/snapshot";
 import { runExclusive, sendDirectIfAllowed } from "@/lib/offline/sync-client";
 import type { OfflineSnapshot } from "@/lib/offline/types";
 import OfflineIndicator from "./OfflineIndicator";
+import { cn } from "@/lib/utils";
 import { useLogoutGuard } from "./LogoutGuard";
+
+/**
+ * Ayuda rápida del operario. El texto está incrustado aquí a propósito: viaja con la página /turno, funciona sin
+ * conexión y no hace ninguna llamada de red. La ayuda completa (con capturas) está en /ayuda y necesita conexión.
+ */
+export const OPERATOR_QUICK_TIPS: ReadonlyArray<{ title: string; text: string }> = [
+  { title: "Iniciar el reporte", text: "Elige tu máquina y pulsa «Iniciar reporte». Solo puedes tener un reporte abierto a la vez." },
+  { title: "Paradas", text: "Si la máquina se detiene, pulsa «Iniciar parada». Cuando arranque, elige la categoría y pulsa «Cerrar parada». Si la iniciaste por error, pulsa «Cancelar parada»." },
+  { title: "Cambios", text: "Si cambia el producto, el formato o el lote, anótalo en «Cambios». Elige el «Tipo de cambio», escribe qué cambió (por ejemplo, «de lote 120 a lote 121») y pulsa «Registrar cambio». La hora la pone el sistema. No es una parada: la parada mide cuánto tiempo estuvo detenida la máquina; el cambio solo se anota." },
+  { title: "Enviar el reporte", text: "Antes de enviar, cierra las paradas, ponles categoría a todas y llena los datos de producción. Después pulsa «Enviar reporte». Ya no podrás cambiarlo." },
+  { title: "Sin conexión", text: "Si se va el internet, sigue trabajando. Todo se guarda en este dispositivo. Cuando vuelva, pulsa «Confirmar y subir». Nada se sube hasta que tú lo confirmes." },
+  { title: "Me equivoqué", text: "Un cambio registrado no se puede borrar ni editar: explícalo en «Observaciones» y avisa a tu coordinador. Si te equivocaste en un dato del reporte ya enviado, avisa a tu coordinador: él lo corrige con motivo." },
+];
+
+function QuickHelpPanel() {
+  const [open, setOpen] = useState(false);
+  const panelId = useId();
+  return (
+    <section aria-label="Ayuda rápida" className="rounded-2xl border bg-card text-card-foreground" data-testid="quick-help">
+      <h2>
+        <button
+          type="button"
+          aria-expanded={open}
+          aria-controls={panelId}
+          onClick={() => setOpen((value) => !value)}
+          className="flex min-h-11 w-full items-center justify-between gap-3 rounded-2xl px-4 py-2 text-left text-base font-semibold outline-none focus-visible:ring-[3px] focus-visible:ring-ring/60"
+        >
+          <span className="flex items-center gap-2"><CircleHelp className="size-5 shrink-0 text-primary" aria-hidden="true" />¿Necesitas ayuda?</span>
+          <ChevronDown className={cn("size-5 shrink-0 transition-transform", open && "rotate-180")} aria-hidden="true" />
+        </button>
+      </h2>
+      <div id={panelId} hidden={!open} className="space-y-3 border-t px-4 py-4">
+        <ul className="space-y-3 text-sm">
+          {OPERATOR_QUICK_TIPS.map((tip) => <li key={tip.title}><p className="font-semibold">{tip.title}</p><p className="text-muted-foreground">{tip.text}</p></li>)}
+        </ul>
+        <p className="text-sm text-muted-foreground">Con internet, tienes la guía completa con imágenes en <a className="inline-flex min-h-11 items-center font-semibold text-primary underline" href="/ayuda" data-astro-reload>Ayuda</a>.</p>
+      </div>
+    </section>
+  );
+}
 
 interface Props {
   /** Pausa antes de guardar los campos de producción (ms). */
@@ -284,6 +326,7 @@ function Shift({ userId, snapshot, offline, autosaveDelayMs, presence }: { userI
         </div>
       </header>
       {logout.dialog}
+      <QuickHelpPanel />
 
       {offline && <Alert variant="info" role="status"><AlertDescription>Sin conexión: todo lo que registres se guarda en este dispositivo y solo se sube cuando confirmes.</AlertDescription></Alert>}
       {notice && <Alert variant="destructive" role="alert"><AlertDescription>{notice}</AlertDescription></Alert>}

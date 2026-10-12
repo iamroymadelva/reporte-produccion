@@ -1,5 +1,5 @@
 import { Fragment } from "react";
-import { Factory } from "lucide-react";
+import { CircleHelp, Factory } from "lucide-react";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
@@ -48,6 +48,15 @@ export function TopBar({ profile, pathname }: { profile: Profile; pathname: stri
     </Breadcrumb>
     <div className="ml-auto flex min-w-0 items-center gap-3">
       {profile.role === "OPERATOR" && <OfflineIndicator userId={profile.id} className="min-w-0 truncate" />}
+      <a
+        href="/ayuda"
+        aria-label="Ayuda"
+        title="Ayuda"
+        data-testid="help-link"
+        className="inline-flex size-11 shrink-0 items-center justify-center rounded-md text-foreground outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 md:size-9"
+      >
+        <CircleHelp className="size-5" aria-hidden="true" />
+      </a>
       <NotificationBell />
       <div className="lg:hidden"><NavUser profile={profile} variant="icon" /></div>
     </div>

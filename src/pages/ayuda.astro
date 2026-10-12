@@ -1,0 +1,51 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import PageHeader from "../components/PageHeader.astro";
+import HelpAccordion from "../components/HelpAccordion";
+import { firstStepsForRole, problemsForRole, tasksForRole, ROLE_HELP_LABEL } from "../lib/help-content";
+
+// La sesión la exige el middleware (cualquier usuario autenticado y activo; sin sesión va a /iniciar-sesion).
+const auth = Astro.locals.auth!;
+const role = auth.profile.role;
+const first = firstStepsForRole(role);
+const tasks = tasksForRole(role);
+const problems = problemsForRole(role);
+---
+
+<BaseLayout title="Ayuda" description="Guía rápida para usar la plataforma según tu rol" profile={auth.profile}>
+  <main class="mx-auto w-full max-w-3xl space-y-8 px-4 py-4 sm:px-6 sm:py-6" data-help-role={role}>
+    <PageHeader title="Ayuda" description={`Guía para tu rol: ${ROLE_HELP_LABEL[role]}.`} />
+
+    <section aria-labelledby="primeros-pasos" class="space-y-3">
+      <h2 id="primeros-pasos" class="text-lg font-bold">Primeros pasos</h2>
+      <div class="rounded-2xl border bg-card p-4 shadow-sm">
+        <h3 class="text-base font-bold">{first.title}</h3>
+        <p class="mt-1 text-sm text-muted-foreground">{first.intro}</p>
+        <ol class="mt-3 list-decimal space-y-2 pl-6 text-base marker:font-bold marker:text-primary">
+          {first.steps.map((step) => <li class="pl-1">{step}</li>)}
+        </ol>
+      </div>
+    </section>
+
+    <section aria-labelledby="tareas" class="space-y-3">
+      <h2 id="tareas" class="text-lg font-bold">Tareas frecuentes</h2>
+      <p class="text-sm text-muted-foreground">Pulsa una tarea para ver los pasos.</p>
+      <HelpAccordion tasks={tasks} client:load />
+    </section>
+
+    <section aria-labelledby="problemas" class="space-y-3">
+      <h2 id="problemas" class="text-lg font-bold">Problemas frecuentes</h2>
+      <div class="overflow-x-auto rounded-2xl border bg-card shadow-sm">
+        <table class="w-full text-left text-sm">
+          <caption class="sr-only">Mensajes frecuentes y qué hacer</caption>
+          <thead class="bg-muted/60">
+            <tr><th scope="col" class="px-3 py-2 font-semibold">Qué ves</th><th scope="col" class="px-3 py-2 font-semibold">Qué hacer</th></tr>
+          </thead>
+          <tbody class="divide-y">
+            {problems.map((problem) => <tr><th scope="row" class="w-2/5 px-3 py-3 align-top font-semibold">{problem.message}</th><td class="px-3 py-3 align-top">{problem.action}</td></tr>)}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+</BaseLayout>

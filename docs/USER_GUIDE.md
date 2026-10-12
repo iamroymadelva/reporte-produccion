@@ -2,6 +2,8 @@
 
 ## Reporte Diario de Producción y Mantenimiento
 
+> **Ayuda dentro de la aplicación:** pulse el ícono **?** de la barra superior (o **Ayuda** en el menú, grupo **Cuenta**) para ver una guía corta, con capturas, según su rol. Esa guía sale de este manual. El operario también tiene el panel plegable **¿Necesitas ayuda?** en la pantalla Turno, que funciona sin conexión.
+
 ## 1. Objetivo
 
 La aplicación permite registrar, consultar y consolidar la producción por turno y las paradas y cambios de cada máquina, incluso cuando se pierde la conexión. Cada persona debe usar su propia cuenta y realizar únicamente las acciones disponibles para su rol.
@@ -123,7 +125,7 @@ Coordinador, raíz y auditor pueden **Exportar Excel** respetando exactamente lo
 - **HISTORIAL:** el historial de cambios de esos reportes.
 - **CATÁLOGO PARADAS:** relación entre códigos y categorías.
 
-Las columnas `P-1`, `P-2`… son el tiempo cerrado por categoría de parada. Si el filtro no devuelve reportes no se genera archivo. Si el volumen supera los límites (1 000 reportes) se pide un período más corto.
+Las columnas `P-1`, `P-2`… son el tiempo cerrado por categoría de parada. Si el filtro no devuelve reportes no se genera archivo. Si el archivo sale muy grande, la pantalla pide elegir un período más corto.
 
 ## 12. Mensajes y errores frecuentes
 

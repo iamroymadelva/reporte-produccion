@@ -1,5 +1,5 @@
 import {
-  ArrowLeftRight, Bell, Building2, ClipboardList, Cog, Droplets, History, LayoutDashboard, OctagonAlert, Package, Settings, Timer, Users, Waypoints,
+  ArrowLeftRight, Bell, Building2, CircleHelp, ClipboardList, Cog, Droplets, History, LayoutDashboard, OctagonAlert, Package, Settings, Timer, Users, Waypoints,
   type LucideIcon,
 } from "lucide-react";
 import type { AppRole } from "@/lib/types";
@@ -29,6 +29,8 @@ export type BreadcrumbEntry = { label: string; href?: string };
 const dashboard: NavItem = { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard, exact: true };
 const reportes: NavItem = { title: "Reportes", href: "/reportes", icon: ClipboardList };
 const notificaciones: NavItem = { title: "Notificaciones", href: "/notificaciones", icon: Bell };
+/** Ayuda: visible para todos los roles (la página filtra el contenido por rol). */
+export const ayuda: NavItem = { title: "Ayuda", href: "/ayuda", icon: CircleHelp };
 
 export const adminItems: NavItem[] = [
   { title: "Resumen", href: "/administracion", icon: Settings, exact: true },
@@ -63,7 +65,7 @@ export type SectionIconKey = keyof typeof sectionIcons;
 export const navGroups: NavGroup[] = [
   { id: "operacion", label: "Operación", items: [dashboard, reportes] },
   { id: "administracion", label: "Administración", items: adminItems, roles: ["ROOT", "ADMINISTRATOR"], collapsible: true },
-  { id: "cuenta", label: "Cuenta", items: [notificaciones] },
+  { id: "cuenta", label: "Cuenta", items: [notificaciones, ayuda] },
 ];
 
 /** Pestañas del BottomNav móvil (el botón "Más" se añade en el componente). */
@@ -93,6 +95,6 @@ export function breadcrumbFor(pathname: string): BreadcrumbEntry[] {
   if (path === "/administracion") return [home, { label: "Administración" }];
   const admin = adminItems.find((item) => item.href !== "/administracion" && isActivePath(path, item.href));
   if (admin) return [home, { label: "Administración", href: "/administracion" }, { label: admin.title }];
-  const item = [dashboard, reportes, notificaciones].find((entry) => isActivePath(path, entry.href));
+  const item = [dashboard, reportes, notificaciones, ayuda].find((entry) => isActivePath(path, entry.href));
   return [home, { label: item?.title ?? "Plataforma" }];
 }

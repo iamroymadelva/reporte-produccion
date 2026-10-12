@@ -4,8 +4,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Factory } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { FieldLabel, Label } from "@/components/ui/label";
+import PasswordField from "../components/PasswordField";
 
 const auth = Astro.locals.auth!;
 const error = Astro.url.searchParams.get("error");
@@ -24,14 +23,8 @@ const error = Astro.url.searchParams.get("error");
       <form method="POST" action="/api/auth/password">
         <CardContent className="space-y-4">
           {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
-          <Label>
-            <FieldLabel>Nueva contraseña</FieldLabel>
-            <Input type="password" name="password" minLength={8} autoComplete="new-password" placeholder="••••••••" required />
-          </Label>
-          <Label>
-            <FieldLabel>Confirmar contraseña</FieldLabel>
-            <Input type="password" name="password_confirm" minLength={8} autoComplete="new-password" placeholder="••••••••" required />
-          </Label>
+          <PasswordField id="setup-password" label="Nueva contraseña" name="password" minLength={8} placeholder="••••••••" />
+          <PasswordField id="setup-password-confirm" label="Confirmar contraseña" name="password_confirm" minLength={8} placeholder="••••••••" />
         </CardContent>
         <CardFooter className="mt-4 flex flex-col space-y-4">
           <Button type="submit" size="lg" className="w-full">Guardar contraseña</Button>
