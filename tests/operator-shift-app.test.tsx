@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { act } from "react";
 import type { Root } from "react-dom/client";
+import { pickDateTime } from "./helpers/datetime-picker";
 import { CAT_ASEO, CHANGE_PRODUCTO, MACHINE_1, OPT, USER_A, freshIndexedDb, activate, installBrowser, makeSnapshot } from "./helpers/offline-env";
 
 const browser = installBrowser();
@@ -110,8 +111,8 @@ describe("OperatorShiftApp (T082)", () => {
     await change(field("weight"), "250");
     await change(field("g_min"), "40");
     await change(field("dosifier_type_id"), OPT);
-    await change(field("started_at"), "2026-10-09T08:00");
-    await change(field("ended_at"), "2026-10-09T16:00");
+    await pickDateTime(browser as never, document.querySelector(field("started_at"))!, "2026-10-09T08:00");
+    await pickDateTime(browser as never, document.querySelector(field("ended_at"))!, "2026-10-09T16:00");
     await change(field("programmed_hours"), "8");
     await change(field("units_produced"), "1200");
     await change(field("waste"), "3");
@@ -175,5 +176,47 @@ describe("OperatorShiftApp (T082)", () => {
     await mountApp();
     expect(text()).toContain("Operario Uno");
     expect(buttonsByLabel("Iniciar reporte")).toHaveLength(1);
+  });
+
+  const machineOptionText = () => document.querySelector<HTMLSelectElement>("[data-testid=\"machine-select\"]")!.textContent ?? "";
+  const withLocation = (location: string | null | undefined) => {
+    const base = makeSnapshot(USER_A);
+    return {
+      ...base,
+      assignments: base.assignments.map((assignment) => ({ ...assignment, machine: { ...assignment.machine!, ...(location === undefined ? {} : { location }) } })),
+    };
+  };
+
+  test("selector de máquina: con ubicación muestra «M-01 · Envasadora — Planta 2, línea norte»", async () => {
+    snapshotBody = { ...withLocation("Planta 2, línea norte") };
+    await mountApp();
+    expect(machineOptionText()).toContain("M-01 · Envasadora — Planta 2, línea norte");
+  });
+
+  test("selector de máquina: sin ubicación (null, vacía o datos viejos sin el campo) no cambia la etiqueta", async () => {
+    for (const location of [undefined, null, "   "]) {
+      snapshotBody = { ...withLocation(location) };
+      await mountApp();
+      expect(machineOptionText()).toContain("M-01 · Envasadora");
+      expect(machineOptionText()).not.toContain("—");
+      await act(async () => root.unmount());
+      root = createRoot(container);
+      freshIndexedDb();
+      sync.resetSyncClientForTests();
+    }
+  });
+
+  test("sin conexión, la ubicación guardada en el snapshot local sigue visible en el selector", async () => {
+    snapshotBody = { ...withLocation("Planta 2, línea norte") };
+    await mountApp(); // en línea: guarda el snapshot con location
+    await act(async () => root.unmount());
+    root = createRoot(container);
+    globalThis.fetch = (async () => { throw new TypeError("Failed to fetch"); }) as unknown as typeof fetch;
+    sync.resetSyncClientForTests();
+    await goOffline();
+    const offlineAuth = await import("../src/lib/offline/offline-auth");
+    await offlineAuth.startLocalSession({ userId: USER_A, role: "OPERATOR", username: "op1", fullName: "Operario Uno", startedAt: new Date().toISOString(), offline: true });
+    await mountApp();
+    expect(machineOptionText()).toContain("M-01 · Envasadora — Planta 2, línea norte");
   });
 });

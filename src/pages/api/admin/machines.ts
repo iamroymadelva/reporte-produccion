@@ -1,10 +1,16 @@
 import type { APIRoute } from "astro";
 import { adminCatalogErrorMessage } from "../../../lib/admin-catalog-errors";
 import { createSupabaseServerClient } from "../../../lib/supabase/server";
-import { redirectWithMessage } from "../../../lib/http";
+import { isManager } from "../../../lib/auth";
+import { json, redirectWithMessage } from "../../../lib/http";
 import { deleteOrDeactivateCatalogItem } from "../../../lib/admin-catalog-delete";
 
-export const POST: APIRoute = async ({ request, cookies, redirect }) => {
+const MACHINE_LOCATION_MAX = 120;
+
+export const POST: APIRoute = async ({ request, cookies, redirect, locals }) => {
+  // La autorización real vive en la base (RLS); aquí se vuelve a comprobar el rol de gestor.
+  if (!locals.auth) return json({ error: "Debes iniciar sesión." }, 401);
+  if (!isManager(locals.auth)) return json({ error: "No tienes permisos de administración." }, 403);
   const form = await request.formData();
   const id = String(form.get("id") ?? "");
   const supabase = createSupabaseServerClient(request, cookies);
@@ -23,9 +29,13 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
     code: String(form.get("code") ?? "").trim(),
     name: String(form.get("name") ?? "").trim(),
     description: String(form.get("description") ?? "").trim() || null,
+    location: String(form.get("location") ?? "").trim() || null,
     active: id ? form.has("active") : true,
   };
   if (!values.code || !values.name) return redirect(redirectWithMessage("/administracion/maquinas", "error", "Código y nombre son obligatorios."), 303);
+  if (values.location && values.location.length > MACHINE_LOCATION_MAX) {
+    return redirect(redirectWithMessage("/administracion/maquinas", "error", `La ubicación no puede superar ${MACHINE_LOCATION_MAX} caracteres.`), 303);
+  }
 
   const result = id
     ? await supabase.from("machines").update(values).eq("id", id)

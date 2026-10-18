@@ -9,7 +9,8 @@ import { formatDate } from "@/lib/format";
 import { isConnectionDown, useConnectivityState } from "@/lib/offline/hooks";
 import { NEEDS_CONNECTION_MESSAGE, getLocalSession } from "@/lib/offline/offline-auth";
 import { fetchOverview, loadOverview, type OverviewRecord, type OverviewReport } from "@/lib/offline/overview";
-import { forgetCurrentUser } from "@/lib/offline/snapshot";
+import type { AppRole } from "@/lib/types";
+import UserMenu, { type UserMenuUser } from "../UserMenu";
 
 /**
  * Consulta sin conexión (T094, FR-020): resumen de SOLO LECTURA para coordinadores, administradores raíz y auditores.
@@ -28,12 +29,14 @@ type View =
   | { phase: "no-data" }
   | { phase: "ready"; overview: OverviewRecord; fromNetwork: boolean };
 
+type Loaded = { view: View; user: UserMenuUser | null };
+
 const clock = new Intl.DateTimeFormat("es-CO", { hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: "America/Bogota" });
 const dateTime = new Intl.DateTimeFormat("es-CO", { dateStyle: "short", timeStyle: "short", timeZone: "America/Bogota" });
 const hhmm = (iso: string) => clock.format(new Date(iso));
 const isViewerOrManager = (role: string | undefined) => role === "ROOT" || role === "ADMINISTRATOR" || role === "VIEWER";
 
-async function loadView(): Promise<View> {
+async function loadView(): Promise<Loaded> {
   let response: Response | null = null;
   try {
     response = await fetch("/api/auth/session-info", { cache: "no-store", credentials: "same-origin", headers: { Accept: "application/json" } });
@@ -42,28 +45,30 @@ async function loadView(): Promise<View> {
   }
 
   if (response) {
-    if (response.status === 401) return { phase: "login" };
-    if (response.status === 403) return { phase: "forbidden", message: "Tu usuario no está activo. Avisa a un coordinador." };
+    if (response.status === 401) return { view: { phase: "login" }, user: null };
+    if (response.status === 403) return { view: { phase: "forbidden", message: "Tu usuario no está activo. Avisa a un coordinador." }, user: null };
     if (response.ok) {
-      const info = await response.json().catch(() => null) as { userId?: string; role?: string } | null;
+      const info = await response.json().catch(() => null) as { userId?: string; role?: AppRole; fullName?: string } | null;
       if (info?.userId) {
-        if (!isViewerOrManager(info.role)) return { phase: "forbidden", message: WRONG_ROLE };
+        const user: UserMenuUser | null = info.role ? { id: info.userId, fullName: info.fullName ?? "", role: info.role } : null;
+        if (!isViewerOrManager(info.role)) return { view: { phase: "forbidden", message: WRONG_ROLE }, user };
         const fetched = await fetchOverview(info.userId);
-        if (fetched.status === "ok") return { phase: "ready", overview: fetched.overview, fromNetwork: true };
-        if (fetched.status === "unauthorized") return { phase: "login" };
-        if (fetched.status === "forbidden") return { phase: "forbidden", message: fetched.message };
+        if (fetched.status === "ok") return { view: { phase: "ready", overview: fetched.overview, fromNetwork: true }, user };
+        if (fetched.status === "unauthorized") return { view: { phase: "login" }, user: null };
+        if (fetched.status === "forbidden") return { view: { phase: "forbidden", message: fetched.message }, user };
         const stored = await loadOverview(info.userId);
-        return stored ? { phase: "ready", overview: stored, fromNetwork: false } : { phase: "no-data" };
+        return { view: stored ? { phase: "ready", overview: stored, fromNetwork: false } : { phase: "no-data" }, user };
       }
     }
   }
 
   // Sin conexión (o sin respuesta útil): solo con la sesión local creada tras verificar la contraseña.
   const local = await getLocalSession();
-  if (!local) return { phase: "login" };
-  if (!isViewerOrManager(local.role)) return { phase: "forbidden", message: WRONG_ROLE };
+  if (!local) return { view: { phase: "login" }, user: null };
+  const user: UserMenuUser = { id: local.userId, fullName: local.fullName, role: local.role };
+  if (!isViewerOrManager(local.role)) return { view: { phase: "forbidden", message: WRONG_ROLE }, user };
   const stored = await loadOverview(local.userId);
-  return stored ? { phase: "ready", overview: stored, fromNetwork: false } : { phase: "no-data" };
+  return { view: stored ? { phase: "ready", overview: stored, fromNetwork: false } : { phase: "no-data" }, user };
 }
 
 function Controls() {
@@ -133,6 +138,7 @@ const KPI_LABELS: Array<[keyof OverviewRecord["kpis"], string]> = [
 export default function OfflineOverview() {
   const [view, setView] = useState<View>({ phase: "loading" });
   const [selected, setSelected] = useState<string | null>(null);
+  const [user, setUser] = useState<UserMenuUser | null>(null);
   const connection = useConnectivityState();
   const down = isConnectionDown(connection);
 
@@ -140,17 +146,12 @@ export default function OfflineOverview() {
     let active = true;
     void loadView().then((next) => {
       if (!active) return;
-      setView(next);
+      setView(next.view);
+      setUser(next.user);
     }, () => { if (active) setView({ phase: "no-data" }); });
     return () => { active = false; };
   }, []);
   useEffect(() => load(), [load]);
-
-  const leave = async () => {
-    await forgetCurrentUser();
-    try { await fetch("/api/auth/logout", { method: "POST", credentials: "same-origin", redirect: "manual" }); } catch { /* sin conexión: solo se cierra la sesión local */ }
-    window.location.assign("/iniciar-sesion");
-  };
 
   const shell = (content: React.ReactNode) => (
     <main className="mx-auto max-w-4xl space-y-4 p-4" data-offline-overview>
@@ -158,7 +159,7 @@ export default function OfflineOverview() {
         <h1 className="text-xl font-bold">Consulta sin conexión</h1>
         <div className="flex gap-2">
           <a className="inline-flex min-h-11 items-center rounded-md border px-3 text-sm font-medium" href="/dashboard" data-astro-reload>Tablero en línea</a>
-          {view.phase !== "login" && <Button type="button" variant="outline" size="sm" className="min-h-11" onClick={() => void leave()}>Cerrar sesión</Button>}
+          {view.phase !== "login" && user && <UserMenu user={user} />}
         </div>
       </header>
       {content}

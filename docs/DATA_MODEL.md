@@ -42,7 +42,7 @@ Application identity and authorization profile. Its UUID primary key references 
 
 ### `machines`
 
-Machine catalog with UUID primary key, code, name, description, and active state. Reports and operator assignments reference machines.
+Machine catalog with UUID primary key, code, name, description, an optional free-text `location` (where the machine is in the plant; `NULL` when unset, otherwise 1–120 characters after trimming, enforced by the `machines_location_length` CHECK), and active state. `location` is audited like the other columns. Reports and operator assignments reference machines.
 
 ### `operator_machine_assignments`
 
@@ -67,7 +67,7 @@ The central report table uses a UUID primary key. It references its creator, mac
 
 ### `report_stop_events`
 
-Downtime events use UUID primary keys and reference a report, an optional stop category, and responsible profile. The category is optional while the stop is open and required (and active) to close it. `started_at`/`ended_at` are the device times and are no longer overwritten by the server; `received_at` is set by the server, `captured_offline` is supplied by the client and `clock_skew_review` is true when an online capture differs from arrival time by more than five minutes. An active event has no end or duration. Physical `DELETE` is not granted to anyone. Normal closed events have an authoritative duration. Cancelled events retain `cancellation_reason`, `cancelled_at`, and `cancelled_by`; their end equals cancellation time and duration is `NULL`. A check constraint enforces this representation. Existing duration sums therefore exclude cancelled stops without changing production formulas.
+Downtime events use UUID primary keys and reference a report, an optional stop category, and responsible profile. The category is optional while the stop is open and required (and active) to close it. `started_at`/`ended_at` are the device times and are no longer overwritten by the server; `received_at` is set by the server, `captured_offline` is supplied by the client and `clock_skew_review` is true when an online capture differs from arrival time by more than five minutes; it is a diagnostic only the root administrator (ROOT) sees (the `CLOCK_SKEW_REVIEW` notification and the clock part of `has_pending_review`), and it never blocks approval. An active event has no end or duration. Physical `DELETE` is not granted to anyone. Normal closed events have an authoritative duration. Cancelled events retain `cancellation_reason`, `cancelled_at`, and `cancelled_by`; their end equals cancellation time and duration is `NULL`. A check constraint enforces this representation. Existing duration sums therefore exclude cancelled stops without changing production formulas.
 
 Operators can change category, close or cancel only active stops belonging to their own draft. They cannot change start time, elapsed duration, identity or parent report, and cannot update closed or cancelled stops. Managers never write stops directly: they correct stops of `SUBMITTED`/`CLOSED` reports only through `correct_report` (with a reason), and can cancel the open stops of an off-shift report through `cancel_report`. Stop mutation triggers lock the parent report to serialize against submission/cancellation, without updating the report's optimistic-concurrency version.
 

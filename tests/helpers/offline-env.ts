@@ -21,7 +21,7 @@ export function installBrowser(url = "http://localhost:4321/turno") {
     HTMLElement: browser.HTMLElement, HTMLInputElement: browser.HTMLInputElement,
     Event: browser.Event, CustomEvent: browser.CustomEvent, indexedDB: new IDBFactory(),
     IS_REACT_ACT_ENVIRONMENT: true,
-    Node: browser.Node, Element: browser.Element, KeyboardEvent: browser.KeyboardEvent,
+    Node: browser.Node, Element: browser.Element, KeyboardEvent: browser.KeyboardEvent, NodeFilter: browser.NodeFilter,
     MutationObserver: browser.MutationObserver, getComputedStyle: browser.getComputedStyle.bind(browser),
     ResizeObserver: class { observe() {} unobserve() {} disconnect() {} },
   };

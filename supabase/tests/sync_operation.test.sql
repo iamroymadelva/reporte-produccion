@@ -262,6 +262,26 @@ select is((select public.apply_sync_operation(tests.mkop('10000000-0000-0000-000
     '2026-10-09T12:05:00-05:00', true, (select v from sy_base)))) ->> 'status',
   'duplicate', 'SAVE_REPORT_FIELDS con versión vieja pero valores iguales: duplicate');
 
+-- Horas manuales: Hora inicio / Hora finalización son valores escritos a mano por el operario (no son la hora del
+-- dispositivo). Se aceptan aunque no coincidan con el reloj (días atrás o varias horas adelante); solo fin >= inicio.
+select is((select public.apply_sync_operation(tests.mkop('10000000-0000-0000-0000-000000000701',
+    'f1000000-0000-0000-0000-000000000034', 'SAVE_REPORT_FIELDS',
+    format('{"reportId":"8c000000-0000-0000-0000-000000000701","fields":{"started_at":"%s","ended_at":"%s"}}',
+      to_char(now() - interval '2 days', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
+      to_char(now() + interval '4 hours', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'))::jsonb,
+    to_char(now(), 'YYYY-MM-DD"T"HH24:MI:SS"Z"'), false))) ->> 'status',
+  'applied', 'Horas manuales (2 días atrás / 4 h adelante) se aceptan y no se comparan con el reloj');
+select ok((select ended_at > now() + interval '3 hours' and started_at < now() - interval '1 day'
+  from public.production_reports where id = '8c000000-0000-0000-0000-000000000701'), 'Horas manuales: se guardan tal como se escribieron');
+select throws_ok($$update public.production_reports set ended_at = started_at - interval '1 hour'
+  where id = '8c000000-0000-0000-0000-000000000701'$$, '23514', null, 'Hora fin anterior al inicio sigue rechazada');
+-- Se restauran las horas originales para no afectar el resto de la prueba.
+select is((select public.apply_sync_operation(tests.mkop('10000000-0000-0000-0000-000000000701',
+    'f1000000-0000-0000-0000-000000000035', 'SAVE_REPORT_FIELDS',
+    '{"reportId":"8c000000-0000-0000-0000-000000000701","fields":{"started_at":"2026-10-09T10:00:00-05:00","ended_at":"2026-10-09T13:00:00-05:00"}}',
+    '2026-10-09T12:05:00-05:00', true))) ->> 'status',
+  'applied', 'Horas manuales restauradas');
+
 select tests.auth_reset();
 select is((select count(*) from public.sync_quarantine where report_id = '8c000000-0000-0000-0000-000000000701'
   and reason = 'REPORT_CHANGED' and status = 'OPEN'), 2::bigint, 'REPORT_CHANGED: dos conflictos en cuarentena OPEN');
@@ -405,8 +425,13 @@ select tests.auth_reset();
 select is((select count(*) from public.notification_events e
   join public.notification_deliveries d on d.event_id = e.id
   where e.type = 'CLOCK_SKEW_REVIEW' and e.resource_id = '8c000000-0000-0000-0000-000000000704'
-    and d.recipient_id = '10000000-0000-0000-0000-000000000703'), 1::bigint,
-  'El coordinador recibe CLOCK_SKEW_REVIEW');
+    and d.recipient_id = '10000000-0000-0000-0000-000000000703'), 0::bigint,
+  'El coordinador NO recibe CLOCK_SKEW_REVIEW (solo ROOT)');
+select is((select count(*) from public.notification_events e
+  join public.notification_deliveries d on d.event_id = e.id
+  where e.type = 'CLOCK_SKEW_REVIEW' and e.resource_id = '8c000000-0000-0000-0000-000000000704'
+    and d.recipient_id = '10000000-0000-0000-0000-000000000004'), 1::bigint,
+  'ROOT recibe CLOCK_SKEW_REVIEW');
 
 -- MACHINE_BUSY: op2 ocupa SY-5 y op3 intenta crear sobre la misma máquina.
 select tests.auth_as('10000000-0000-0000-0000-000000000702');

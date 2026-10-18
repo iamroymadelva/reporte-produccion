@@ -82,11 +82,11 @@ describe("middleware: rol x ruta protegida", () => {
 
   test("sin sesión: API -> 401 JSON y páginas -> redirección a /iniciar-sesion", async () => {
     currentRole = null;
-    for (const path of ["/api/admin/audit", "/api/admin/users/abc", "/api/reports/export"]) {
+    for (const path of ["/api/admin/audit", "/api/admin/users/abc", "/api/reports/export", "/api/account/preferences"]) {
       const result = await run(path);
       expect(result.outcome).toBe("401");
     }
-    for (const path of ["/administracion", "/administracion/historial", "/turno", "/consulta-offline", "/ayuda"]) {
+    for (const path of ["/administracion", "/administracion/historial", "/turno", "/consulta-offline", "/ayuda", "/cuenta"]) {
       const result = await run(path);
       expect(result.outcome).toBe("redirect");
       expect(result.location).toBe("/iniciar-sesion");

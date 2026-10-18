@@ -95,11 +95,10 @@ export default function AppShell({ profile, pathname: initialPathname, defaultOp
     <RouteSync onPathname={setPathname} />
     <Sidebar collapsible="icon" className="print:hidden">
       <SidebarHeader>
-        <a href="/dashboard" aria-label="Reporte de Producción, ir al dashboard" className="flex items-center gap-2 rounded-md px-2 py-1 outline-hidden ring-sidebar-ring focus-visible:ring-2">
+        <a href="/dashboard" aria-label="REGPRO, ir al dashboard" className="flex items-center gap-2 rounded-md px-2 py-1 outline-hidden ring-sidebar-ring focus-visible:ring-2">
           <Factory className="size-7 shrink-0 text-sidebar-primary" aria-hidden="true" />
           <span className="min-w-0 group-data-[collapsible=icon]:hidden">
-            <span className="block text-[0.65rem] font-semibold uppercase leading-none tracking-wide text-muted-foreground">Planta</span>
-            <span data-testid="brand-name" className="line-clamp-2 text-base font-bold leading-tight text-sidebar-primary">Reporte de Producción</span>
+            <span data-testid="brand-name" className="line-clamp-2 text-base font-bold leading-tight text-sidebar-primary">REGPRO</span>
           </span>
         </a>
       </SidebarHeader>

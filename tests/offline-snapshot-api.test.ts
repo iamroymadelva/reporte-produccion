@@ -79,4 +79,41 @@ describe("GET /api/offline/snapshot", () => {
     expect(body.activeReport.report_stop_events).toHaveLength(1);
     expect(body.activeReport.report_change_events).toHaveLength(1);
   });
+
+  test("«Reloj desfasado» (clock_skew_review) nunca llega al Operario", async () => {
+    tables.production_reports = [{
+      id: "r1", status: "DRAFT",
+      report_stop_events: [{ id: "st1", clock_skew_review: true, started_at: "2026-10-09T10:00:00Z" }],
+      report_change_events: [{ id: "ch1", clock_skew_review: true, description: "Lote" }],
+    }];
+    const body = await (await call("OPERATOR")).json();
+    expect(body.activeReport.report_stop_events[0]).toEqual({ id: "st1", started_at: "2026-10-09T10:00:00Z" });
+    expect(body.activeReport.report_change_events[0]).toEqual({ id: "ch1", description: "Lote" });
+    expect(JSON.stringify(body)).not.toContain("clock_skew_review");
+  });
+});
+
+describe("GET /api/offline/snapshot · ubicación de la máquina", () => {
+  test("entrega la ubicación de la máquina asignada en assignments[].machine", async () => {
+    tables.operator_machine_assignments = [{
+      id: "a1", machine_id: "m1", shift_id: "s1", valid_from: "2000-01-01", valid_to: null,
+      machine: { id: "m1", code: "M-01", name: "Empacadora 1", active: true, location: "Planta 2, línea norte" },
+    }];
+    const body = await (await call("OPERATOR")).json();
+    expect(body.assignments[0].machine.location).toBe("Planta 2, línea norte");
+  });
+
+  test("una máquina sin ubicación llega con location nula sin romper", async () => {
+    tables.operator_machine_assignments = [{
+      id: "a1", machine_id: "m1", shift_id: "s1", valid_from: "2000-01-01", valid_to: null,
+      machine: { id: "m1", code: "M-01", name: "Empacadora 1", active: true, location: null },
+    }];
+    const body = await (await call("OPERATOR")).json();
+    expect(body.assignments[0].machine.location ?? null).toBeNull();
+  });
+
+  test("la ruta selecciona la columna location de machines", async () => {
+    const source = await Bun.file(new URL("../src/pages/api/offline/snapshot.ts", import.meta.url)).text();
+    expect(source).toContain("machine:machines(id, code, name, active, location)");
+  });
 });

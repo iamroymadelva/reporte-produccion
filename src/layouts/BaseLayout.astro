@@ -19,6 +19,8 @@ const pathname = Astro.url.pathname;
 const defaultOpen = Astro.cookies.get("sidebar_state")?.value !== "false";
 const flashOk = Astro.url.searchParams.get("ok");
 const flashError = Astro.url.searchParams.get("error");
+// Preferencia de formato de hora (solo presentación): user_metadata.time_format; sin valor válido, 24 h.
+const timeFormat = Astro.locals.auth?.user.user_metadata?.time_format === "12h" ? "12h" : "24h";
 ---
 
 <!doctype html>
@@ -68,7 +70,7 @@ const flashError = Astro.url.searchParams.get("error");
     <title>{title}</title>
     <ClientRouter />
   </head>
-  <body data-shell={profile ? "" : undefined} data-user-id={profile?.id} data-user-role={profile?.role}>
+  <body data-shell={profile ? "" : undefined} data-user-id={profile?.id} data-user-role={profile?.role} data-time-format={profile ? timeFormat : undefined}>
     {profile && <>
       <a class="skip-link" href="#main-content">Saltar al contenido</a>
       <AppShell profile={profile} pathname={pathname} defaultOpen={defaultOpen} client:load transition:persist="app-shell" />
@@ -112,6 +114,7 @@ const flashError = Astro.url.searchParams.get("error");
   } from "../lib/connectivity";
   import { runOfflineBootstrap } from "../lib/offline/bootstrap";
   import { installPasswordVisibility } from "../lib/password-visibility";
+  import { syncTimeFormatFromBody } from "../lib/time-format";
 
   // Ojo de mostrar/ocultar contraseña (PasswordField). Se instala primero para que el reseteo al enviar
   // (captura en window) corra antes que el manejador de envío de más abajo.
@@ -127,6 +130,10 @@ const flashError = Astro.url.searchParams.get("error");
       role: document.body.dataset.userRole || null,
     });
   };
+  // Copia la preferencia de formato de hora de ESTE usuario a IndexedDB para que el selector la lea sin red.
+  const syncTimeFormat = () => { void syncTimeFormatFromBody(document.body); };
+  document.addEventListener("astro:page-load", syncTimeFormat);
+  syncTimeFormat();
   document.addEventListener("astro:page-load", bootOfflineAccess);
   bootOfflineAccess();
 

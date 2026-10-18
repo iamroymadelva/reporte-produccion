@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
-import { ChevronDown, CircleHelp } from "lucide-react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
+import { ArrowLeft, ChevronDown, CircleHelp } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { Input } from "@/components/ui/input";
 import { FieldLabel, Label } from "@/components/ui/label";
 import { NativeSelect } from "@/components/ui/native-select";
@@ -26,7 +27,7 @@ import { runExclusive, sendDirectIfAllowed } from "@/lib/offline/sync-client";
 import type { OfflineSnapshot } from "@/lib/offline/types";
 import OfflineIndicator from "./OfflineIndicator";
 import { cn } from "@/lib/utils";
-import { useLogoutGuard } from "./LogoutGuard";
+import UserMenu from "../UserMenu";
 
 /**
  * Ayuda rápida del operario. El texto está incrustado aquí a propósito: viaja con la página /turno, funciona sin
@@ -89,6 +90,10 @@ function formFrom(values: Record<string, unknown> | null | undefined): Form {
 }
 
 const optionLabel = (item: { code: string; name: string }) => `${item.code} · ${item.name}`;
+const machineOptionLabel = (item: { code: string; name: string; location?: string | null }) => {
+  const location = item.location?.trim();
+  return location ? `${optionLabel(item)} — ${location}` : optionLabel(item);
+};
 
 export default function OperatorShiftApp({ autosaveDelayMs = 600, presence = true }: Props) {
   const [session, setSession] = useState<CurrentUser | null>(null);
@@ -134,8 +139,7 @@ function Shift({ userId, snapshot, offline, autosaveDelayMs, presence }: { userI
   const touched = useRef(new Set<ReportEditableField>());
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const loadedReport = useRef<string | null>(null);
-  const logoutForm = useRef<HTMLFormElement>(null);
-  const logout = useLogoutGuard(userId, useCallback(() => logoutForm.current?.requestSubmit(), []));
+  const backHintId = useId();
 
   const refresh = useCallback(async () => {
     const next = await actions.loadShiftState(userId);
@@ -189,9 +193,14 @@ function Shift({ userId, snapshot, offline, autosaveDelayMs, presence }: { userI
     });
   }, [userId, snapshot]);
 
-  const flushFields = useCallback(async () => {
+  /**
+   * Guarda en este dispositivo lo que el operario está escribiendo (misma vía que el autosave: acción local en la outbox).
+   * Con `localOnly` NO intenta el envío directo al servidor (FR-015: nada se sube sin «Confirmar y subir»).
+   * Devuelve false si el guardado falló.
+   */
+  const flushFields = useCallback(async (localOnly = false): Promise<boolean> => {
     if (timer.current) { clearTimeout(timer.current); timer.current = null; }
-    if (!active || touched.current.size === 0) return;
+    if (!active || touched.current.size === 0) return true;
     const picked: Record<string, string> = {};
     for (const field of touched.current) {
       const value = form[field];
@@ -200,8 +209,14 @@ function Shift({ userId, snapshot, offline, autosaveDelayMs, presence }: { userI
     }
     touched.current.clear();
     const payload = reportFormToPayload(picked);
-    if (Object.keys(payload).length) await run((ctx) => actions.saveReportFields(ctx, active.id, payload));
-  }, [active, form, run]);
+    if (!Object.keys(payload).length) return true;
+    if (!localOnly) { await run((ctx) => actions.saveReportFields(ctx, active.id, payload)); return true; }
+    return runExclusive(userId, async () => {
+      const result = await actions.saveReportFields({ userId, snapshot, offline: isConnectionDown(getConnectivitySnapshot().state) }, active.id, payload);
+      if (!result.ok) setNotice(result.message);
+      return result.ok;
+    });
+  }, [active, form, run, userId, snapshot]);
   const flushRef = useRef(flushFields);
   flushRef.current = flushFields;
 
@@ -234,6 +249,12 @@ function Shift({ userId, snapshot, offline, autosaveDelayMs, presence }: { userI
   const input = (field: ReportEditableField, label: string, type = "text", extra: Record<string, string | number> = {}) => (
     <Label className="min-w-0"><FieldLabel>{label}</FieldLabel>
       <Input {...fieldProps(field)} type={type} value={form[field]} onChange={(event) => edit({ [field]: event.target.value })} {...extra} />
+      {errorFor(field)}
+    </Label>
+  );
+  const dateTime = (field: "started_at" | "ended_at", label: string) => (
+    <Label className="min-w-0"><FieldLabel>{label}</FieldLabel>
+      <DateTimePicker label={label} userId={userId} {...fieldProps(field)} value={form[field]} onChange={(next) => edit({ [field]: next })} />
       {errorFor(field)}
     </Label>
   );
@@ -278,6 +299,15 @@ function Shift({ userId, snapshot, offline, autosaveDelayMs, presence }: { userI
     setModal("submit");
   };
 
+  /** «Volver al dashboard»: guarda lo escrito (solo local) y navega; no cancela ni toca el reporte activo. */
+  const backToDashboard = async (event: ReactMouseEvent<HTMLAnchorElement>) => {
+    event.preventDefault();
+    const saved = await flushFields(true);
+    if (!saved) return; // el aviso ya se mostró; el operario no pierde lo que escribía
+    if (isConnectionDown(getConnectivitySnapshot().state)) { setNotice("Volver al dashboard requiere conexión. Tu reporte sigue activo en este dispositivo."); return; }
+    window.location.assign("/dashboard");
+  };
+
   const startReport = async () => { if (machineId) { const result = await run((ctx) => actions.startReport(ctx, machineId)); if (result.ok) setMachineId(""); } };
   const startStop = async () => {
     if (!active) return;
@@ -320,12 +350,22 @@ function Shift({ userId, snapshot, offline, autosaveDelayMs, presence }: { userI
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <OfflineIndicator userId={userId} />
-          <a className="inline-flex min-h-11 items-center rounded-md border px-3 text-sm font-medium" href="/notificaciones" data-astro-reload>Notificaciones</a>
-          <Button type="button" variant="outline" className="min-h-11" onClick={logout.request}>Cerrar sesión</Button>
-          <form ref={logoutForm} method="POST" action="/api/auth/logout" data-astro-reload hidden />
+          <UserMenu user={{ id: userId, fullName: snapshot.profile.full_name, role: "OPERATOR" }} />
         </div>
       </header>
-      {logout.dialog}
+      <div className="-mt-3">
+        {offline ? (
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <Button type="button" variant="outline" className="min-h-11" disabled aria-disabled="true" aria-describedby={backHintId} data-testid="back-to-dashboard"><ArrowLeft className="size-4" aria-hidden="true" />Volver al dashboard</Button>
+            <span id={backHintId} className="text-sm text-muted-foreground">Requiere conexión</span>
+          </div>
+        ) : (
+          <a
+            className="inline-flex min-h-11 items-center gap-1.5 rounded-md border px-3 text-sm font-medium outline-none focus-visible:ring-[3px] focus-visible:ring-ring/60"
+            href="/dashboard" data-astro-reload data-testid="back-to-dashboard" onClick={(event) => void backToDashboard(event)}
+          ><ArrowLeft className="size-4" aria-hidden="true" />Volver al dashboard</a>
+        )}
+      </div>
       <QuickHelpPanel />
 
       {offline && <Alert variant="info" role="status"><AlertDescription>Sin conexión: todo lo que registres se guarda en este dispositivo y solo se sube cuando confirmes.</AlertDescription></Alert>}
@@ -350,7 +390,7 @@ function Shift({ userId, snapshot, offline, autosaveDelayMs, presence }: { userI
               <Label><FieldLabel>Máquina asignada</FieldLabel>
                 <NativeSelect data-testid="machine-select" value={machineId} onChange={(event) => setMachineId(event.target.value)}>
                   <option value="">Selecciona una máquina</option>
-                  {machines.map(([id, machine]) => <option key={id} value={id}>{machine ? optionLabel(machine) : id}</option>)}
+                  {machines.map(([id, machine]) => <option key={id} value={id}>{machine ? machineOptionLabel(machine) : id}</option>)}
                 </NativeSelect>
               </Label>
               <Button type="button" size="lg" className="min-h-12 w-full" disabled={!machineId} onClick={() => void startReport()}>Iniciar reporte</Button>
@@ -441,8 +481,8 @@ function Shift({ userId, snapshot, offline, autosaveDelayMs, presence }: { userI
               {input("weight", "Peso (gr)", "number", { min: 0, step: "any", inputMode: "decimal" })}
               {input("g_min", "G/min", "number", { min: 0, step: "any", inputMode: "decimal" })}
               {select("dosifier_type_id", "Tipo de dosificador", catalogs.dosifierTypes)}
-              {input("started_at", "Hora inicio", "datetime-local")}
-              {input("ended_at", "Hora finalización", "datetime-local")}
+              {dateTime("started_at", "Hora inicio")}
+              {dateTime("ended_at", "Hora finalización")}
               {input("programmed_hours", "Horas programadas", "number", { min: 0, step: "any", inputMode: "decimal" })}
               {input("units_produced", "Unidades producidas", "number", { min: 0, step: 1, inputMode: "numeric" })}
               {input("waste", "Desperdicio", "number", { min: 0, step: "any", inputMode: "decimal" })}

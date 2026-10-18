@@ -1,7 +1,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions;
-select plan(29);
+select plan(30);
 
 -- All fixtures and reads in this test roll back together.
 insert into public.production_reports(id, machine_id, started_at, created_by, updated_by)
@@ -119,7 +119,9 @@ select ok(private.notification_is_visible((select id from public.notification_ev
 select ok(private.notification_is_visible((select id from public.notification_events where event_key = 'test:type:OFFLINE_DATA_REVIEW'),
   '10000000-0000-0000-0000-000000000004'), 'ROOT ve OFFLINE_DATA_REVIEW');
 select ok(private.notification_is_visible((select id from public.notification_events where event_key = 'test:type:CLOCK_SKEW_REVIEW'),
-  '10000000-0000-0000-0000-000000000001'), 'El coordinador ve CLOCK_SKEW_REVIEW');
+  '10000000-0000-0000-0000-000000000004'), 'ROOT ve CLOCK_SKEW_REVIEW');
+select ok(not private.notification_is_visible((select id from public.notification_events where event_key = 'test:type:CLOCK_SKEW_REVIEW'),
+  '10000000-0000-0000-0000-000000000001'), 'El coordinador no ve CLOCK_SKEW_REVIEW (solo ROOT)');
 select ok(not private.notification_is_visible((select id from public.notification_events where event_key = 'test:type:SYNC_CONFLICT'),
   '10000000-0000-0000-0000-000000000002'), 'El operario no ve SYNC_CONFLICT');
 select ok(not private.notification_is_visible((select id from public.notification_events where event_key = 'test:type:CLOCK_SKEW_REVIEW'),

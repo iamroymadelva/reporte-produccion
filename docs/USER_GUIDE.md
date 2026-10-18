@@ -25,6 +25,8 @@ La aplicación permite registrar, consultar y consolidar la producción por turn
 
 El sistema abrirá la pantalla de su rol (el operario entra a **Turno**). Si escribe mal los datos verá siempre el mismo mensaje, "Usuario o contraseña incorrectos". Tras **5 intentos fallidos seguidos** el usuario se bloquea **15 minutos**, incluso con la contraseña correcta. Un usuario desactivado o retirado no puede ingresar.
 
+**Mi cuenta → Formato de hora.** En el menú de su nombre, **Mi cuenta** permite elegir cómo ve las horas del selector de fecha y hora: **24 horas** (por defecto) o **12 horas con a. m./p. m.** Es una preferencia personal (solo presentación): lo que se guarda y sincroniza no cambia, y también funciona sin conexión en ese dispositivo. Desde la misma página puede **Cambiar contraseña**.
+
 **No existe recuperación de contraseña por correo ni invitaciones.** Si olvidó su contraseña o está bloqueado por error, pida a su coordinador (operarios) o al administrador raíz (coordinadores y auditores) que la restablezca; le darán una contraseña nueva.
 
 ## 4. Panel principal (coordinador, raíz y auditor)
@@ -59,13 +61,15 @@ stateDiagram-v2
 
 Su reporte se trabaja en **Turno** (`/turno`), que funciona también **sin conexión** una vez que la abrió con conexión al menos una vez (se descargan sus máquinas asignadas y los catálogos).
 
-1. Elija su **máquina asignada** del turno actual y pulse **Iniciar reporte**. El turno y la fecha operativa los asigna el sistema según la hora de inicio; usted no los escribe. Si no tiene máquina verá «Solicita una asignación a tu coordinador».
+1. Elija su **máquina asignada** del turno actual (si la máquina tiene ubicación, se muestra junto al nombre, p. ej. «M-01 · Empacadora 1 — Planta 2, línea norte») y pulse **Iniciar reporte**. El turno y la fecha operativa los asigna el sistema según la hora de inicio; usted no los escribe. Si no tiene máquina verá «Solicita una asignación a tu coordinador».
 2. Solo puede tener **un reporte activo a la vez**. Al enviarlo o cancelarlo puede iniciar otro.
 3. **Iniciar parada** es de un toque; la categoría es opcional al iniciar, pero **Cerrar parada** exige elegirla. Una parada iniciada por error se puede **Cancelar parada** con un motivo. No puede haber paradas solapadas ni más de una abierta.
 4. **Cambios:** elija el tipo (producto, formato, lote u otro), escriba una descripción y pulse **Registrar cambio**.
-5. **Datos de producción:** todos los campos son obligatorios salvo Observaciones; se guardan solos.
+5. **Datos de producción:** todos los campos son obligatorios salvo Observaciones; se guardan solos. **Hora inicio** y **Hora finalización** las escribe usted (las lee de su reloj o del de pared): se eligen con el selector de fecha y hora (calendario en español, semana desde el lunes, hora en 24 horas o en 12 horas con a. m./p. m. según **Mi cuenta → Formato de hora**, botones **Hoy** y **Borrar**, también sin conexión) y no se comparan con el reloj del dispositivo; solo se exige que la finalización no sea anterior al inicio.
 6. La hora de cada parada y cada cambio es la del reloj de su dispositivo en ese momento y no se puede editar. **Revise que la hora de su dispositivo sea correcta.**
 7. **Enviar reporte** exige que no haya paradas abiertas ni paradas sin categoría y que los campos obligatorios estén completos (se resaltan los que faltan). **Cancelar reporte** pide un motivo.
+
+**Volver al dashboard:** el enlace «Volver al dashboard» de la cabecera de Turno lo lleva al dashboard sin cancelar ni perder su reporte (lo que estaba escribiendo se guarda en el dispositivo, sin subirlo). Necesita conexión: sin ella aparece deshabilitado con «Requiere conexión». Desde el dashboard, **Continuar turno** lo devuelve a Turno.
 
 Arriba verá siempre el estado de conexión y los pendientes, por ejemplo «Sin conexión — guardado en este dispositivo · 3 pendientes».
 
@@ -76,7 +80,7 @@ Arriba verá siempre el estado de conexión y los pendientes, por ejemplo «Sin 
 - Si la conexión se corta a mitad de la subida, lo ya aceptado queda subido y el resto sigue pendiente; nada se duplica.
 - Si algún dato es rechazado o queda en conflicto (por ejemplo, el reporte fue cancelado por el coordinador porque quedó abierto fuera de turno), seguirá visible con el motivo y el coordinador lo revisará; solo se descarta si usted lo confirma.
 - Si su sesión venció, sus datos se conservan: inicie sesión de nuevo y súbalos.
-- **Cerrar sesión con datos sin subir** pide confirmación; los datos quedan en el dispositivo asociados a su usuario y otro usuario del mismo dispositivo no puede verlos ni subirlos.
+- **Cerrar sesión** está solo en el **menú de su perfil** (el círculo con sus iniciales, arriba a la derecha, junto a «Mi cuenta» y «Notificaciones»); sin conexión también cierra la sesión de este dispositivo. **Con datos sin subir** pide confirmación; los datos quedan en el dispositivo asociados a su usuario y otro usuario del mismo dispositivo no puede verlos ni subirlos.
 - Si tiene pendientes de más de 7 días verá un aviso: súbalos cuanto antes.
 - Instale la aplicación en la pantalla de inicio. En iPhone/iPad el sistema puede borrar los datos de un sitio sin uso durante varios días: **no deje datos sin subir**.
 
@@ -95,7 +99,7 @@ Al abrir un reporte, coordinador, raíz y auditor ven el detalle completo y su *
 
 ### Filtros
 
-Puede combinar: **Desde** y **Hasta** (fecha operativa del reporte), **Máquina**, **Turno**, **Operario** (coordinador, raíz y auditor), **Estado** (Activo, Enviado, Cerrado, Cancelado), **Con parada activa** y **Abiertos fuera de turno**. Los atajos **Día**, **Semana** y **Mes** rellenan el rango. La zona horaria operativa es `America/Bogota`. Si ningún reporte cumple el filtro verá «No hay reportes…».
+Puede combinar: **Desde** y **Hasta** (fecha operativa del reporte; se eligen en un calendario, con «Hoy» y «Borrar», y «Hasta» no admite días anteriores a «Desde»), **Máquina**, **Turno**, **Operario** (coordinador, raíz y auditor), **Estado** (Activo, Enviado, Cerrado, Cancelado), **Con parada activa** y **Abiertos fuera de turno**. Los atajos **Día**, **Semana** y **Mes** rellenan el rango. La zona horaria operativa es `America/Bogota`. Si ningún reporte cumple el filtro verá «No hay reportes…».
 
 ## 8. Aprobar y corregir (coordinador y raíz)
 
@@ -113,7 +117,7 @@ El auditor ve todos los reportes (activos, enviados, cerrados y cancelados) y su
 
 ## 10. Consulta sin conexión (coordinador, raíz y auditor)
 
-Sin conexión verá **Consulta sin conexión**: el último resumen descargado, de solo lectura y marcado con su hora («Datos de HH:MM»). Exportar, corregir, aprobar, cancelar y administrar requieren conexión y aparecen deshabilitados.
+Cerrar sesión en esta pantalla también se hace desde el **menú de su perfil**. Sin conexión verá **Consulta sin conexión**: el último resumen descargado, de solo lectura y marcado con su hora («Datos de HH:MM»). Exportar, corregir, aprobar, cancelar y administrar requieren conexión y aparecen deshabilitados.
 
 ## 11. Exportación Excel
 

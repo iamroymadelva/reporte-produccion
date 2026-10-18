@@ -51,6 +51,8 @@ export const firstSteps: Record<AppRole, HelpFirstSteps> = {
       "Si cambia algo en la producción (producto, formato o lote), anótalo en «Cambios».",
       "Llena los «Datos de producción».",
       "Al terminar el turno, pulsa «Enviar reporte».",
+      "Para ir al dashboard pulsa «Volver al dashboard» (necesita internet): tu reporte sigue activo y lo que escribías se guarda. Desde el dashboard vuelves con «Continuar turno».",
+      "Para cerrar sesión, abre el menú de tu perfil (el círculo con tus iniciales, arriba a la derecha) y elige «Cerrar sesión». Si tienes datos sin subir, te pedirá confirmación.",
     ],
   },
   ADMINISTRATOR: {
@@ -105,6 +107,18 @@ export const helpTasks: HelpTask[] = [
     tip: "Si te equivocas 5 veces seguidas, la cuenta se bloquea 15 minutos. No hay recuperación por correo: pide una contraseña nueva a tu coordinador (operarios) o al administrador raíz (coordinadores y auditores).",
     image: { src: "/ayuda/login.png", alt: "Pantalla para iniciar sesión con usuario y contraseña" },
   },
+  {
+    id: "mi-cuenta",
+    title: "Elegir el formato de hora (24 h o a. m./p. m.)",
+    summary: "Cada persona elige cómo ve las horas en el selector de fecha y hora. Solo cambia cómo se ve, no lo que se guarda.",
+    roles: ALL,
+    steps: [
+      "Abre el menú de tu nombre y pulsa «Mi cuenta».",
+      "En «Formato de hora» elige «24 horas» o «12 horas (a. m. / p. m.)».",
+      "Verás «Preferencia guardada». Desde ahora el selector usa ese formato.",
+    ],
+    tip: "Con 12 horas aparece un botón «a. m.» / «p. m.» junto a la hora. La preferencia es solo tuya y también funciona sin conexión en este dispositivo. Para cambiar la contraseña usa «Cambiar contraseña» en la misma página.",
+  },
 
   // --- Operario ---
   {
@@ -114,7 +128,7 @@ export const helpTasks: HelpTask[] = [
     roles: ["OPERATOR"],
     steps: [
       "Entra a Turno.",
-      "En «Máquina asignada», elige tu máquina.",
+      "En «Máquina asignada», elige tu máquina (si tiene ubicación, la verás junto al nombre).",
       "Pulsa «Iniciar reporte».",
     ],
     tip: "El turno y la fecha los pone el sistema. No los escribes. Solo puedes tener un reporte abierto a la vez: para empezar otro, primero envía o cancela el que tienes. Si ves «Solicita una asignación a tu coordinador», todavía no tienes máquina en este turno.",
@@ -281,6 +295,7 @@ export const helpTasks: HelpTask[] = [
     steps: [
       "Entra a Administración.",
       "Elige la sección: Usuarios, Máquinas, Productos, Categorías de parada, Tipos de cambio y las demás.",
+      "En Máquinas puedes indicar la ubicación de cada una (por ejemplo, «Planta 2, línea norte»).",
       "Pulsa para crear uno nuevo o edita uno existente.",
       "Para un operario, asígnale sus máquinas por turno. Sin asignación no puede iniciar reporte.",
       "Para una contraseña olvidada, usa «Restablecer contraseña» y dale la nueva al usuario.",

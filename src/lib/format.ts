@@ -4,8 +4,17 @@ export function formatDate(value: string | null | undefined) {
   return new Intl.DateTimeFormat("es-CO", { dateStyle: "medium", timeZone: "America/Bogota" }).format(new Date(calendarDate));
 }
 
-export function formatDateTime(value: string | null | undefined) {
+/** Fecha y hora en America/Bogota. Sin `timeFormat` conserva el formato por defecto de es-CO; con él respeta la preferencia (24h/12h). */
+export function formatDateTime(value: string | null | undefined, timeFormat?: "24h" | "12h") {
   if (!value) return "—";
+  if (timeFormat) {
+    return new Intl.DateTimeFormat("es-CO", {
+      dateStyle: "short",
+      timeStyle: "short",
+      hourCycle: timeFormat === "12h" ? "h12" : "h23",
+      timeZone: "America/Bogota",
+    }).format(new Date(value));
+  }
   return new Intl.DateTimeFormat("es-CO", {
     dateStyle: "short",
     timeStyle: "short",
