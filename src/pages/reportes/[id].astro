@@ -30,7 +30,7 @@ const supabase = createSupabaseServerClient(Astro.request, Astro.cookies);
 
 const [overviewResult, reportResult, metricsResult, stopsResult, linesResult, clientsResult, productsResult, dosifiersResult, shiftsResult, categoriesResult] = await Promise.all([
   supabase.from("production_report_overview").select("is_off_shift, has_open_conflict, has_pending_review").eq("id", id).maybeSingle(),
-  supabase.from("production_reports").select("*, machine:machines(id, code, name), line:lines(id, code, name), client:clients(id, code, name), product:products(id, code, name), dosifier_type:dosifier_types(id, code, name), shift_catalog:shifts(id, name, start_time, end_time), operator:profiles!production_reports_created_by_fkey(id, full_name, job_title, role), cancelled_by_profile:profiles!production_reports_cancelled_by_fkey(id, full_name)").eq("id", id).single(),
+  supabase.from("production_reports").select("*, machine:machines(id, code, name, location), line:lines(id, code, name), client:clients(id, code, name), product:products(id, code, name), dosifier_type:dosifier_types(id, code, name), shift_catalog:shifts(id, name, start_time, end_time), operator:profiles!production_reports_created_by_fkey(id, full_name, job_title, role), cancelled_by_profile:profiles!production_reports_cancelled_by_fkey(id, full_name)").eq("id", id).single(),
   isOperator ? Promise.resolve({ data: null }) : supabase.from("production_report_metrics").select("*").eq("id", id).single(),
   supabase.from("report_stop_events").select(STOP_EVENT_SELECTION).eq("report_id", id).order("started_at"),
   supabase.from("lines").select("id, code, name, active").order("name").order("code"),
@@ -144,6 +144,7 @@ const auditEntries = describeAuditRows(audit, { catalogs: auditCatalogs, stops }
       back={{ href: "/reportes", label: "Volver a reportes" }}
     >
       <p class="text-lg font-semibold text-foreground">{report.machine?.code} · {report.machine?.name}</p>
+      {report.machine?.location && <p class="text-sm text-muted-foreground" data-testid="machine-location">Ubicación: {report.machine.location}</p>}
       <p class="mt-1 text-muted-foreground">Operario: {report.creator_full_name}</p>
       <Fragment slot="actions"><StatusBadge status={report.status} /></Fragment>
     </PageHeader>
@@ -210,7 +211,7 @@ const auditEntries = describeAuditRows(audit, { catalogs: auditCatalogs, stops }
         <h2 class="text-base font-semibold leading-none">Datos del reporte</h2>
         <dl class="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {isOperator && <>
-            <div><dt class="text-sm text-muted-foreground">Máquina</dt><dd class="font-semibold">{report.machine?.code} · {report.machine?.name}</dd></div>
+            <div><dt class="text-sm text-muted-foreground">Máquina</dt><dd class="font-semibold">{report.machine?.code} · {report.machine?.name}{report.machine?.location ? <span class="block text-sm font-normal text-muted-foreground">{report.machine.location}</span> : null}</dd></div>
             <div><dt class="text-sm text-muted-foreground">Operario responsable</dt><dd class="font-semibold">{report.creator_full_name}</dd></div>
           </>}
           <div><dt class="text-sm text-muted-foreground">Fecha</dt><dd class="font-semibold">{report.report_date || "—"}</dd></div>

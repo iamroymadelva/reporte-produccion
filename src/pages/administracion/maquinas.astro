@@ -15,7 +15,7 @@ import { createSupabaseServerClient } from "../../lib/supabase/server";
 import { readAllPages } from "../../lib/supabase/read-all-pages";
 const auth = Astro.locals.auth!;
 const supabase = createSupabaseServerClient(Astro.request, Astro.cookies);
-const { data, error: readError } = await readAllPages((start, end) => supabase.from("machines").select("id, code, name, description, active").order("code").order("name").order("id").range(start, end));
+const { data, error: readError } = await readAllPages((start, end) => supabase.from("machines").select("id, code, name, description, location, active").order("code").order("name").order("id").range(start, end));
 const machines = (data ?? []) as any[];
 const error = readError ? "No fue posible cargar todas las máquinas." : null;
 ---
@@ -28,23 +28,25 @@ const error = readError ? "No fue posible cargar todas las máquinas." : null;
           <Label><FieldLabel>Código</FieldLabel><Input name="code" required /></Label>
           <Label><FieldLabel>Nombre</FieldLabel><Input name="name" required /></Label>
           <Label><FieldLabel>Descripción</FieldLabel><Input name="description" /></Label>
+          <Label><FieldLabel>Ubicación</FieldLabel><Input name="location" maxLength={120} placeholder="Ej.: Planta 2, línea norte" /></Label>
         </div>
       </AdminRecordModal>
     </PageHeader>
     {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
     <Label className="block max-w-lg"><FieldLabel>Buscar</FieldLabel><Input type="search" enterKeyHint="search" placeholder="Buscar máquinas" data-search-input /></Label>
     <Card className="rounded-2xl gap-0 overflow-hidden py-0">
-      <Table className="responsive-admin-table min-w-[760px]">
-        <TableHeader><TableRow><TableHead>Código</TableHead><TableHead>Nombre</TableHead><TableHead>Descripción</TableHead><TableHead>Estado</TableHead><TableHead className="text-right">Acción</TableHead></TableRow></TableHeader>
+      <Table className="responsive-admin-table min-w-[860px]">
+        <TableHeader><TableRow><TableHead>Código</TableHead><TableHead>Nombre</TableHead><TableHead>Descripción</TableHead><TableHead>Ubicación</TableHead><TableHead>Estado</TableHead><TableHead className="text-right">Acción</TableHead></TableRow></TableHeader>
         <TableBody>
           {machines.map((machine) => (
-            <TableRow data-search-row data-search-text={`${machine.code} ${machine.name} ${machine.description ?? ""}`}>
+            <TableRow data-search-row data-search-text={`${machine.code} ${machine.name} ${machine.description ?? ""} ${machine.location ?? ""}`}>
               <TableCell className="font-semibold" data-label="Código">{machine.code}</TableCell>
               <TableCell data-label="Nombre">{machine.name}</TableCell>
               <TableCell className="text-muted-foreground" data-label="Descripción">{machine.description || "—"}</TableCell>
+              <TableCell className="text-muted-foreground" data-label="Ubicación">{machine.location || "—"}</TableCell>
               <TableCell data-label="Estado">
                 <AdminStatusToggle id={machine.id} action="/api/admin/machines" active={machine.active}>
-                  <input type="hidden" name="code" value={machine.code} /><input type="hidden" name="name" value={machine.name} /><input type="hidden" name="description" value={machine.description ?? ""} />
+                  <input type="hidden" name="code" value={machine.code} /><input type="hidden" name="name" value={machine.name} /><input type="hidden" name="description" value={machine.description ?? ""} /> <input type="hidden" name="location" value={machine.location ?? ""} />
                 </AdminStatusToggle>
               </TableCell>
               <TableCell className="text-right" data-label="Acciones">
@@ -54,6 +56,7 @@ const error = readError ? "No fue posible cargar todas las máquinas." : null;
                       <Label><FieldLabel>Código</FieldLabel><Input name="code" value={machine.code} required /></Label>
                       <Label><FieldLabel>Nombre</FieldLabel><Input name="name" value={machine.name} required /></Label>
                       <Label><FieldLabel>Descripción</FieldLabel><Input name="description" value={machine.description ?? ""} /></Label>
+                      <Label><FieldLabel>Ubicación</FieldLabel><Input name="location" value={machine.location ?? ""} maxLength={120} placeholder="Ej.: Planta 2, línea norte" /></Label>
                       <Label className="flex min-h-12 items-center gap-2"><input class="size-5 accent-primary" type="checkbox" name="active" checked={machine.active} /><span class="font-semibold">Activa</span></Label>
                     </div>
                   </AdminRecordModal>
@@ -63,7 +66,7 @@ const error = readError ? "No fue posible cargar todas las máquinas." : null;
               </TableCell>
             </TableRow>
           ))}
-          {machines.length === 0 && <TableRow><TableCell className="p-8 text-center text-muted-foreground" colSpan={5}>No hay máquinas configuradas.</TableCell></TableRow>}
+          {machines.length === 0 && <TableRow><TableCell className="p-8 text-center text-muted-foreground" colSpan={6}>No hay máquinas configuradas.</TableCell></TableRow>}
         </TableBody>
       </Table>
     </Card>

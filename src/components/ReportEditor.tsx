@@ -3,6 +3,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { Input } from "@/components/ui/input";
 import { FieldLabel, Label } from "@/components/ui/label";
 import { NativeSelect } from "@/components/ui/native-select";
@@ -472,7 +473,18 @@ export default function ReportEditor({
     </Label>
   );
   const timeInput = (field: "started_at" | "ended_at", label: string) => (
-    <div>{input(field, label, "datetime-local")}
+    <div>
+      <Label className="min-w-0">
+        <FieldLabel>{label}</FieldLabel>
+        <DateTimePicker
+          label={label}
+          {...fieldProps(field)}
+          value={form[field]}
+          disabled={fieldsDisabled}
+          onChange={(next) => update(field, next)}
+        />
+        {fieldError(field)}
+      </Label>
       <Button variant="outline" className="mt-2" type="button" disabled={fieldsDisabled} onClick={() => update(field, localDateTime(new Date().toISOString()))}>Usar hora actual</Button>
     </div>
   );

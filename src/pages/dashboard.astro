@@ -90,7 +90,9 @@ const kpis = [
 
 <BaseLayout title="Dashboard" description="Resumen operativo de producción" profile={auth.profile}>
   <main class="mx-auto w-full max-w-7xl space-y-6 px-4 py-4 sm:px-6 sm:py-6">
-    <PageHeader title="Dashboard" description="Estado operativo de los reportes de producción del día." />
+    <PageHeader title="Dashboard" description="Estado operativo de los reportes de producción del día.">
+      <Fragment slot="actions">{isOperator && <a class={buttonVariants({ variant: "accent", size: "lg", className: "min-h-11" })} href="/turno" data-astro-reload>Continuar turno</a>}</Fragment>
+    </PageHeader>
 
     {hasError && (
       <Alert variant="destructive">

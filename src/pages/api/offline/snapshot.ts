@@ -1,6 +1,7 @@
 import type { APIRoute } from "astro";
 import { json } from "../../../lib/http";
 import { createSupabaseServerClient } from "../../../lib/supabase/server";
+import { stripClockSkewFromReport } from "../../../lib/clock-skew";
 
 /** GET /api/offline/snapshot: datos de trabajo del Operario para operar sin conexión (contracts/http-api.md). */
 function noStore(data: unknown, status = 200) {
@@ -32,7 +33,7 @@ export const GET: APIRoute = async ({ request, cookies, locals }) => {
       supabase.from("app_settings").select("off_shift_grace, offline_login_window").single(),
       supabase.from("shifts").select("id, name, start_time, end_time, sort_order").eq("active", true).order("sort_order", { ascending: true }),
       supabase.from("operator_machine_assignments")
-        .select("id, machine_id, shift_id, valid_from, valid_to, machine:machines(id, code, name, active)")
+        .select("id, machine_id, shift_id, valid_from, valid_to, machine:machines(id, code, name, active, location)")
         .eq("operator_id", auth.user.id).eq("active", true)
         .lte("valid_from", today).or(`valid_to.is.null,valid_to.gte.${yesterday}`),
       catalog("stop_categories", "id, code, name, numeric_code", "numeric_code"),
@@ -71,7 +72,8 @@ export const GET: APIRoute = async ({ request, cookies, locals }) => {
       lines: lines.data ?? [],
       dosifierTypes: dosifierTypes.data ?? [],
     },
-    activeReport: activeReport.data ?? null,
+    // «Reloj desfasado» es solo para ROOT: esta ruta es del Operario, así que nunca lo incluye.
+    activeReport: stripClockSkewFromReport((activeReport.data ?? null) as Record<string, unknown> | null),
     serverTime: now,
     fetchedAt: now,
   });

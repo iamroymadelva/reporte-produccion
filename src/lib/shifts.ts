@@ -77,7 +77,7 @@ export interface AssignmentLike {
   shift_id: string;
   valid_from: string;
   valid_to: string | null;
-  machine?: { id: string; code: string; name: string; active?: boolean } | null;
+  machine?: { id: string; code: string; name: string; active?: boolean; location?: string | null } | null;
 }
 
 /**

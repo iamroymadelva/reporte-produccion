@@ -13,7 +13,7 @@ const browserGlobals = {
   Event: browser.Event, CustomEvent: browser.CustomEvent, indexedDB,
   IS_REACT_ACT_ENVIRONMENT: true,
   // Radix UI (AlertDialog, FocusScope, Presence) necesita estas APIs del navegador.
-  Node: browser.Node, Element: browser.Element, KeyboardEvent: browser.KeyboardEvent,
+  Node: browser.Node, Element: browser.Element, KeyboardEvent: browser.KeyboardEvent, NodeFilter: browser.NodeFilter,
   MutationObserver: browser.MutationObserver, getComputedStyle: browser.getComputedStyle.bind(browser),
   ResizeObserver: class { observe() {} unobserve() {} disconnect() {} },
 };
@@ -27,6 +27,7 @@ const { default: StopManager } = await import("../src/components/StopManager");
 const { default: StopEventsTable } = await import("../src/components/StopEventsTable");
 const { guardedMutationFetch, getConnectivitySnapshot, resetConnectivityForTests } = await import("../src/lib/connectivity");
 const categories = [{ id: "aseo", code: "8", name: "Aseo" }, { id: "correctivo", code: "4", name: "Correctivo" }];
+const { pickDateTime } = await import("./helpers/datetime-picker");
 const catalog = [{ id: "option", code: "1", name: "Existente" }];
 const complete = { id: "test", updated_at: "2026-09-15T00:00:00Z", creator_full_name: "Operario responsable", report_date: "2026-09-15", product_name: "Existente", product_id: "option", client_name: "Existente", client_id: "option", production_order: "OP-1", line_id: "option", lot: "L1", shift_id: "option", weight: 0, g_min: 0, dosifier_type_id: "option", started_at: "2026-09-15T08:00:00-05:00", ended_at: "2026-09-15T16:00:00-05:00", programmed_hours: 0, units_produced: 0, waste: 0 };
 const props = { report: complete, lines: catalog, clients: catalog, products: catalog, dosifierTypes: catalog, shifts: [{ id: "option", name: "Día", start_time: "06:00", end_time: "14:00" }], canSubmit: true, adminCorrection: false, machineLabel: "M-1" };
@@ -136,7 +137,7 @@ describe("Operator interactions", () => {
     const labels = [...container.querySelectorAll(".field-label")].map((node) => node.textContent);
     expect(labels.slice(0, 12)).toEqual(["Máquina", "Operario responsable", "Fecha", "Producto", "O.P.", "Área / Línea", "Cliente", "Lote", "Turno", "Peso (gr)", "G/min", "Tipo de dosificador"]);
     expect(text()).not.toContain("Rendimiento");
-    expect(container.querySelectorAll("[required]").length).toBe(15);
+    expect(container.querySelectorAll("[required], [aria-required='true']").length).toBe(15);
     await click(buttons("Enviar reporte")[0]);
     await settle(30);
     expect(container.querySelectorAll('[aria-invalid="true"]').length).toBe(15);
@@ -165,10 +166,14 @@ describe("Operator interactions", () => {
   test("current time is editable and never overwrites manual hours", async () => {
     await mount(<ReportEditor {...props} />);
     await click(buttons("Usar hora actual")[0]);
-    const field = document.querySelector<HTMLInputElement>('[data-report-field="started_at"]')!;
-    expect(Math.abs(new Date(field.value).getTime() - Date.now())).toBeLessThan(61_000);
-    await change('[data-report-field="started_at"]', "2026-09-15T07:42");
-    expect(field.value).toBe("2026-09-15T07:42");
+    const field = document.querySelector<HTMLButtonElement>('[data-report-field="started_at"]')!;
+    const shown = /(\d{2})\/(\d{2})\/(\d{4}) (\d{2}):(\d{2})/.exec(field.textContent!)!;
+    const typed = new Date(Number(shown[3]), Number(shown[2]) - 1, Number(shown[1]), Number(shown[4]), Number(shown[5]));
+    expect(Math.abs(typed.getTime() - Date.now())).toBeLessThan(121_000);
+    // Hora escrita a mano, distinta del reloj del dispositivo: se conserva tal cual.
+    await pickDateTime(browser as never, field, "2026-09-15T07:42");
+    expect(field.textContent).toContain("15/09/2026 07:42");
+    expect(field.getAttribute("aria-label")).toBe("Hora inicio: 15/09/2026 07:42");
     expect(document.querySelector<HTMLInputElement>('[data-report-field="programmed_hours"]')!.value).toBe("0");
   });
   test("the operator sees the server-assigned date and shift as read-only and cannot edit them", async () => {

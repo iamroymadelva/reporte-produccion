@@ -7,7 +7,8 @@ import { isUuid, writeFailure } from "../../../../lib/report-rpc";
  * Registra un cambio del reporte (T075). JSON `{ id?, change_type_id, description, occurred_at? }`:
  * `id` lo genera el cliente (idempotente) y `occurred_at` es la hora del dispositivo.
  */
-const CHANGE_SELECTION = "id, report_id, change_type_id, description, occurred_at, captured_offline, clock_skew_review, created_at";
+const CHANGE_SELECTION = "id, report_id, change_type_id, description, occurred_at, captured_offline, created_at";
+// `clock_skew_review` es solo para ROOT y no se devuelve en esta ruta (es del Operario).
 
 export const POST: APIRoute = async ({ request, cookies, locals, params }) => {
   const auth = locals.auth;

@@ -35,6 +35,7 @@ const fieldLabels: Record<string, string> = {
   code: "Código",
   name: "Nombre",
   description: "Descripción",
+  location: "Ubicación",
   active: "Activo",
   sort_order: "Orden",
   numeric_code: "Código numérico",

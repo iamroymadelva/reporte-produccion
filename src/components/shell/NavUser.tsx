@@ -1,5 +1,5 @@
 import { useCallback, useRef } from "react";
-import { Bell, ChevronsUpDown, LogOut, Moon, Sun } from "lucide-react";
+import { Bell, ChevronsUpDown, LogOut, Moon, Sun, UserRound } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { SidebarMenu, SidebarMenuItem, useSidebar } from "@/components/ui/sidebar";
@@ -7,12 +7,8 @@ import { Button } from "@/components/ui/button";
 import { roleLabels, type Profile } from "@/lib/types";
 import { useTheme } from "@/lib/theme";
 import { useLogoutGuard } from "@/components/offline/LogoutGuard";
+import { initialsFor } from "@/components/UserMenu";
 
-export function initialsFor(name: string) {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (!parts.length) return "?";
-  return ((parts[0][0] ?? "") + (parts.length > 1 ? parts[parts.length - 1][0] ?? "" : "")).toUpperCase();
-}
 
 /**
  * El <form> de cierre de sesión vive FUERA del menú (hermano, oculto): el interceptor global de submit
@@ -33,6 +29,7 @@ function MenuBody({ profile, onLogout }: { profile: Profile; onLogout: () => voi
     </DropdownMenuLabel>
     <DropdownMenuSeparator />
     <DropdownMenuItem asChild><a href="/notificaciones"><Bell className="size-4" /> Notificaciones</a></DropdownMenuItem>
+    <DropdownMenuItem asChild><a href="/cuenta"><UserRound className="size-4" /> Mi cuenta</a></DropdownMenuItem>
     <DropdownMenuItem onClick={() => setTheme(dark ? "light" : "dark")}>
       {dark ? <Sun className="size-4" /> : <Moon className="size-4" />}
       {dark ? "Modo claro" : "Modo oscuro"}

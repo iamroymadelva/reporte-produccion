@@ -56,7 +56,7 @@ El diálogo muestra **Último contacto**, los pendientes informados por los disp
 
 ## 3. Gestión de máquinas
 
-**Máquinas** permite crear, editar, desactivar, reactivar y eliminar. Código y nombre no pueden duplicarse bajo las reglas de normalización. Una máquina con reportes o referencias no se elimina: se **desactiva**.
+**Máquinas** permite crear, editar, desactivar, reactivar y eliminar. Cada máquina tiene una **Ubicación** opcional (texto libre, hasta 120 caracteres, p. ej. «Planta 2, línea norte») porque no todas están en el mismo lugar: se escribe al crear o editar, aparece en la columna «Ubicación» (el buscador también filtra por ella), en el selector de máquina del operario en Turno (también sin conexión) y en el detalle del reporte. Si se deja vacía no se muestra nada. Solo la gestionan el raíz y el coordinador y el cambio queda en el historial administrativo. Código y nombre no pueden duplicarse bajo las reglas de normalización. Una máquina con reportes o referencias no se elimina: se **desactiva**.
 
 ## 4. Catálogos
 

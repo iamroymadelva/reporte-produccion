@@ -45,6 +45,14 @@ Form endpoints generally redirect with Spanish flash-message query parameters. I
 - **Rules:** Uses `supabase.auth.updateUser`, not Auth Admin. Administrators reset other users' passwords with `POST /api/admin/users/[id]` (`intent=reset_password`).
 - **Response:** Redirect with a Spanish flash message.
 
+### `POST /api/account/preferences`
+
+- **Purpose:** Save the caller's own display preference for the time format.
+- **Authentication:** Authenticated, active session (any role). Same-origin only (`Origin` mismatch gives `403`).
+- **Input:** JSON `{ "time_format": "24h" | "12h" }` (closed list).
+- **Rules:** Stores `user_metadata.time_format` with `supabase.auth.updateUser({ data })` using the caller's own session (never the service role, so another user's metadata cannot be written). It is presentation only: it grants no privilege (roles live in `profiles`/RLS) and `handle_new_user` runs only on user creation. The browser also copies the value to IndexedDB (`meta`, key `timeFormat:<userId>`) so the date-time picker reads it offline.
+- **Response:** `200 { ok: true, time_format }`; `400` invalid JSON; `401` no session; `403` foreign origin; `422` value outside the list; `500` Auth failure. `Cache-Control: private, no-store`.
+
 ## Reports
 
 ### `POST /api/reports`
@@ -173,8 +181,8 @@ All routes in this section require an authenticated `ROOT` or `ADMINISTRATOR` (c
 ### `POST /api/admin/machines`
 
 - **Purpose:** Manage machine records.
-- **Input:** Form fields including `id`, `code`, `name`, `description`, and `active`, or an operation intent.
-- **Rules:** Normalized code/name uniqueness applies. Reactivation preserves identity; reports block deletion and assignments are removed only when deletion is safe.
+- **Input:** Form fields including `id`, `code`, `name`, `description`, `location` (optional, trimmed, empty = none, max 120 characters) and `active`, or an operation intent. Requires ROOT or coordinator (401 without session, 403 otherwise).
+- **Rules:** A location longer than 120 characters is rejected with a Spanish flash message ("La ubicación no puede superar 120 caracteres.") and nothing is written. Normalized code/name uniqueness applies. Reactivation preserves identity; reports block deletion and assignments are removed only when deletion is safe.
 - **Response:** Redirect with Spanish flash state.
 
 ### `POST /api/admin/shifts`
@@ -241,7 +249,7 @@ All routes in this section require an authenticated `ROOT` or `ADMINISTRATOR` (c
 
 ### `GET /api/offline/snapshot`
 
-- **Purpose:** Work snapshot for the operator's offline shift: profile, settings (`offShiftGrace`, `offlineLoginWindow`), shifts, current assignments, active catalogs and the active report with its stops and changes, plus `serverTime`.
+- **Purpose:** Work snapshot for the operator's offline shift: profile, settings (`offShiftGrace`, `offlineLoginWindow`), shifts, current assignments (each machine includes its optional `location`), active catalogs and the active report with its stops and changes, plus `serverTime`.
 - **Authentication:** `OPERATOR`. Never cached.
 
 ### `POST /api/sync/batch`
