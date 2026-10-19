@@ -54,6 +54,18 @@ describe("nav-config", () => {
     expect(admin.items.some((item) => item.href === "/administracion/tipos-cambio")).toBe(true);
   });
 
+  test("Indicadores en el grupo operacion para ROOT, ADMINISTRATOR y VIEWER, no para OPERATOR", () => {
+    for (const role of ["ROOT", "ADMINISTRATOR", "VIEWER"] as const) {
+      const operacion = navForRole(role).find((group) => group.id === "operacion")!;
+      expect(operacion.items.some((item) => item.title === "Indicadores" && item.href === "/indicadores")).toBe(true);
+    }
+    const operacion = navForRole("OPERATOR").find((group) => group.id === "operacion")!;
+    expect(operacion.items.some((item) => item.href === "/indicadores")).toBe(false);
+    expect(breadcrumbFor("/indicadores").map((crumb) => crumb.label)).toEqual(["Inicio", "Indicadores"]);
+    expect(isActivePath("/indicadores", "/indicadores")).toBe(true);
+    expect(isActivePath("/indicadoresx", "/indicadores")).toBe(false);
+  });
+
   test("mobileTabs: dashboard, reportes y notificaciones", () => {
     expect(mobileTabs.map((item) => item.href)).toEqual(["/dashboard", "/reportes", "/notificaciones"]);
   });

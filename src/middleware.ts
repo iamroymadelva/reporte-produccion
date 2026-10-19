@@ -63,6 +63,8 @@ export const onRequest = defineMiddleware(async (context, next) => {
     if (!hasRole(auth, "OPERATOR")) return deny("Esta pantalla es solo para operarios.");
   } else if (inSection(pathname, "/api/dashboard")) {
     if (!isManager(auth) && !hasRole(auth, "VIEWER")) return deny("El tablero en vivo es solo para coordinadores y auditores.");
+  } else if (inSection(pathname, "/indicadores") || inSection(pathname, "/api/indicadores")) {
+    if (!isManager(auth) && !hasRole(auth, "VIEWER")) return deny("Los indicadores son solo para coordinadores y auditores.");
   } else if (inSection(pathname, "/consulta-offline") || inSection(pathname, "/api/offline/overview")) {
     if (!isManager(auth) && !hasRole(auth, "VIEWER")) return deny("No tienes permisos para esta consulta.");
   }

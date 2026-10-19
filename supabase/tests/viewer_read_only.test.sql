@@ -132,7 +132,7 @@ select is(
   (select string_agg(p.proname, ',' order by p.proname)
    from pg_proc p join pg_namespace n on n.oid = p.pronamespace
    where n.nspname = 'public' and p.prokind = 'f' and has_function_privilege('authenticated', p.oid, 'EXECUTE')),
-  'apply_sync_operation,approve_report,cancel_report,correct_report,delete_or_deactivate,list_notifications,mark_all_notifications_read,mark_notification_read,record_offline_login,report_device_sync_status,review_quarantine,user_last_contact',
+  'apply_sync_operation,approve_report,cancel_report,correct_report,delete_or_deactivate,indicators_summary,list_notifications,mark_all_notifications_read,mark_notification_read,record_offline_login,report_device_sync_status,review_quarantine,user_last_contact',
   'Inventario de RPC públicas ejecutables por authenticated');
 
 select tests.auth_as('10000000-0000-0000-0000-000000000503');

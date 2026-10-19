@@ -59,6 +59,8 @@ const matrix: Array<{ path: string; api: boolean; allowed: Role[] }> = [
   { path: "/api/offline/overview", api: true, allowed: ["ROOT", "ADMINISTRATOR", "VIEWER"] },
   { path: "/api/dashboard/summary", api: true, allowed: ["ROOT", "ADMINISTRATOR", "VIEWER"] },
   { path: "/api/auth/session-info", api: true, allowed: roles },
+  { path: "/indicadores", api: false, allowed: ["ROOT", "ADMINISTRATOR", "VIEWER"] },
+  { path: "/api/indicadores", api: true, allowed: ["ROOT", "ADMINISTRATOR", "VIEWER"] },
   { path: "/reportes", api: false, allowed: roles },
   { path: "/ayuda", api: false, allowed: roles },
   { path: "/api/reports/export", api: true, allowed: roles },
@@ -82,11 +84,11 @@ describe("middleware: rol x ruta protegida", () => {
 
   test("sin sesión: API -> 401 JSON y páginas -> redirección a /iniciar-sesion", async () => {
     currentRole = null;
-    for (const path of ["/api/admin/audit", "/api/admin/users/abc", "/api/reports/export", "/api/account/preferences"]) {
+    for (const path of ["/api/admin/audit", "/api/admin/users/abc", "/api/reports/export", "/api/account/preferences", "/api/indicadores"]) {
       const result = await run(path);
       expect(result.outcome).toBe("401");
     }
-    for (const path of ["/administracion", "/administracion/historial", "/turno", "/consulta-offline", "/ayuda", "/cuenta"]) {
+    for (const path of ["/administracion", "/administracion/historial", "/turno", "/consulta-offline", "/ayuda", "/cuenta", "/indicadores"]) {
       const result = await run(path);
       expect(result.outcome).toBe("redirect");
       expect(result.location).toBe("/iniciar-sesion");

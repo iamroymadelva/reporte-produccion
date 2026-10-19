@@ -1,0 +1,14 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import PageHeader from "../components/PageHeader.astro";
+import IndicatorsDashboard from "../components/indicators/IndicatorsDashboard";
+
+const auth = Astro.locals.auth!;
+---
+
+<BaseLayout title="Indicadores" description="Indicadores de producción y paradas" profile={auth.profile}>
+  <main class="mx-auto w-full max-w-7xl space-y-6 px-4 py-4 sm:px-6 sm:py-6">
+    <PageHeader title="Indicadores" description="Reportes, aprobaciones y horas de parada del periodo seleccionado." />
+    <IndicatorsDashboard client:load />
+  </main>
+</BaseLayout>
