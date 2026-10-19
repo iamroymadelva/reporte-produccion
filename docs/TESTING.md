@@ -59,6 +59,10 @@ Contraseña de todos: `Planta2026!` (solo entorno local).
 
 Las pruebas automáticas están en `tests/help-menu.test.tsx` (contenido por rol, navegación, acordeón accesible y panel del operario) y `tests/role-access.test.ts` (`/ayuda` exige sesión).
 
+### Datos de demostración de Indicadores
+
+`scripts/seed-demo-indicators.sql` siembra reportes `DEMO-%` solo en local. Para limpiarlos en la nube, pega `scripts/cleanup-demo-indicators.sql` en el SQL Editor de Supabase: por defecto solo cuenta (`do_delete := false`); cambia ese flag a `true` para borrar solo las filas `DEMO-%` y sus dependientes.
+
 ## Comandos de prueba automatizada
 
 ```sh
