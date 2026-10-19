@@ -1,8 +1,9 @@
 # reporte-produccion Development Guidelines
 
-Auto-generated from all feature plans. Last updated: 2026-10-09
+Auto-generated from all feature plans. Last updated: 2026-10-19
 
 ## Active Technologies
+- 002-indicators-dashboard: adds `recharts` + shadcn `ui/chart.tsx`; one `security invoker` SQL function (`indicators_summary`) and `GET /api/indicadores`; no new tables
 
 - TypeScript 5.9 — Astro 7 SSR (`@astrojs/vercel`) + React 19 islands, Tailwind 4 + shadcn/Radix (redesign/ui-ux)
 - Supabase: Auth, PostgREST, PostgreSQL with RLS/triggers (SQL/PLpgSQL), Realtime (planned F5) (redesign/ui-ux)
@@ -30,6 +31,7 @@ bun test; bun run db:test; bunx astro check; bun run build; bun run db:reset (lo
 Spanish UI (es-CO, America/Bogota). Authorization lives in the database (RLS + triggers); API routes re-check roles. Never cache authenticated HTML or data in Cache Storage.
 
 ## Recent Changes
+- 002-indicators-dashboard: Indicators dashboard (`/indicadores`) — see specs/002-indicators-dashboard/plan.md
 
 - redesign/ui-ux: Plan 001 (offline production reports, ROOT role, approval, full audit, realtime) — see specs/001-offline-production-reports/plan.md
 
