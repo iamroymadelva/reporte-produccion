@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import IndicatorCards, { IndicatorCardsSkeleton } from "./IndicatorCards";
+import AreaChartCard, { AreaChartCardSkeleton } from "./AreaChartCard";
+import MachineBarCard, { MachineBarCardSkeleton } from "./MachineBarCard";
+import CategoryDonutCard, { CategoryDonutCardSkeleton } from "./CategoryDonutCard";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { NativeSelect } from "@/components/ui/native-select";
@@ -66,9 +69,28 @@ export default function IndicatorsDashboard() {
         <IndicatorCards cards={data.cards} />
       )}
 
-      {/* Slots para las gráficas de US2 (parada por día/máquina) y US3 (categorías). */}
-      <div data-slot="indicators-daily-chart" />
-      <div data-slot="indicators-breakdown-charts" />
+      {status !== "error" ? (
+        <>
+          {status === "loading" || !data ? (
+            <AreaChartCardSkeleton />
+          ) : (
+            <AreaChartCard daily={data.daily} description={`${data.range.from} a ${data.range.to}`} />
+          )}
+          <div className="grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-2">
+            {status === "loading" || !data ? (
+              <>
+                <MachineBarCardSkeleton />
+                <CategoryDonutCardSkeleton />
+              </>
+            ) : (
+              <>
+                <MachineBarCard machines={data.machines} />
+                <CategoryDonutCard categories={data.categories} />
+              </>
+            )}
+          </div>
+        </>
+      ) : null}
     </div>
   );
 }
